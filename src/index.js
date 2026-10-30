@@ -65,7 +65,16 @@ export class SantoriniRoom extends DurableObject{
   if(r.mode==='bot'&&r.game.turn===1&&r.game.winner===null&&r.players[0])
    await this.ctx.storage.setAlarm(Date.now()+(r.game.phase==='place'||r.game.phase==='godpick'?950:1100));
  }
- advanceAfterAction(previousPhase,previousTurn,actionSeat){
+ resolveBlockedTeam(){
+  const r=this.room;
+  if(capacity(r)===2||r.game.phase!=='move'||r.game.winner!==null||!ready(r))return;
+  if(availableActions(r).some(a=>a.type==='move'||a.type==='endMove'))return;
+  const winner=1-r.game.turn;
+  r.game.winner=winner;r.game.phase='ended';
+  r.game.lastAction='Ghế '+(seatForTurn(r)+1)+' không thể di chuyển. Đội '+(winner+1)+' chiến thắng!';
+  r.game.revision++;
+ }
+  advanceAfterAction(previousPhase,previousTurn,actionSeat){
   const r=this.room;
   if(capacity(r)===2)return;
   if(r.game.phase==='ended')return;
@@ -168,6 +177,7 @@ export class SantoriniRoom extends DurableObject{
    const previousTurn=r.game.turn,previousPhase=r.game.phase,oldWinner=r.game.winner,oldRevision=r.game.revision;
    try{applyAction(r.game,team(seat),action);}catch(e){this.send(ws,{type:'error',message:e.message||'Hành động không hợp lệ.'});return;}
    this.advanceAfterAction(previousPhase,previousTurn,seat);
+   this.resolveBlockedTeam();
    this.record(action,seat,oldWinner,oldRevision);
   }
   await this.persist();this.broadcast();await this.scheduleBot();
