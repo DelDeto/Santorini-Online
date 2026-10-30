@@ -49,14 +49,14 @@ function activePower(g,p){
 function restrictedByAphrodite(g,p){
  return opponentsOf(g,p).flatMap(i=>g.gods[i]==='aphrodite'?g.workers[i]:[]).some(w=>(g.ctx?.turnStart||g.workers[p]).some(x=>near(x,w)));
 }
-const validGodFor=(id,players,selected=[])=>{
+export const validGodFor=(id,players,selected=[])=>{
  const info=GODS[id];if(!info||info.players&&!info.players.includes(players))return false;
  if(selected.some(other=>other===id||info.banned?.includes(other)||GODS[other]?.banned?.includes(id)))return false;
  return true;
 };
 export function newGame(ruleset='classic',players=2){
  const count=players===3?3:2;
- return {board:Array.from({length:5},()=>Array(5).fill(0)),workers:Array.from({length:count},()=>[]),phase:ruleset==='god'?'godpick':'place',ruleset:ruleset==='god'?'god':'classic',gods:Array(count).fill(null),turn:0,selected:null,winner:null,eliminated:Array(count).fill(false),revision:0,lastAction:'Bắt đầu trận đấu.',ctx:{},athenaBlocked:null,advanced:{chaos:{},morpheus:{},circe:null,bonus:null}};
+ return {capacity:players,board:Array.from({length:5},()=>Array(5).fill(0)),workers:Array.from({length:count},()=>[]),phase:ruleset==='god'?'godpick':'place',ruleset:ruleset==='god'?'god':'classic',gods:Array(count).fill(null),turn:0,selected:null,winner:null,eliminated:Array(count).fill(false),revision:0,lastAction:'Bắt đầu trận đấu.',ctx:{},athenaBlocked:null,advanced:{chaos:{},morpheus:{},circe:null,bonus:null,erasures:[]}};
 }
 const cell=(r,c)=>Number.isInteger(r)&&Number.isInteger(c)&&r>=0&&r<5&&c>=0&&c<5;
 const near=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col))===1;
@@ -150,30 +150,61 @@ function legalPrebuilds(g,p,i){
 }
 export function legalActions(g,p=g.turn){
  if(g.winner!==null||p!==g.turn)return [];
- if(g.phase==='godpick')return Object.keys(GODS).filter(id=>!g.gods.includes(id)).map(id=>({type:'selectGod',god:id}));
- if(g.phase==='place'){const out=[];for(let row=0;row<5;row++)for(let col=0;col<5;col++)if(free(g,row,col))out.push({type:'place',row,col});return out;}
- if(['move','extraMove','hermesMove'].includes(g.phase)){
-   const out=[];for(let i=0;i<g.workers[p].length;i++){
-    out.push(...legalMoveDetails(g,p,i).map(x=>({type:'move',...x})));
+ if(g.phase==='godpick')return Object.keys(GODS).filter(id=>validGodFor(id,g.capacity||g.workers.length,g.gods.filter(Boolean))).map(id=>({type:'selectGod',god:id}));
+ if(g.phase==='place'){const out=[];
+ for(let row=0;row<5;row++)for(let col=0;col<5;col++)if(free(g,row,col)){
+  if(g.gods[p]==='eros'&&(!isEdge(row,col)||(g.workers[p].length===1&&!isOppositeEdge(g.workers[p][0],{row,col}))))continue;
+  out.push({type:'place',row,col});
+ }
+ return out;}
+ if(['move','extraMove','hermesMove','tritonMove','dionysusMove'].includes(g.phase)){
+   const controlled=g.phase==='dionysusMove'?g.ctx?.dionysusTarget:p;
+   if(controlled===undefined)return [];
+   const out=[];for(let i=0;i<g.workers[controlled].length;i++){
+    out.push(...legalMoveDetails(g,controlled,i).map(x=>({type:'move',...x})));
     if(g.phase==='move')out.push(...legalPrebuilds(g,p,i));
    }
-   if(g.phase==='extraMove')out.push({type:'skip'});
+   if(g.phase==='extraMove'||g.phase==='tritonMove')out.push({type:'skip'});
+   if(g.phase==='move')out.push(...rawFerryActions(g,p));
    if(god(g,p)==='hermes'&&(g.phase==='hermesMove'||g.phase==='move'))
     g.workers[p].forEach((w,worker)=>{if(legalBuilds(g,w).length)out.push({type:'endMove',worker});});
    return out;
  }
- if(g.phase==='build'||g.phase==='extraBuild'){
-  const from=g.workers[p]?.[g.selected];if(!from)return [];
-  let positions=legalBuilds(g,from);
+ if(g.phase==='aresRemove'){
+  const idx=g.ctx?.lastMoved===0?1:0,unmoved=g.workers[p][idx];
+  const choices=unmoved?legalBuilds(g,unmoved).filter(pos=>g.board[pos.row][pos.col]>0&&g.board[pos.row][pos.col]<4).map(pos=>({type:'removeBlock',...pos})):[];
+  return [...choices,{type:'skip'}];
+ }
+ if(g.phase==='dionysusChoice'){
+  return [{type:'skip'},...opponentsOf(g,p).flatMap(q=>{
+   const probe={...g,turn:q,phase:'move',ctx:{}};
+   return g.workers[q].some((_,i)=>legalMoveDetails(probe,q,i).length)?[{type:'commandeer',target:q}]:[];
+  })];
+ }
+ if(g.phase==='poseidonBuild'){
+  const other=g.workers[p][g.ctx?.lastMoved===0?1:0];
+  return other?[...legalBuilds(g,other,p).map(x=>({type:'build',...x})),{type:'skip'}]:[{type:'skip'}];
+ }
+ if(g.phase==='build'||g.phase==='extraBuild'||g.phase==='morpheusBuild'||g.phase==='dionysusBuild'){
+  const building=g.phase==='dionysusBuild'?g.ctx.dionysusTarget:p;
+  const from=g.workers[building]?.[g.selected];if(!from)return [];
+  let positions=legalBuilds(g,from,building);
   if(g.phase==='extraBuild'){
    if(god(g,p)==='demeter')positions=positions.filter(x=>!eq(x,g.ctx?.firstBuild));
    else if(god(g,p)==='hephaestus')positions=positions.filter(x=>eq(x,g.ctx?.firstBuild)&&g.board[x.row][x.col]<3);
+   else if(god(g,p)==='hestia')positions=positions.filter(x=>!isEdge(x.row,x.col));
    else positions=[];
   }
+  if(g.phase==='morpheusBuild'&&(g.advanced?.morpheus?.[p]||0)<=0)positions=[];
   const out=positions.map(pos=>({type:'build',...pos}));
+  if(g.phase==='build'&&god(g,p)==='selene'){
+   const female=g.workers[p][1];
+   if(female)out.push(...legalBuilds(g,female,p).map(pos=>({type:'build',...pos,dome:true})));
+  }
+  if(g.phase==='build'&&god(g,p)==='zeus'&&g.board[from.row][from.col]<3)out.push({type:'build',row:from.row,col:from.col,under:true});
   if(g.phase==='build'&&god(g,p)==='atlas')
    out.push(...positions.filter(pos=>g.board[pos.row][pos.col]<4).map(pos=>({type:'build',...pos,dome:true})));
-  if(g.phase==='extraBuild')out.push({type:'skip'});
+  if(['extraBuild','poseidonBuild','morpheusBuild','dionysusBuild'].includes(g.phase))out.push({type:'skip'});
   return out;
  }
  return [];
@@ -184,7 +215,9 @@ function matches(expected,a){
  (expected.row===undefined||expected.row===a.row)&&
  (expected.col===undefined||expected.col===a.col)&&
  (expected.worker===undefined||expected.worker===a.worker)&&
- (expected.dome===undefined? a.dome!==true : expected.dome===a.dome);
+ (expected.dome===undefined? a.dome!==true : expected.dome===a.dome)&&
+ (expected.under===undefined? a.under!==true:expected.under===a.under)&&
+ (expected.target===undefined||expected.target===a.target);
 }
 function advance(g,p){
  const count=g.workers.length;let next=(p+1)%count;
