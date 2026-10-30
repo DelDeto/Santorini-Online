@@ -236,7 +236,7 @@ record(action,seat,oldWinner,oldRevision){
   }
   const action=capacity(r)===2&&logical===1?
    chooseBotAction(r.game,r.difficulty):
-   chooseMultiplayerBotAction(r.game,r.difficulty,logical,choices);
+   chooseMultiplayerBotAction(r.game,r.difficulty,logical,choices,{capacity:capacity(r),seat,seatGods:r.seatGods});
   if(!action)return;
   if(capacity(r)===4&&r.game.phase==='godpick'){
    if(action.type!=='selectGod'||!choices.some(a=>a.god===action.god))return;
@@ -264,7 +264,7 @@ record(action,seat,oldWinner,oldRevision){
 export default{
  async fetch(request,env){
   const u=new URL(request.url);
-  if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'1.1.0'});
+  if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'1.2.0'});
   if(u.pathname==='/ws'){
    const room=u.searchParams.get('room')||'';
    if(!/^[A-Z2-9]{6,10}$/.test(room))return new Response('Room code invalid',{status:400});
