@@ -37,7 +37,7 @@ try{
     try{const res=await fetch(base+'/api/health');if(res.ok){health=await res.json();break;}}catch{}
     await delay(300);
   }
-  assert.equal(health?.version,'1.3.0','server should boot with V1.3');
+  assert.equal(health?.version,'1.4.0','server should boot with V1.4');
   const html=await (await fetch(base)).text();
   assert.match(html,/id="demoBtn"/);
   const og=await fetch(base+'/og.png');
@@ -168,7 +168,7 @@ try{
   assert.deepEqual(threeReady.game.gods,['apollo','pan','atlas']);
   assert.deepEqual(threeReady.players.map(x=>x.team),[0,1,2]);
 
-  // V1.3: one human + two BOTs, all three individually choose God Powers.
+  // V1.4: one human + two BOTs, all three individually choose God Powers.
   const solo3=await connect(room(),'Solo 3P Tester','bot3');
   assert.equal(solo3.hello.view.capacity,3);
   assert.deepEqual(solo3.hello.view.players.map(p=>p.bot),[false,true,true]);
@@ -193,7 +193,7 @@ try{
   const botRound3=await solo3.until(v=>v.game.turn===0&&v.game.revision>next3.game.revision+1||v.game.phase==='ended',25000);
   assert.ok(botRound3.game.turn===0||botRound3.game.phase==='ended');
 
-  // V1.3: one human + three BOTs, individual God selection and 2v2 turn order.
+  // V1.4: one human + three BOTs, individual God selection and 2v2 turn order.
   const solo4=await connect(room(),'Solo 4P Tester','bot4');
   assert.equal(solo4.hello.view.capacity,4);
   assert.deepEqual(solo4.hello.view.players.map(p=>p.bot),[false,true,true,true]);
