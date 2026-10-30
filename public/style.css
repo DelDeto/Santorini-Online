@@ -473,3 +473,16 @@ body:has(#game:not(.hidden)){height:100dvh;max-height:100dvh;overflow:hidden}
 @media(prefers-reduced-motion:reduce){
  .mode-card{transition:none}
 }
+
+/* In-game mode details are overlay-only; no added gameplay height. */
+.mode-live{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;line-height:1.1}
+.mode-live:hover{border-color:#ccf4db;background:#3c8b6c6a}
+.mode-help-overlay{position:absolute;inset:0;z-index:35;display:grid;place-items:center;padding:14px;background:#031a2fe8;backdrop-filter:blur(8px)}
+.mode-help-overlay.hidden{display:none}
+.mode-help-panel{width:min(510px,100%);max-height:min(88dvh,560px);overflow-y:auto;background:linear-gradient(145deg,#1b526c,#0b2a41);border:1px solid #a6e4d79c;border-radius:18px;color:#effffc;padding:22px;box-shadow:0 22px 70px #011727aa}
+.mode-help-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.mode-help-top small{font-size:9px;color:#abded6;font-weight:900;letter-spacing:1.1px}
+.mode-help-top h2{font-size:24px;margin:5px 0 10px}
+.mode-help-panel p{font-size:13px;line-height:1.6;color:#e2f5ef;margin:8px 0}
+.mode-help-panel .mode-help-note{font-size:11px;background:#e5f9ec13;border-radius:9px;padding:11px;color:#c8e4e7}
+@media(max-width:700px){.mode-help-panel{padding:16px}.mode-help-top h2{font-size:20px}}
