@@ -123,3 +123,19 @@ Lưu ý: Hiệu ứng bloom tăng tải GPU. Trên điện thoại yếu nên đ
 - Không tự động chuyển người chơi mất mạng thành khán giả để tránh mất ghế oan; nếu muốn nhường ghế phải bấm Thoát phòng.
 
 Kiểm thử: `npm test` và `npm run smoke`, bao gồm thử God Power BOT, 3 người, 4 người, khán giả, rời phòng và WebSocket multiplayer.
+
+
+## V0.9 — Official Roxley 2017 multiplayer rules (10 Simple God Powers)
+
+**Quy tắc V0.9 thay thế hoàn toàn biến thể 2v1/2v2 của V0.8.**
+
+- **3 người — Free For All:** ba người chơi độc lập, mỗi người chọn một God Power không trùng, đặt hai quân riêng (xanh/cam/tím). Lượt 0→1→2 theo vòng. Khi người chơi không còn đường Move→Build hợp lệ, xóa quân và God Power; tiếp tục đến người cuối cùng hoặc có người lập tức thắng khi di chuyển lên tầng 3.
+- **4 người — Team Game:** 2 đội, đội A ghế 1+3 và đội B ghế 2+4, mỗi đội chia sẻ hai quân. Mỗi ghế có God Power riêng; đồng đội không thể sử dụng kỹ năng của nhau. Ghế 1 đặt đủ hai quân xanh, ghế 2 đặt đủ hai quân cam; lượt đầu thuộc ghế 3, tiếp ghế 4→1→2.
+- God Powers **bắt buộc** ở chế độ 3–4 người; toàn bộ 10 Simple God Powers đang có đều tương thích với 2, 3, 4 người theo tài liệu game.
+- Athena: các đối thủ không được leo lên trong thời gian hiệu lực, bao gồm cả khi phải đợi đến lượt tiếp theo của chính người đang sở hữu thần trong trận đội.
+- Điều kiện cơ bản: di chuyển lên tầng 3; thua nếu không thể Move và Build. Pan có thêm điều kiện thắng khi hạ ít nhất hai tầng.
+- Giữ Solo BOT, 2-player Classic/God, phòng người xem, phòng theo mã, lịch sử, giao diện PC/mobile 3D.
+
+**Giới hạn cần phân biệt với đầy đủ sách luật:** Ứng dụng hiện hỗ trợ 10 God Powers cơ bản trong bộ gốc, không phải toàn bộ 30 God Powers mở rộng của Roxley 2017. Màn chọn thần hiện cho phép từng ghế chọn trực tiếp từ 10 thẻ còn trống, **chưa mô phỏng thủ tục Challenger mời đúng N lá và chọn người bắt đầu**. Người bắt đầu đang cố định ở ghế 1. Do đó các luật *di chuyển, xây dựng, thắng/thua và cách chơi 3–4 người* được cập nhật theo luật Roxley, còn *quy trình setup lựa chọn thần và lượt đầu* là bản rút gọn.
+
+Nguồn đối chiếu: https://files.roxley.com/Santorini-Rulebook-Web-2016.08.14.pdf (trang 1, 2, 6).
