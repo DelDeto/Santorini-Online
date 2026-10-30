@@ -11,16 +11,59 @@ export const GODS={
  pan:{name:'Pan',description:'Thắng khi di chuyển xuống ít nhất hai tầng.'},
  prometheus:{name:'Prometheus',description:'Có thể xây trước rồi đi, nhưng sau đó không được đi lên.'}
 };
+export const SIMPLE_GODS=['apollo','artemis','athena','atlas','demeter','hephaestus','hermes','minotaur','pan','prometheus'];
+export const ADVANCED_GODS={
+ aphrodite:{name:'Aphrodite',players:[2,4],description:'Nếu quân đối thủ bắt đầu lượt cạnh quân của bạn, nước di chuyển cuối phải kết thúc cạnh quân của bạn.'},
+ ares:{name:'Ares',players:[2,3,4],description:'Cuối lượt, có thể gỡ một khối (không phải mái vòm) cạnh quân không di chuyển.'},
+ bia:{name:'Bia',players:[2,3,4],description:'Khi di chuyển, loại quân đối thủ đứng ngay sau ô bạn đến theo hướng đi.'},
+ chaos:{name:'Chaos',players:[2,3,4],description:'Nhận một thần cơ bản ngẫu nhiên chưa được chọn; đổi thần sau lượt có xây mái vòm.'},
+ charon:{name:'Charon',players:[2,3,4],description:'Trước khi di chuyển, có thể đẩy một quân đối thủ đứng cạnh sang ô đối diện qua quân bạn.'},
+ chronus:{name:'Chronus',players:[2],description:'Thắng ngay khi trên bàn có ít nhất năm tòa tháp hoàn chỉnh.'},
+ circe:{name:'Circe',players:[2],banned:['eros'],description:'Đầu lượt, nếu hai quân đối phương không đứng cạnh nhau, mượn năng lực của họ và vô hiệu hóa năng lực của họ.'},
+ dionysus:{name:'Dionysus',players:[2,3,4],description:'Khi hoàn thành tòa tháp bằng mái vòm, có thể chơi thêm một lượt bằng quân đối thủ; không thắng trong lượt phụ.'},
+ eros:{name:'Eros',players:[2,3,4],banned:['circe'],description:'Đặt quân ở hai cạnh đối diện; thắng thêm khi di chuyển hai quân đứng kề nhau cùng tầng hợp lệ.'},
+ hera:{name:'Hera',players:[2,3,4],description:'Đối thủ không thể giành chiến thắng khi di chuyển đến ô viền ngoài bàn.'},
+ hestia:{name:'Hestia',players:[2,3,4],description:'Có thể xây thêm một lần, nhưng không được xây ở ô viền ngoài.'},
+ hypnus:{name:'Hypnus',players:[2,3,4],description:'Quân đối thủ cao hơn tất cả quân khác của họ không được di chuyển.'},
+ limus:{name:'Limus',players:[2,3,4],description:'Đối thủ không thể xây sát quân của bạn, trừ khi xây mái vòm hoàn chỉnh.'},
+ medusa:{name:'Medusa',players:[2,3,4],description:'Cuối lượt, quân đối thủ đứng cạnh quân bạn và ở tầng thấp hơn sẽ bị hóa đá thành công trình.'},
+ morpheus:{name:'Morpheus',players:[2,3,4],description:'Đầu lượt nhận một khối xây dự trữ; sau khi đi có thể dùng dự trữ để xây nhiều lần hoặc không xây.'},
+ persephone:{name:'Persephone',players:[2,3,4],description:'Nếu có nước leo tầng hợp lệ, đối thủ bắt buộc phải di chuyển ít nhất một quân lên tầng.'},
+ poseidon:{name:'Poseidon',players:[2,3,4],description:'Cuối lượt, quân không di chuyển còn ở tầng 0 có thể xây thêm tối đa ba lần.'},
+ selene:{name:'Selene',players:[2,3,4],description:'Quân nữ có thể xây mái vòm ở bất kỳ tầng nào, ngay cả khi quân nam vừa di chuyển.'},
+ triton:{name:'Triton',players:[2,3,4],description:'Khi quân di chuyển tới ô viền ngoài, có thể tiếp tục di chuyển.'},
+ zeus:{name:'Zeus',players:[2,3,4],description:'Có thể xây một khối ngay bên dưới quân vừa di chuyển (không làm thắng do xây).'}
+};
+Object.assign(GODS,ADVANCED_GODS);
+const isEdge=(r,c)=>r===0||r===4||c===0||c===4;
+const isOppositeEdge=(a,b)=>(a.row===0&&b.row===4)||(a.row===4&&b.row===0)||(a.col===0&&b.col===4)||(a.col===4&&b.col===0);
+const opponentsOf=(g,p)=>g.workers.map((_,i)=>i).filter(i=>i!==p&&!g.eliminated?.[i]);
+const hasEnemyGod=(g,p,id)=>opponentsOf(g,p).some(i=>g.gods[i]===id);
+const adjacentGodWorkers=(g,p,id,at)=>opponentsOf(g,p).some(i=>g.gods[i]===id&&g.workers[i].some(w=>near(w,at)));
+function activePower(g,p){
+ if(g.advanced?.circe?.target===p)return null;
+ if(g.advanced?.circe?.owner===p)return g.advanced.circe.power;
+ if(g.gods[p]==='chaos')return g.advanced?.chaos?.[p]?.current??null;
+ return g.ruleset==='god'?g.gods[p]:null;
+}
+function restrictedByAphrodite(g,p){
+ return opponentsOf(g,p).flatMap(i=>g.gods[i]==='aphrodite'?g.workers[i]:[]).some(w=>(g.ctx?.turnStart||g.workers[p]).some(x=>near(x,w)));
+}
+const validGodFor=(id,players,selected=[])=>{
+ const info=GODS[id];if(!info||info.players&&!info.players.includes(players))return false;
+ if(selected.some(other=>other===id||info.banned?.includes(other)||GODS[other]?.banned?.includes(id)))return false;
+ return true;
+};
 export function newGame(ruleset='classic',players=2){
  const count=players===3?3:2;
- return {board:Array.from({length:5},()=>Array(5).fill(0)),workers:Array.from({length:count},()=>[]),phase:ruleset==='god'?'godpick':'place',ruleset:ruleset==='god'?'god':'classic',gods:Array(count).fill(null),turn:0,selected:null,winner:null,eliminated:Array(count).fill(false),revision:0,lastAction:'Bắt đầu trận đấu.',ctx:{},athenaBlocked:null};
+ return {board:Array.from({length:5},()=>Array(5).fill(0)),workers:Array.from({length:count},()=>[]),phase:ruleset==='god'?'godpick':'place',ruleset:ruleset==='god'?'god':'classic',gods:Array(count).fill(null),turn:0,selected:null,winner:null,eliminated:Array(count).fill(false),revision:0,lastAction:'Bắt đầu trận đấu.',ctx:{},athenaBlocked:null,advanced:{chaos:{},morpheus:{},circe:null,bonus:null}};
 }
 const cell=(r,c)=>Number.isInteger(r)&&Number.isInteger(c)&&r>=0&&r<5&&c>=0&&c<5;
 const near=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col))===1;
 const eq=(a,b)=>!!a&&!!b&&a.row===b.row&&a.col===b.col;
 const pawnAt=(g,r,c)=>{for(let p=0;p<g.workers.length;p++)for(let i=0;i<g.workers[p].length;i++)if(eq(g.workers[p][i],{row:r,col:c}))return {p,i};return null;};
 const free=(g,r,c)=>cell(r,c)&&g.board[r][c]!==4&&!pawnAt(g,r,c);
-const god=(g,p)=>g.ruleset==='god'?g.gods[p]:null;
+const god=(g,p)=>activePower(g,p);
 export function legalBuilds(g,from){if(!from)return [];const out=[];for(let row=0;row<5;row++)for(let col=0;col<5;col++)if(near(from,{row,col})&&free(g,row,col))out.push({row,col});return out;}
 function movedCopy(g,p,i,to,occupant=null){
  const workers=g.workers.map(t=>t.map(w=>({...w})));
