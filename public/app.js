@@ -3,6 +3,84 @@ const ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const S={room:null,seat:-1,view:null,ws:null,selected:null,mode:'online',ruleset:'classic',difficulty:'normal',capacity:2,spectate:false,powerMode:'move',
  sound:localStorage.getItem('santorini-sound')!=='false',quality:localStorage.getItem('santorini-quality')||'auto',lighting:localStorage.getItem('santorini-lighting')||'noon',epoch:0,attempt:0,active:false,three:null,oldRevision:-1};
 let audio,toastTimer;
+
+/* Active God Powers are shown in the HUD and can be inspected at any time. */
+const POWER_GUIDE={
+ apollo:{icon:'↔',kind:'Tự động · khi di chuyển',how:'Chọn quân của bạn, sau đó chạm ô đang có quân đối thủ nếu ô đó sáng. Hai quân sẽ đổi vị trí.',tip:'Chạm ô có quân đối thủ được đánh dấu để đổi chỗ (không cần bật nút).'},
+ artemis:{icon:'➠',kind:'Chủ động · lượt di chuyển thứ hai',how:'Di chuyển một lần. Game tự mở bước đi thêm: chạm ô sáng để đi lần hai hoặc bấm “Bỏ qua”. Không được quay lại ô bắt đầu.',tip:'Đi lần đầu rồi chọn đi tiếp hoặc “Bỏ qua”.'},
+ athena:{icon:'♙',kind:'Tự động · hiệu ứng hạn chế leo',how:'Dùng quân đi lên một tầng hợp lệ. Kỹ năng tự kích hoạt, khiến đối thủ không thể đi lên tầng trong thời gian hiệu lực.',tip:'Khi bạn leo lên, Athena tự cấm đối phương leo lên tầng.'},
+ atlas:{icon:'◆',kind:'Chủ động · chọn xây mái vòm',how:'Sau khi đi quân, đến bước xây hãy bấm “◆ Đặt mái vòm”, sau đó chạm ô được đánh dấu. Bấm lại để xây tầng bình thường.',tip:'Trong bước xây: bấm “◆ Đặt mái vòm”, rồi chạm ô sáng.'},
+ demeter:{icon:'▥',kind:'Chủ động · xây thêm ở ô khác',how:'Sau khi xây tầng đầu, game tự mở lượt xây thứ hai. Chạm một ô sáng khác ô vừa xây, hoặc bấm “Bỏ qua”.',tip:'Xây một ô, sau đó chọn ô KHÁC để xây thêm hoặc bấm “Bỏ qua”.'},
+ hephaestus:{icon:'▣',kind:'Chủ động · xây thêm cùng ô',how:'Sau khi xây tầng đầu, game cho phép xây thêm một tầng ngay trên chính ô đó (không được xây mái vòm). Chạm ô sáng hoặc “Bỏ qua”.',tip:'Xây lần đầu, sau đó chạm LẠI ô đó nếu được đánh dấu.'},
+ hermes:{icon:'☄',kind:'Chủ động · đi ngang nhiều lần',how:'Chọn quân và di chuyển qua các ô cùng độ cao. Có thể tiếp tục đi ngang; muốn dừng, chọn quân định xây rồi bấm “Xây ngay →”. Bạn cũng có thể xây mà không di chuyển.',tip:'Chạm ô cùng tầng để tiếp tục, hoặc chọn quân rồi bấm “Xây ngay →”.'},
+ minotaur:{icon:'➜',kind:'Tự động · đẩy quân đối thủ',how:'Chọn quân rồi chạm ô có quân đối thủ được đánh dấu. Nếu phía sau đối thủ có ô trống hợp lệ, quân đối thủ sẽ bị đẩy lùi một ô.',tip:'Chạm ô quân đối thủ được đánh dấu để đẩy (nếu ô phía sau trống).'},
+ pan:{icon:'↘',kind:'Tự động · điều kiện thắng đặc biệt',how:'Ngoài cách leo từ tầng 2 lên 3, Pan thắng ngay khi di chuyển xuống ít nhất 2 tầng, ví dụ 2 → 0.',tip:'Di chuyển xuống từ tầng 2 → 0 sẽ thắng ngay, không cần bật kỹ năng.'},
+ prometheus:{icon:'⚡',kind:'Chủ động · xây trước khi đi',how:'Ở bước di chuyển, chọn quân, bấm “⚡ Xây trước”, chạm ô sáng để xây, rồi di chuyển đúng quân đó. Sau khi xây trước, không được di chuyển lên tầng.',tip:'Chọn quân → “⚡ Xây trước” → chạm ô xây → di chuyển quân.'}
+};
+const escHtml=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let powerFocus=null;
+function seatGod(v,seat){return v.capacity===4?v.seatGods?.[seat]??null:v.game.gods?.[seat]??null;}
+function abilityHint(g,id,ownTurn){
+ const help=POWER_GUIDE[id];if(!help)return 'Đang đợi chọn thần.';
+ if(!ownTurn)return help.tip;
+ switch(g.phase){
+  case 'place':return 'Đặt hai quân lên các ô trống trước khi dùng kỹ năng.';
+  case 'move':
+   if(id==='prometheus'&&g.ctx?.prometheusUsed)return 'Đã xây trước: chạm ô sáng để di chuyển đúng quân, không được leo lên.';
+   if(id==='prometheus'&&S.powerMode==='prebuild')return 'Đang bật Xây trước: chạm ô sáng để xây trước khi di chuyển.';
+   if(id==='atlas'||id==='demeter'||id==='hephaestus')return 'Chọn quân và di chuyển trước, kỹ năng được dùng ở bước xây.';
+   if(id==='hermes')return S.selected===null?'Chọn quân để đi ngang hoặc chọn quân muốn xây ngay.':help.tip;
+   return help.tip;
+  case 'extraMove':return id==='artemis'?'Chạm ô sáng để đi lần 2 hoặc bấm “Bỏ qua”. Không quay lại ô đầu.':help.tip;
+  case 'hermesMove':return 'Chọn quân để đi ngang tiếp; muốn xây, chọn quân rồi bấm “Xây ngay →”.';
+  case 'build':
+   if(id==='atlas')return S.powerMode==='dome'?'Đang bật mái vòm: chạm ô sáng để đặt.':'Bấm “◆ Đặt mái vòm” hoặc chạm ô sáng để xây tầng.';
+   if(id==='hermes')return 'Chạm ô sáng để xây với quân bạn đã chọn.';
+   return 'Chạm ô sáng để xây. '+(id==='demeter'||id==='hephaestus'?'Sau đó bạn được chọn xây thêm.':'');
+  case 'extraBuild':return id==='demeter'?'Xây thêm ở ô KHÁC hoặc bấm “Bỏ qua”.':id==='hephaestus'?'Chạm LẠI ô vừa xây để thêm một tầng hoặc “Bỏ qua”.':'Có thể xây thêm hoặc bỏ qua.';
+  default:return help.tip;
+ }
+}
+function renderPowers(){
+ const v=S.view;if(!v||v.ruleset!=='god')return;
+ const g=v.game,seat=v.activeSeat??g.turn;
+ const currentGod=seatGod(v,seat);
+ const currentPlayer=v.players?.[seat];
+ const mine=S.seat===seat,ready=!!v.ready;
+ $('powerOwner').textContent=ready?(mine?'⚡ LƯỢT CỦA BẠN':'⚡ '+(currentPlayer?.bot?'BOT ĐANG CHƠI':'ĐANG ĐẾN LƯỢT')):'⚡ CHỜ ĐỦ NGƯỜI';
+ $('powerActiveName').textContent=currentGod?v.gods?.[currentGod]?.name||currentGod:'Chưa chọn thần';
+ $('powerUseHint').textContent=currentGod?abilityHint(g,currentGod,mine&&isTurn()):'Chọn God Power trước khi đặt quân.';
+ const roster=v.players.map((p,i)=>{
+  const power=seatGod(v,i),info=v.gods?.[power],you=i===S.seat,active=i===seat;
+  const dead=!!g.eliminated?.[i],title=power?info?.name||power:'Chưa chọn';
+  const name=p.name;
+  return '<button type="button" class="power-god-chip'+(you?' yours':'')+(active?' on-turn':'')+(dead?' eliminated':'')+'" data-power-seat="'+i+'" title="'+escHtml(name+' · '+title+(power?' · '+(POWER_GUIDE[power]?.tip||''):''))+'" aria-label="Xem kỹ năng '+escHtml(title)+' của '+escHtml(name)+'"><strong>'+(you?'★ ':'')+escHtml(title)+'</strong><small>'+escHtml(name)+'</small></button>';
+ });
+ $('godRoster').innerHTML=roster.join('');
+ if(!$('powersOverlay').classList.contains('hidden'))renderPowerCards();
+}
+function renderPowerCards(){
+ const v=S.view;if(!v)return;
+ const g=v.game,current=v.activeSeat??g.turn;
+ const cards=v.players.map((p,i)=>{
+  const id=seatGod(v,i),info=v.gods?.[id],guide=POWER_GUIDE[id],mine=i===S.seat,active=i===current;
+  const type=guide?.kind||'Chưa chọn thần',how=guide?.how||'Người chơi này chưa chọn thần.',name=info?.name||'Chưa chọn';
+  return '<article class="power-detail-card'+(mine?' is-own':'')+(active?' is-current':'')+(g.eliminated?.[i]?' is-eliminated':'')+'" data-power-card="'+i+'">'+
+   '<div class="power-detail-header"><span class="power-symbol">'+escHtml(guide?.icon||'✦')+'</span><div><b>'+escHtml(name)+'</b><div class="power-owner-name">'+escHtml(p.name)+(mine?' · BẠN':'')+(p.bot?' · BOT':'')+'</div></div></div>'+
+   '<div class="power-type">'+escHtml(type)+'</div><p>'+escHtml(info?.description||'Chưa chọn kỹ năng.')+'</p>'+
+   '<div class="power-how"><strong>Cách thực hiện:</strong> '+escHtml(how)+'</div>'+
+   (active&&id?'<div class="power-state">Trong lượt hiện tại: '+escHtml(abilityHint(g,id,mine&&isTurn()))+'</div>':'')+
+  '</article>';
+ });
+ $('powersCards').innerHTML=cards.join('');
+ if(powerFocus!==null){const el=$('powersCards').querySelector('[data-power-card="'+powerFocus+'"]');el?.scrollIntoView({block:'nearest',behavior:'instant'});}
+}
+function openPowers(seat=null){
+ powerFocus=seat;
+ $('powersOverlay').classList.remove('hidden');renderPowerCards();
+}
+function closePowers(){$('powersOverlay').classList.add('hidden');powerFocus=null;}
+
 function message(s){$('toast').textContent=s;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2500);}
 function beep(f=520){if(!S.sound)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),v=audio.createGain();o.type='triangle';o.frequency.value=f;v.gain.setValueAtTime(.034,audio.currentTime);v.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.17);o.connect(v).connect(audio.destination);o.start();o.stop(audio.currentTime+.17);}catch{}}
 function roomCode(){return Array.from(crypto.getRandomValues(new Uint32Array(8)),x=>ALPHABET[x%ALPHABET.length]).join('');}
