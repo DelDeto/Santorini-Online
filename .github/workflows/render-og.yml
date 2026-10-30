@@ -1,0 +1,29 @@
+name: Render Open Graph preview
+on:
+  push:
+    paths:
+      - public/og.svg
+permissions:
+  contents: write
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Render OG PNG from SVG
+        run: |
+          python -m pip install --disable-pip-version-check cairosvg
+          python -c "import cairosvg; cairosvg.svg2png(url='public/og.svg',write_to='public/og.png',output_width=1200,output_height=630)"
+      - name: Commit preview image
+        run: |
+          git config user.name "Santorini CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/og.png
+          if ! git diff --cached --quiet; then
+            git commit -m "assets: render V0.3 Open Graph preview"
+            git push
+          fi
