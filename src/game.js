@@ -154,8 +154,10 @@ export function applyAction(g,p,a){
   g.workers[p].push({row:a.row,col:a.col});
   g.lastAction='Người chơi '+(p+1)+' đã đặt quân '+g.workers[p].length+'/2.';
   if(g.workers[p].length===2){
-   if(p<g.workers.length-1)g.turn=p+1;
-   else{g.turn=0;g.phase='move';g.lastAction='Đã đặt đủ quân. Người chơi 1 đi trước.';}
+   const start=g.ctx?.startSeat??0;
+   const next=(p+1)%g.workers.length;
+   if(next!==start)g.turn=next;
+   else{g.turn=start;g.phase='move';g.ctx={};g.lastAction='Đã đặt đủ quân. Bắt đầu chơi.';}
   }
  }else if(a.type==='prebuild'){
   g.board[a.row][a.col]++;
