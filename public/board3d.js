@@ -217,13 +217,13 @@ export function createBoard3D(container,onCell){
   const m=mesh(new THREE.CylinderGeometry(r*.75,r,d.length(),10),material,(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2,parent);
   m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());return m;
  }
- const pawnColors={blue:{robe:mat('#267eae',.64),acc:mat('#1d577a',.81)},coral:{robe:mat('#c47162',.68),acc:mat('#824b4d',.79)}};
+ const pawnColors={blue:{robe:mat('#267eae',.64),acc:mat('#1d577a',.81)},coral:{robe:mat('#c47162',.68),acc:mat('#824b4d',.79)},violet:{robe:mat('#9672d6',.68),acc:mat('#5a468b',.79)}};
  const pawnSkin=mat('#ead3b5',.78),pawnHair=mat('#595048',.85);
  function worker(group,p,row,col,level,index=0){
   const {x,z}=tileAt(row,col);
   const w=new THREE.Group();w.position.set(x,.42+level*.53,z);group.add(w);
-  const robe=p===0?pawnColors.blue.robe:pawnColors.coral.robe;
-  const acc=p===0?pawnColors.blue.acc:pawnColors.coral.acc;
+  const robe=p===0?pawnColors.blue.robe:p===1?pawnColors.coral.robe:pawnColors.violet.robe;
+  const acc=p===0?pawnColors.blue.acc:p===1?pawnColors.coral.acc:pawnColors.violet.acc;
   const skin=pawnSkin,hair=pawnHair;
   // Stone plinth, carved hem and a draped, flaring marble-resin robe.
   mesh(cached('pawn-base',()=>new THREE.CylinderGeometry(.245,.26,.085,24)),edge,0,.05,0,w);
@@ -309,7 +309,7 @@ export function createBoard3D(container,onCell){
      }
     }
    }
-   for(let p=0;p<2;p++)for(let i=0;i<2;i++){
+   for(let p=0;p<g.workers.length;p++)for(let i=0;i<2;i++){
     const key=p+':'+i,location=g.workers[p]?.[i],before=previous?.workers[p]?.[i];
     let figure=figures.get(key);
     if(!location){if(figure){pieces.remove(figure);figures.delete(key);}continue;}
