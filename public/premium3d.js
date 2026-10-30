@@ -77,7 +77,7 @@ export function createPremiumEnvironment({scene,camera,renderer,container,sun,se
  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
  function qualityFor(mode){
   if(mode==='eco')return 'eco';
-  if(mode==='hd' && !mobile && !powerSave)return 'hd';
+  if(mode==='hd' && !powerSave)return 'hd';
   return !mobile&&!powerSave&&!reduced?'hd':'eco';
  }
  function createComposer(){
