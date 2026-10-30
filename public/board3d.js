@@ -142,6 +142,20 @@ export function createBoard3D(container,onCell){
  pottery(3.18,.15);pottery(-3.10,-.20);
  let highlights=new THREE.Group();scene.add(highlights);
  const tileAt=(r,c)=>({x:(c-2)*1.05,z:(r-2)*1.05});
+
+ // Original procedural Golden Fleece miniature. The Ram occupies a real board cell.
+ const fleece=new THREE.Group();pieces.add(fleece);fleece.visible=false;
+ const fleeceBody=mat('#f4e5c6',.83),fleeceGold=mat('#e8bc62',.3,.45),fleeceDark=mat('#443b42',.65);
+ mesh(cached('fleece-body',()=>new THREE.SphereGeometry(.23,18,14)),fleeceBody,0,.26,0,fleece);
+ mesh(cached('fleece-head',()=>new THREE.SphereGeometry(.155,16,12)),fleeceBody,0,.39,-.17,fleece);
+ for(const dir of [-1,1]){
+  mesh(cached('fleece-horn',()=>new THREE.TorusGeometry(.095,.033,10,20,Math.PI*1.5)),fleeceGold,dir*.13,.46,-.18,fleece).rotation.y=dir*.2;
+  mesh(cached('fleece-leg',()=>new THREE.CylinderGeometry(.045,.054,.19,8)),fleeceDark,dir*.13,.12,.10,fleece);
+  mesh(cached('fleece-eye',()=>new THREE.SphereGeometry(.026,9,8)),fleeceDark,dir*.105,.41,-.28,fleece);
+ }
+ const fleeceHalo=mesh(cached('fleece-halo',()=>new THREE.RingGeometry(.27,.39,28)),fleeceGold,0,.018,0,fleece);
+ fleeceHalo.rotation.x=-Math.PI/2;fleeceHalo.castShadow=false;
+
  const glowMove=new THREE.MeshBasicMaterial({color:0x5cf0dc,transparent:true,opacity:.63,depthWrite:false,side:THREE.DoubleSide});
  const glowBuild=new THREE.MeshBasicMaterial({color:0xffc86b,transparent:true,opacity:.77,depthWrite:false,side:THREE.DoubleSide});
  const glowSelected=new THREE.MeshBasicMaterial({color:0xfdf29d,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide});
@@ -295,6 +309,12 @@ export function createBoard3D(container,onCell){
   const changed=!previous||previous.revision!==g.revision;
   if(g.phase==='ended'&&g.winner!==null){if(!celebration)makeVictory(g);}else if(celebration)clearVictory();
   if(changed){
+   fleece.visible=!!g.ram;
+   if(g.ram){
+    const pos=tileAt(g.ram.row,g.ram.col),level=g.board[g.ram.row][g.ram.col];
+    fleece.position.set(pos.x,.415+level*.53,pos.z);
+    fleece.userData={row:g.ram.row,col:g.ram.col};
+   }
    for(let row=0;row<5;row++)for(let col=0;col<5;col++){
     const key=row+','+col,height=g.board[row][col],old=previous?.board[row]?.[col]??0;
     if(height===old)continue;
