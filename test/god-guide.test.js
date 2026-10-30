@@ -36,5 +36,5 @@ test('V1.1: explicit God action buttons and automatic passive skills are explain
   assert.ok(app.includes(text));
  }
  assert.match(app,/powersOverlay/);
- assert.match(html,/V1\.1/);
+ assert.match(html,/V1\.2/);
 });
