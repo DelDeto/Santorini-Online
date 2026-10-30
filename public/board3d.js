@@ -96,42 +96,90 @@ export function createBoard3D(container,onCell){
   const m=mesh(new THREE.RingGeometry(.39,.47,30),material,x,y,z,highlights);
   m.rotation.x=-Math.PI/2;m.castShadow=false;m.renderOrder=6;
  }
+
+ // Hand-sculpted volumes: plaster arches, rounded stone cornices, cobalt shutters.
  function tower(group,row,col,h,isDome){
   const {x,z}=tileAt(row,col);
-  const towerGroup=new THREE.Group();towerGroup.userData={row,col};group.add(towerGroup);group=towerGroup;
+  const g=new THREE.Group();g.userData={row,col};g.position.set(x,0,z);group.add(g);
   for(let level=0;level<Math.min(3,h);level++){
-   const base=.34+level*.49;
-   const box=cube(.89,.42,.89,stone,x,base+.22,z,group);
-   // White inset cornices and columns form the miniature island architecture.
-   cube(.94,.07,.94,white,x,base+.05,z,group);
-   cube(.96,.055,.96,edge,x,base+.45,z,group);
-   const colMat=level%2?white:stone;
-   for(const dx of [-.35,.35])for(const dz of [-.35,.35]){
-    mesh(new THREE.CylinderGeometry(.051,.06,.40,8),colMat,x+dx,base+.23,z+dz,group);
+   const y=.395+level*.53;
+   cube(.93,.455,.93,stone,0,y+.225,0,g);
+   cube(.985,.052,.985,white,0,y+.473,0,g);
+   cube(.96,.052,.96,edge,0,y+.065,0,g);
+   for(const dx of [-.355,.355]){
+    mesh(cached('pillar',()=>new THREE.CylinderGeometry(.052,.065,.36,12)),white,dx,y+.275,.389,g);
+    mesh(cached('cap',()=>new THREE.CylinderGeometry(.076,.076,.047,12)),white,dx,y+.463,.389,g);
    }
-   const door=cube(.2,.25,.012,windowMat,x,base+.18,z+.454,group);door.castShadow=false;
-   door.geometry.translate(0,0,0);
-   const arched=mesh(new THREE.SphereGeometry(.11,10,8,0,Math.PI*2,0,Math.PI/2),darkBlue,x,base+.30,z+.460,group);
-   arched.scale.set(1,.54,.12);arched.castShadow=false;
+   // Carved arched doorway, with vivid Santorini-blue shutters.
+   const arch=new THREE.Shape();
+   arch.moveTo(-.105,-.16);arch.lineTo(-.105,.025);
+   arch.absarc(0,.025,.105,Math.PI,0,true);arch.lineTo(.105,-.16);arch.closePath();
+   const entrance=mesh(cached('arch',()=>new THREE.ShapeGeometry(arch,12)),darkBlue,0,y+.251,.477,g);
+   entrance.castShadow=false;
+   cube(.06,.25,.027,blue,-.165,y+.23,.49,g);
+   cube(.06,.25,.027,blue,.165,y+.23,.49,g);
+   cube(.26,.040,.085,white,0,y+.084,.50,g);
+   // Blue-glazed side window, carved ledges and small rooftop urns.
+   cube(.018,.166,.19,windowMat,.472,y+.30,-.055,g);
+   cube(.024,.023,.22,white,.484,y+.204,-.055,g);
+   cube(.62,.013,.025,sand,0,y+.121,.478,g);
+   for(const dx of [-.35,.35])for(const dz of [-.35,.35]){
+    const stoneDetail=mesh(cached('ornament',()=>new THREE.SphereGeometry(.061,10,8)),white,dx,y+.509,dz,g);
+    stoneDetail.scale.y=.68;
+   }
   }
   if(isDome){
-   const y=.33+Math.min(h===4?3:h,3)*.49+.12;
-   const dome=mesh(new THREE.SphereGeometry(.40,24,12,0,Math.PI*2,0,Math.PI/2),blue,x,y,z,group);
-   dome.scale.y=.94;
-   mesh(new THREE.CylinderGeometry(.41,.41,.08,24),darkBlue,x,y+.02,z,group);
-   mesh(new THREE.SphereGeometry(.05,12,8),white,x,y+.40,z,group);
+   // Half-sphere with blue glazed terracotta ribs and a finial.
+   const y=.395+3*.53+.475;
+   const dome=mesh(cached('dome',()=>new THREE.SphereGeometry(.405,28,14,0,Math.PI*2,0,Math.PI/2)),blue,0,y,0,g);
+   dome.scale.y=.88;
+   mesh(cached('dome-base',()=>new THREE.CylinderGeometry(.411,.422,.08,28)),darkBlue,0,y+.015,0,g);
+   const cap=mesh(cached('topring',()=>new THREE.TorusGeometry(.33,.013,6,28)),bronze,0,y+.14,0,g);cap.rotation.x=Math.PI/2;
+   mesh(cached('finial',()=>new THREE.SphereGeometry(.055,12,8)),white,0,y+.40,0,g);
   }
+  return g;
  }
- function worker(group,p,row,col,level){
+ function connect(a,b,material,r=.035,parent){
+  const d=new THREE.Vector3().subVectors(new THREE.Vector3(...b),new THREE.Vector3(...a));
+  const m=mesh(new THREE.CylinderGeometry(r*.75,r,d.length(),10),material,(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2,parent);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());return m;
+ }
+ function worker(group,p,row,col,level,index=0){
   const {x,z}=tileAt(row,col);
-  const w=new THREE.Group();w.position.set(x,.38+level*.49,z);group.add(w);
-  const robe=mat(p===0?'#187fc3':'#df805f',.4),acc=mat(p===0?'#073f83':'#9b4849',.42);
-  const foot=mesh(new THREE.CylinderGeometry(.22,.24,.09,20),acc,0,.06,0,w);
-  mesh(new THREE.CylinderGeometry(.125,.23,.45,20),robe,0,.31,0,w);
-  mesh(new THREE.SphereGeometry(.143,16,12),mat('#f1d7b9'),0,.66,0,w);
-  mesh(new THREE.CylinderGeometry(.155,.15,.085,16),acc,0,.79,0,w);
-  mesh(new THREE.TorusGeometry(.16,.04,6,20),acc,0,.15,0,w).rotation.x=Math.PI/2;
-  w.userData={row,col,p};return w;
+  const w=new THREE.Group();w.position.set(x,.42+level*.53,z);group.add(w);
+  const robe=p===0?mat('#267eae',.64):mat('#c47162',.68);
+  const acc=p===0?mat('#1d577a',.81):mat('#824b4d',.79);
+  const skin=mat('#ead3b5',.78);
+  const hair=mat('#595048',.85);
+  // Stone plinth, carved hem and a draped, flaring marble-resin robe.
+  mesh(cached('pawn-base',()=>new THREE.CylinderGeometry(.245,.26,.085,24)),edge,0,.05,0,w);
+  mesh(cached('pawn-ring',()=>new THREE.CylinderGeometry(.215,.23,.035,24)),bronze,0,.104,0,w);
+  const profile=[[.21,.13],[.24,.17],[.23,.28],[.195,.39],[.155,.51],[.162,.59],[.12,.65]]
+    .map(([r,y])=>new THREE.Vector2(r,y));
+  mesh(cached('robe-profile',()=>new THREE.LatheGeometry(profile,28)),robe,0,0,0,w);
+  const shoulder=mesh(cached('shoulder',()=>new THREE.SphereGeometry(.16,16,12)),robe,0,.58,0,w);
+  shoulder.scale.set(1.12,.58,.93);
+  for(let j=0;j<12;j++){
+    const a=j/12*Math.PI*2,nx=Math.cos(a),nz=Math.sin(a);
+    connect([nx*.12,.53,nz*.12],[nx*.222,.18,nz*.222],j%3?robe:acc,.010,w);
+  }
+  mesh(cached('neck',()=>new THREE.CylinderGeometry(.064,.064,.098,12)),skin,0,.69,0,w);
+  const head=mesh(cached('head',()=>new THREE.SphereGeometry(.127,18,14)),skin,0,.817,.01,w);
+  head.scale.set(.9,1.07,.89);
+  const hairCap=mesh(cached('hair-cap',()=>new THREE.SphereGeometry(.134,16,10)),p?hair:acc,0,.9,0,w);hairCap.scale.y=.51;
+  mesh(cached('nose',()=>new THREE.SphereGeometry(.03,10,8)),skin,0,.815,.127,w).scale.set(.55,1,.62);
+  for(const sign of [-1,1])mesh(cached('eye',()=>new THREE.SphereGeometry(.009,8,6)),hair,sign*.048,.848,.124,w);
+  const wreath=mesh(cached('wreath',()=>new THREE.TorusGeometry(.12,.013,7,26)),bronze,0,.915,0,w);wreath.rotation.x=Math.PI/2;
+  for(const side of [-1,1]){
+   connect([side*.13,.57,0],[side*.26,.45,.02],robe,.053,w);
+   connect([side*.26,.45,.02],[side*.19,.29,.13],skin,.038,w);
+   mesh(cached('hand',()=>new THREE.SphereGeometry(.042,10,8)),skin,side*.19,.29,.13,w);
+  }
+  const sash=mesh(cached('sash',()=>new THREE.TorusGeometry(.16,.022,7,26)),acc,0,.46,0,w);sash.rotation.x=Math.PI/2;
+  mesh(cached('brooch',()=>new THREE.SphereGeometry(.038,10,8)),bronze,0,.56,.17,w);
+  if(index===1)mesh(cached('helmet',()=>new THREE.ConeGeometry(.09,.16,11)),bronze,0,1.025,0,w);
+  else {const cape=cube(.23,.33,.057,acc,0,.38,-.15,w);cape.rotation.x=-.10;}
+  w.userData={row,col,p,index};return w;
  }
  const current={state:null};
  function update(g,targets=[],selected=null,buildMode=false){
