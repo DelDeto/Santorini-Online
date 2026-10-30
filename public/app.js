@@ -151,7 +151,7 @@ function render(){
  $('seatText').textContent=S.seat===-1?'Khán giả · Chỉ theo dõi':S.mode==='bot'?'Solo · Bạn ở ghế 1':'Bạn ở ghế '+(S.seat+1)+(S.capacity===4?' · Đội '+(myTeam()+1):'');
  if(!v){$('phaseLabel').textContent='Đang tải bàn chơi…';$('hint').textContent='Kết nối máy chủ';return;}
  const g=v.game,solo=v.mode==='bot',turn=isTurn();
- $('gameMode').textContent=solo?'SOLO DEMO':v.capacity===4?'ĐẤU ĐỘI 2V2':v.capacity===3?'3 NGƯỜI · ĐỘC LẬP':v.ruleset==='god'?'GOD POWERS':'PHÒNG';
+ $('gameMode').textContent=solo?(v.capacity===3?'SOLO · 2 BOT':v.capacity===4?'SOLO · 3 BOT':'SOLO DEMO'):v.capacity===4?'ĐẤU ĐỘI 2V2':v.capacity===3?'3 NGƯỜI · ĐỘC LẬP':v.ruleset==='god'?'GOD POWERS':'PHÒNG';
  $('roomCode').textContent=solo?'VS BOT':S.room;
  $('copyBtn').classList.toggle('hidden',solo);
  const teamNames=t=>v.players.filter(p=>p.team===t).map(p=>p.name).join(' + ');
@@ -201,6 +201,7 @@ function render(){
  const end=turn&&S.selected!==null&&getActions('endMove',S.selected).length>0;
  $('endMoveBtn').classList.toggle('hidden',!end);
  $('restartBtn').classList.toggle('hidden',g.phase!=='ended'||S.seat<0);
+ $('fillBotsBtn').classList.toggle('hidden',!(S.seat===0&&!v.ready&&v.mode==='online'&&v.capacity>2&&g.revision===0));
  $('winOverlay').classList.toggle('hidden',g.phase!=='ended');
  $('rematchBtn').classList.toggle('hidden',S.seat<0);
  if(g.phase==='ended'){
@@ -213,7 +214,8 @@ $('board').addEventListener('click',e=>{const b=e.target.closest('.tile');if(b)t
 $('godCards').addEventListener('click',e=>{const b=e.target.closest('button[data-god]');if(b&&!b.disabled)send({type:'selectGod',god:b.dataset.god});});
 $('createBtn').onclick=()=>{const n=Number($('teamSize').value),rule=n>2?'god':document.querySelector('input[name="ruleset"]:checked')?.value==='god'?'god':'classic';if(n>2)document.querySelector('input[name="ruleset"][value="god"]').checked=true;enter(roomCode(),'online',rule,n);};
 $('teamSize').onchange=()=>{if(+$('teamSize').value>2){const gods=document.querySelector('input[name="ruleset"][value="god"]');gods.checked=true;message('Luật Roxley: phòng 3–4 người bắt buộc dùng God Powers.');}};
-$('demoBtn').onclick=()=>enter(roomCode(),'bot',document.querySelector('input[name="ruleset"]:checked')?.value==='god'?'god':'classic');
+$('demoBtn').onclick=()=>{const n=Number($('botCountSelect').value);enter(roomCode(),'bot',n>2?'god':document.querySelector('input[name="ruleset"]:checked')?.value==='god'?'god':'classic',n);};
+$('fillBotsBtn').onclick=()=>send({type:'fillBots',difficulty:$('difficultySelect').value});
 $('joinBtn').onclick=()=>{const room=$('codeInput').value.trim().toUpperCase();if(!/^[A-Z2-9]{6,10}$/.test(room))return message('Mã phòng không hợp lệ.');enter(room,'online','classic');};
 $('watchBtn').onclick=()=>{const room=$('codeInput').value.trim().toUpperCase();if(!/^[A-Z2-9]{6,10}$/.test(room))return message('Mã phòng không hợp lệ.');enter(room,'online','classic',2,true);};
 $('codeInput').onkeydown=e=>{if(e.key==='Enter')$('joinBtn').click();};
