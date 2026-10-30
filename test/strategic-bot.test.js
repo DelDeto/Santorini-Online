@@ -58,7 +58,7 @@ test('Hard BOT does not hand opponent an immediate third-floor win',()=>{
  // Building level 3 adjacent to enemy on level 2 would give the enemy the game.
  assert.ok(!(choice.row===3&&choice.col===2),'BOT should avoid giving opponent a winning move');
 });
-test('Three-player FFA BOT can see win and prevent next player's immediate victory',()=>{
+test('Three-player FFA BOT sees and prevents the next player winning immediately',()=>{
  const g=ready('god',3);g.gods=['apollo','atlas','pan'];
  g.workers[0][0]={row:0,col:4};g.workers[2][0]={row:2,col:3};
  g.board[2][3]=2;g.board[2][4]=3;
