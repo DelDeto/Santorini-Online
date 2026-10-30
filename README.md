@@ -1,4 +1,4 @@
-# Santorini Online — V0.2 MVP
+# Santorini Online — V0.3 MVP
 
 Game Santorini cơ bản có Solo Demo đấu BOT và chế độ hai người online, giao diện bàn 5×5 phong cách đảo Hy Lạp (hình khối tự thiết kế).
 
@@ -7,7 +7,7 @@ Game Santorini cơ bản có Solo Demo đấu BOT và chế độ hai người o
 - Đặt 2 quân mỗi người, di chuyển, xây 3 tầng, mái vòm và tự động xác định thắng/thua
 - Xác thực nước đi tại máy chủ qua Cloudflare Durable Objects, đồng bộ WebSocket
 - Reconnect dựa trên token trong trình duyệt; hỗ trợ tái đấu
-- Giao diện responsive một màn hình trên PC/mobile; góc nhìn phối cảnh 2.5D\n- Hiệu ứng di chuyển, nâng tầng, mái vòm và chiến thắng\n- Favicon riêng + ảnh Open Graph PNG 1200×630 cho link preview
+- Giao diện 3D Three.js/WebGL, xoay/zoom và raycast chọn ô; tự động fallback 2D nếu WebGL không tải được\n- Hiệu ứng di chuyển, nâng tầng, mái vòm và chiến thắng\n- Favicon riêng + ảnh Open Graph PNG 1200×630 cho link preview
 
 ## Triển khai
 Yêu cầu Node.js 20+ và tài khoản Cloudflare có Workers.
@@ -29,12 +29,12 @@ Chạy local: `npm run dev`.
 - `public/`: HTML/CSS/JS giao diện
 - `test/`: kiểm thử engine
 
-## Giới hạn V0.2
-Đã có BOT ba mức nhưng chưa có God Powers, mô hình 3D thực, hệ thống tài khoản hay xếp hạng. Chỉ áp dụng luật cơ bản Santorini cho hai phe (người–người hoặc người–BOT). Người có mã phòng có thể xem game; ghế giữ bằng token trình duyệt. Đồ họa và nội dung là bản tự thiết kế; không dùng tài sản nghệ thuật chính thức của trò chơi thương mại.
+## Giới hạn V0.3
+Đã có 10 God Powers cho multiplayer và bàn 3D thực. BOT vẫn chỉ hỗ trợ Classic; chưa có hệ thống tài khoản hay xếp hạng. Đã hỗ trợ luật hai người cả Classic và God Powers. Các kỹ năng được validate ở server. Người có mã phòng có thể xem game; ghế giữ bằng token trình duyệt. Đồ họa và nội dung là bản tự thiết kế; không dùng tài sản nghệ thuật chính thức của trò chơi thương mại.
 
 Cloudflare Free có hạn mức sử dụng, không bảo đảm hoàn toàn miễn phí ở mọi quy mô.
 
-## Trang chơi thử V0.2
+## Trang chơi thử V0.3
 
 https://santorini-online-v01.duc-nguyen-ndd127.workers.dev/
 
@@ -52,3 +52,19 @@ Vào trang chủ, nhập tên, chọn độ khó và bấm **Đấu BOT**. BOT �
 - `public/og.svg`: artwork vector gốc.
 
 Đăng tải giao diện và Worker từ GitHub bằng `npm run deploy` khi đã đăng nhập Wrangler; bản live được cập nhật thủ công qua Cloudflare API nên thay đổi trên GitHub **không tự động** triển khai cho tới khi thiết lập pipeline CI/CD phù hợp.
+
+
+## V0.3 — 3D thực và God Powers
+
+- Multiplayer: chọn **God Powers** trước khi tạo phòng. Hai người chọn thần không trùng nhau rồi đặt 2 quân.
+- Danh sách: Apollo, Artemis, Athena, Atlas, Demeter, Hephaestus, Hermes, Minotaur, Pan, Prometheus.
+- Trong trận: kéo để xoay camera; cuộn / pinch để zoom; chạm vào quân và ô hợp lệ.
+- Những lượt đặc biệt có các nút Xây trước / Đặt mái vòm / Xây ngay / Bỏ qua.
+- Solo BOT tiếp tục chơi ở chế độ Classic; chưa hỗ trợ BOT God Powers.
+- Three.js hiện tải từ jsDelivr CDN có ghim phiên bản, yêu cầu trình duyệt có Internet và WebGL để thấy 3D; nếu không sẽ chuyển sang fallback 2D.
+- `public/board3d.js`: hình học 3D gốc, ánh sáng, vật liệu, camera, animation, raycast.
+- `src/game.js`: các pha và nước đi hợp lệ của 10 vị thần.
+- `test/gods.test.js`: bộ test chuyên biệt của các vị thần.
+- `scripts/smoke.mjs`: kiểm thử multiplayer God Powers và Solo BOT qua WebSocket.
+
+Giới hạn: Hermes cho phép đi ngang nhiều lần / không đi và chọn quân xây; các bước đi ngang trung gian trong bản hiện tại vẫn yêu cầu còn ô xây hợp lệ. God Powers chưa có BOT AI riêng; mô hình tượng 3D là procedural, chưa sculpt chi tiết như sản phẩm vật lý.
