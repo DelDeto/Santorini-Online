@@ -90,7 +90,9 @@ function chooseGod(g,choices,difficulty){
  if(difficulty==='easy')return pick(choices);
  const enemies=g.gods.filter(Boolean);
  const prefer=choices.map(a=>{
-  let score=20-godPriority.indexOf(a.god);
+  const idx=godPriority.indexOf(a.god);
+  const advancedWeight={charon:21,triton:19,hestia:18,poseidon:17,hera:16,limus:16,medusa:15,hypnus:15,zeus:14,persephone:14,ares:13,eros:13,selene:12,aphrodite:12,morpheus:11,dionysus:10,chronus:9,circe:9,chaos:8,bia:7};
+  let score=idx>=0?20-idx:advancedWeight[a.god]??8;
   if(a.god==='athena'&&enemies.includes('pan'))score+=3;
   if(a.god==='apollo'&&enemies.includes('minotaur'))score+=2;
   return {a,score};
@@ -116,8 +118,8 @@ function optionsFor(g,p){
  let actions=legalActions(g,p);
  // Hermes can otherwise cycle indefinitely on equal-level squares.
  // Ending movement after a small number of steps is strategically sensible.
- if(g.phase==='hermesMove'&&(g.ctx?.hermesSteps||0)>=3){
-  const ends=actions.filter(a=>a.type==='endMove');
+ if((g.phase==='hermesMove'&&(g.ctx?.hermesSteps||0)>=3)||(g.phase==='tritonMove'&&(g.ctx?.tritonSteps||0)>=4)){
+  const ends=actions.filter(a=>a.type=== (g.phase==='tritonMove'?'skip':'endMove'));
   if(ends.length)return ends;
  }
  return actions;
