@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import {newGame,applyAction,resetGame,legalActions,GODS} from './game.js';
+import {newGame,applyAction,resetGame,legalActions,GODS,validGodFor,beginAdvancedTurn} from './game.js';
 import {chooseBotAction,chooseMultiplayerBotAction} from './bot.js';
 
 const BOT_TOKEN='bot:server-managed';
@@ -22,7 +22,7 @@ function seatForTurn(r){
 function availableActions(r){
  if(!ready(r))return [];
  if(capacity(r)===4&&r.game.phase==='godpick')
-  return Object.keys(GODS).filter(id=>!(r.seatGods||[]).includes(id)).map(god=>({type:'selectGod',god}));
+  return Object.keys(GODS).filter(id=>validGodFor(id,4,(r.seatGods||[]).filter(Boolean))).map(god=>({type:'selectGod',god}));
  return legalActions(r.game);
 }
 function view(r,spectators=0){
@@ -78,12 +78,13 @@ export class SantoriniRoom extends DurableObject{
  const r=this.room;
  if(capacity(r)!==4||r.game.phase==='ended')return;
  if(previousPhase==='place'&&r.game.phase==='move'){
-  r.activeSeat=2;r.game.gods[0]=r.seatGods[2];r.game.gods[1]=r.seatGods[3];return;
+  r.activeSeat=2;r.game.gods[0]=r.seatGods[2];r.game.gods[1]=r.seatGods[3];beginAdvancedTurn(r.game,r.game.turn);return;
  }
  if(r.game.phase==='place'||r.game.phase==='godpick')return;
  if(r.game.turn!==previousTurn){
   r.activeSeat=({2:3,3:0,0:1,1:2})[actionSeat];
   r.game.gods[team(r.activeSeat)]=r.seatGods[r.activeSeat];
+  beginAdvancedTurn(r.game,r.game.turn);
   // Athena restricts opponents until the SAME god holder's next turn, not their teammate's.
   if(r.athenaAura!==null){
    if(r.athenaAura===r.activeSeat){r.athenaAura=null;r.game.athenaBlocked=null;}
@@ -116,7 +117,7 @@ record(action,seat,oldWinner,oldRevision){
    r.capacity=[2,3,4].includes(Number(u.searchParams.get('players')))?Number(u.searchParams.get('players')):2;
    // Official multi-player matches require individual God Powers.
    if(r.capacity>2)r.ruleset='god';
-   r.game=newGame(r.ruleset,r.capacity===3?3:2);
+   r.game=newGame(r.ruleset,r.capacity);
    r.athenaAura=null;
    r.seatGods=r.capacity===4?Array(4).fill(null):null;r.draftIndex=0;
    r.players=Array(r.capacity).fill(null);
@@ -168,7 +169,7 @@ record(action,seat,oldWinner,oldRevision){
       r.game.revision++;
       r.history.push({seat,action:'leave',description:r.game.lastAction,revision:r.game.revision});
      }else if(r.game.phase==='place'||r.game.phase==='godpick'){
-      r.game=newGame(r.ruleset,capacity(r)===3?3:2);r.athenaAura=null;
+      r.game=newGame(r.ruleset,capacity(r));r.athenaAura=null;
       r.seatGods=capacity(r)===4?Array(4).fill(null):null;r.draftIndex=0;
       r.activeSeat=capacity(r)===4?2:0;r.history=[];
      }
@@ -205,7 +206,11 @@ record(action,seat,oldWinner,oldRevision){
     r.game.lastAction='Ghế '+(seat+1)+' chọn '+GODS[action.god].name+'.';
     r.game.revision++;r.draftIndex++;
     if(r.draftIndex===4){
-     r.game.phase='place';r.game.turn=0;
+     r.game.phase='place';
+     const biaIndex=r.seatGods.indexOf('bia');
+     r.game.turn=biaIndex===-1?0:team(biaIndex);
+     r.game.ctx={startSeat:r.game.turn};
+     r.game.advanced.setupEros=[0,1].filter(teamId=>r.seatGods.some((id,seat)=>team(seat)===teamId&&id==='eros'));
      r.game.gods=[r.seatGods[0],r.seatGods[1]];
     }
    }else{
@@ -244,7 +249,11 @@ record(action,seat,oldWinner,oldRevision){
    r.game.lastAction='BOT ghế '+(seat+1)+' chọn '+GODS[action.god].name+'.';
    r.game.revision++;r.draftIndex++;
    if(r.draftIndex===4){
-    r.game.phase='place';r.game.turn=0;
+    r.game.phase='place';
+    const biaIndex=r.seatGods.indexOf('bia');
+    r.game.turn=biaIndex===-1?0:team(biaIndex);
+    r.game.ctx={startSeat:r.game.turn};
+    r.game.advanced.setupEros=[0,1].filter(teamId=>r.seatGods.some((id,seat)=>team(seat)===teamId&&id==='eros'));
     r.game.gods=[r.seatGods[0],r.seatGods[1]];
    }
   }else{
@@ -264,7 +273,7 @@ record(action,seat,oldWinner,oldRevision){
 export default{
  async fetch(request,env){
   const u=new URL(request.url);
-  if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'1.2.0'});
+  if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'1.3.0'});
   if(u.pathname==='/ws'){
    const room=u.searchParams.get('room')||'';
    if(!/^[A-Z2-9]{6,10}$/.test(room))return new Response('Room code invalid',{status:400});
