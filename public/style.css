@@ -486,3 +486,22 @@ body:has(#game:not(.hidden)){height:100dvh;max-height:100dvh;overflow:hidden}
 .mode-help-panel p{font-size:13px;line-height:1.6;color:#e2f5ef;margin:8px 0}
 .mode-help-panel .mode-help-note{font-size:11px;background:#e5f9ec13;border-radius:9px;padding:11px;color:#c8e4e7}
 @media(max-width:700px){.mode-help-panel{padding:16px}.mode-help-top h2{font-size:20px}}
+
+
+/* V1.4 final landscape fix: keep secondary controls available on short phones. */
+@media (max-height:520px) and (min-width:601px){
+ .game{padding:3px 6px;gap:3px;overflow:hidden}
+ .game .game-top{height:23px;min-height:23px}
+ .game .players{gap:3px}
+ .game .player{height:27px;min-height:27px;padding:2px 6px}
+ .game .avatar{width:22px;height:22px;font-size:13px}
+ .game .power-center{height:37px;min-height:37px;max-height:37px;padding:2px 7px}
+ .game .power-spotlight #powerUseHint{font-size:9px;-webkit-line-clamp:1}
+ .game .action-bar{min-height:37px;max-height:39px;height:39px;padding:3px 8px}
+ .game .action-text strong{font-size:11px}
+ .game .action-text span{font-size:9px;-webkit-line-clamp:1}
+ .game .board-stage{min-height:110px;flex:1 1 auto}
+ .game .game-bottom{display:flex!important;flex:none!important;height:26px;min-height:26px;gap:4px;align-items:center;overflow-x:auto}
+ .game .game-bottom .mini{padding:4px 7px;font-size:9px;flex:none}
+ .game .game-bottom #seatText{display:inline-block;min-width:80px}
+}
