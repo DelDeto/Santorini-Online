@@ -298,7 +298,7 @@ function render(){
  if(!v){$('phaseLabel').textContent='Đang tải bàn chơi…';$('hint').textContent='Kết nối máy chủ';return;}
  const g=v.game,solo=v.mode==='bot',turn=isTurn();
  $('gameMode').textContent=solo?(v.capacity===3?'SOLO · 2 BOT':v.capacity===4?'SOLO · 3 BOT':'SOLO DEMO'):v.capacity===4?'ĐẤU ĐỘI 2V2':v.capacity===3?'3 NGƯỜI · ĐỘC LẬP':v.ruleset==='god'?'GOD POWERS':'PHÒNG';
- $('modeLive').textContent=MODE_UI[v.modeId]?.title||MODE_UI[S.variant]?.title||'♟ CLASSIC';
+ $('modeLive').textContent=(MODE_UI[v.modeId]?.title||MODE_UI[S.variant]?.title||'♟ CLASSIC')+' ⓘ';
  $('roomCode').textContent=solo?'VS BOT':S.room;
  $('copyBtn').classList.toggle('hidden',solo);
  const teamNames=t=>v.players.filter(p=>p.team===t).map(p=>p.name).join(' + ');
@@ -359,6 +359,16 @@ function render(){
  }
  renderBoard();
 }
+$('modeLive').onclick=()=>{
+ const v=S.view,key=v?.modeId||S.variant,spec=MODE_UI[key]||MODE_UI.duel;
+ $('modeHelpTitle').textContent=spec.title;
+ $('modeHelpText').textContent=spec.description;
+ $('modeHelpNote').textContent=key==='agora'?'Agora Online sử dụng luật đổi thần sau hai lượt, không tái hiện nguyên văn mọi Mode Card Pantheon.':key==='fleece'?'Cừu Vàng là một vật thể chiếm ô. Chỉ quân đứng cạnh tượng lúc bắt đầu lượt mới nhận năng lực thần chung trong lượt đó.':'Luật chơi theo phiên bản Santorini Classic đã được game hỗ trợ. Các thần nâng cao vẫn tuân theo giới hạn số người.';
+ $('modeOverlay').classList.remove('hidden');
+};
+$('modeCloseBtn').onclick=()=>$('modeOverlay').classList.add('hidden');
+$('modeOverlay').onclick=e=>{if(e.target===$('modeOverlay'))$('modeOverlay').classList.add('hidden');};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('modeOverlay').classList.add('hidden');});
 $('powersHelpBtn').onclick=()=>openPowers(null);
 $('godRoster').addEventListener('click',e=>{const b=e.target.closest('[data-power-seat]');if(b)openPowers(Number(b.dataset.powerSeat));});
 $('powersCloseBtn').onclick=closePowers;
@@ -392,7 +402,7 @@ $('copyBtn').onclick=async()=>{const link=location.origin+location.pathname+'?ro
 $('exitBtn').onclick=()=>{
  if(S.seat>=0&&S.ws?.readyState===WebSocket.OPEN)S.ws.send(JSON.stringify({type:'leave'}));
  S.active=false;S.epoch++;S.ws?.close();S.view=null;S.seat=-1;S.room=null;
- $('historyOverlay').classList.add('hidden');closePowers();
+ $('historyOverlay').classList.add('hidden');$('modeOverlay').classList.add('hidden');closePowers();
  S.three?.destroy();S.three=null;
  $('scene3d').classList.remove('ready');$('scene3d').classList.remove('hidden');$('scene3d').dataset.state='';
  $('boardFallback').classList.remove('hidden');
