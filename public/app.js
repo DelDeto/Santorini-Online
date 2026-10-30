@@ -55,11 +55,18 @@ function abilityHint(g,id,ownTurn){
    return help.tip;
   case 'extraMove':return id==='artemis'?'Chạm ô sáng để đi lần 2 hoặc bấm “Bỏ qua”. Không quay lại ô đầu.':help.tip;
   case 'hermesMove':return 'Chọn quân để đi ngang tiếp; muốn xây, chọn quân rồi bấm “Xây ngay →”.';
+  case 'tritonMove':return 'Triton đang ở rìa: chạm ô để đi tiếp hoặc Bỏ qua để xây.';
+  case 'aresRemove':return 'Ares: chạm khối được đánh dấu để phá hoặc Bỏ qua.';
+  case 'morpheusBuild':return 'Morpheus: còn '+(g.advanced?.morpheus?.[g.turn]||0)+' khối dự trữ. Xây hoặc Bỏ qua.';
+  case 'poseidonBuild':return 'Poseidon: còn '+(g.ctx?.bonusRemaining||0)+' lần xây thêm. Xây hoặc Bỏ qua.';
+  case 'dionysusChoice':return 'Dionysus: chọn đội đối thủ muốn điều khiển hoặc Bỏ qua.';
+  case 'dionysusMove':return 'Dionysus: chọn quân đối thủ rồi di chuyển.';
+  case 'dionysusBuild':return 'Dionysus: xây một khối bằng quân đối thủ.';
   case 'build':
    if(id==='atlas')return S.powerMode==='dome'?'Đang bật mái vòm: chạm ô sáng để đặt.':'Bấm “◆ Đặt mái vòm” hoặc chạm ô sáng để xây tầng.';
    if(id==='hermes')return 'Chạm ô sáng để xây với quân bạn đã chọn.';
    return 'Chạm ô sáng để xây. '+(id==='demeter'||id==='hephaestus'?'Sau đó bạn được chọn xây thêm.':'');
-  case 'extraBuild':return id==='demeter'?'Xây thêm ở ô KHÁC hoặc bấm “Bỏ qua”.':id==='hephaestus'?'Chạm LẠI ô vừa xây để thêm một tầng hoặc “Bỏ qua”.':'Có thể xây thêm hoặc bỏ qua.';
+  case 'extraBuild':return id==='demeter'?'Xây thêm ở ô KHÁC hoặc bấm “Bỏ qua”.':id==='hephaestus'?'Chạm LẠI ô vừa xây để thêm một tầng hoặc “Bỏ qua”.':id==='hestia'?'Chạm ô trong lòng bàn để xây thêm hoặc Bỏ qua.':'Có thể xây thêm hoặc bỏ qua.';
   default:return help.tip;
  }
 }
@@ -158,7 +165,7 @@ function connect(epoch){
    if(S.view.game.ctx?.prometheusUsed)S.powerMode='move';
    const g=S.view.game;
    if(g.phase==='move'&&g.ctx?.fixedWorker!==undefined)S.selected=g.ctx.fixedWorker;
-   else if(g.phase==='extraMove')S.selected=g.selected;
+   else if(['extraMove','tritonMove'].includes(g.phase))S.selected=g.selected;
    else if(old.phase!==g.phase||old.turn!==g.turn){S.selected=null;S.powerMode='move';}
    beep(g.phase==='ended'?890:g.phase==='build'||g.phase==='extraBuild'?670:440);
   }
@@ -283,17 +290,17 @@ function render(){
   $('godEffect').textContent=activeGod?v.gods[activeGod]?.description:'Chọn thần để bắt đầu.';
   renderPowers();
  }
- const phases={godpick:'CHỌN THẦN',place:'ĐẶT QUÂN',move:'DI CHUYỂN',extraMove:'DI CHUYỂN 2',hermesMove:'HERMES',build:'XÂY DỰNG',extraBuild:'XÂY THÊM',ended:'KẾT THÚC'};
+ const phases={godpick:'CHỌN THẦN',place:'ĐẶT QUÂN',move:'DI CHUYỂN',extraMove:'DI CHUYỂN 2',hermesMove:'HERMES',tritonMove:'TRITON',dionysusMove:'DIONYSUS',dionysusBuild:'XÂY QUÂN ĐỐI THỦ',dionysusChoice:'CHỌN ĐỐI THỦ',aresRemove:'ARES',poseidonBuild:'POSEIDON',morpheusBuild:'MORPHEUS',build:'XÂY DỰNG',extraBuild:'XÂY THÊM',ended:'KẾT THÚC'};
  $('phaseChip').textContent=phases[g.phase]||'CHƠI';
  const turnName=solo&&g.turn===1?'BOT':v.players[v.activeSeat]?.name||'Đối thủ';
- const messages={godpick:'Chọn vị thần cho trận đấu',place:'Đặt hai quân lên bàn cờ',move:'Chọn quân, sau đó chọn ô muốn đi',extraMove:'Artemis: đi thêm hoặc bỏ qua',hermesMove:'Hermes: tiếp tục đi ngang hoặc chọn quân để xây',build:'Chạm ô sáng để xây một tầng',extraBuild:'Có thể xây thêm hoặc bỏ qua',ended:'Trận đấu kết thúc'};
+ const messages={godpick:'Chọn vị thần cho trận đấu',place:'Đặt hai quân lên bàn cờ',move:'Chọn quân rồi chạm ô sáng để đi',extraMove:'Artemis: đi thêm hoặc bỏ qua',hermesMove:'Hermes: tiếp tục đi ngang hoặc chọn quân để xây',tritonMove:'Triton: đi tiếp hoặc Bỏ qua',dionysusMove:'Chọn quân đối thủ để di chuyển',dionysusBuild:'Xây bằng quân đối thủ',dionysusChoice:'Chọn đội đối thủ để điều khiển',aresRemove:'Ares: phá khối hoặc Bỏ qua',poseidonBuild:'Poseidon: xây thêm hoặc Bỏ qua',morpheusBuild:'Morpheus: xây từ kho dự trữ hoặc Bỏ qua',build:'Chạm ô sáng để xây',extraBuild:'Có thể xây thêm hoặc bỏ qua',ended:'Trận đấu kết thúc'};
  $('phaseLabel').textContent=!v.ready?'Đợi đủ '+(v.capacity||2)+' người':g.phase==='ended'?'Đã kết thúc':turn?messages[g.phase]:(turnName+' đang thực hiện lượt');
  $('hint').textContent=!v.ready?'Sao chép link mời bạn bè tham gia.':turn?(g.phase==='move'&&g.ctx?.prometheusUsed?'Prometheus đã xây trước: không được di chuyển lên tầng.':messages[g.phase]):g.lastAction;
  renderGodPick(g);
  if(g.phase==='extraMove')S.selected=g.selected;
  if(g.phase==='move'&&g.ctx?.fixedWorker!==undefined)S.selected=g.ctx.fixedWorker;
  if(!turn&&g.phase!=='ended')S.selected=null;
- if(turn&&S.selected===null&&['move','hermesMove'].includes(g.phase)){
+ if(turn&&S.selected===null&&['move','hermesMove','tritonMove','dionysusMove'].includes(g.phase)){
   const legalWorkers=[...new Set(getActions('move').map(a=>a.worker))];
   if(legalWorkers.length===1)S.selected=legalWorkers[0];
  }
