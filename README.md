@@ -33,3 +33,9 @@ Chạy local: `npm run dev`.
 Chưa có BOT, God Powers, mô hình 3D thực, hệ thống tài khoản hay xếp hạng. Chỉ áp dụng luật cơ bản 2 người. Người có mã phòng có thể xem game; ghế giữ bằng token trình duyệt. Đồ họa và nội dung là bản tự thiết kế; không dùng tài sản nghệ thuật chính thức của trò chơi thương mại.
 
 Cloudflare Free có hạn mức sử dụng, không bảo đảm hoàn toàn miễn phí ở mọi quy mô.
+
+## Trang chơi thử V0.1
+
+https://santorini-online-v01.duc-nguyen-ndd127.workers.dev/
+
+Cloudflare Worker đã được đăng tải và bật route workers.dev. Khi chơi thử, tạo phòng rồi mở link mời trên một trình duyệt/thiết bị khác. Phiên bản sản xuất hiện được upload thủ công qua Cloudflare API từ mã nguồn repo, chưa thiết lập tự động deploy mỗi lần push GitHub.
