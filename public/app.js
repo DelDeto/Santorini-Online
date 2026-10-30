@@ -211,7 +211,7 @@ function render(){
 }
 $('board').addEventListener('click',e=>{const b=e.target.closest('.tile');if(b)tileClick(+b.dataset.row,+b.dataset.col);});
 $('godCards').addEventListener('click',e=>{const b=e.target.closest('button[data-god]');if(b&&!b.disabled)send({type:'selectGod',god:b.dataset.god});});
-$('createBtn').onclick=()=>{const n=Number($('teamSize').value),rule=n>2?'god':document.querySelector('input[name="ruleset"]:checked')?.value==='god'?'god':'classic';enter(roomCode(),'online',rule,n);};
+$('createBtn').onclick=()=>{const n=Number($('teamSize').value),rule=n>2?'god':document.querySelector('input[name="ruleset"]:checked')?.value==='god'?'god':'classic';if(n>2)document.querySelector('input[name="ruleset"][value="god"]').checked=true;enter(roomCode(),'online',rule,n);};
 $('teamSize').onchange=()=>{if(+$('teamSize').value>2){const gods=document.querySelector('input[name="ruleset"][value="god"]');gods.checked=true;message('Luật Roxley: phòng 3–4 người bắt buộc dùng God Powers.');}};
 $('demoBtn').onclick=()=>enter(roomCode(),'bot',document.querySelector('input[name="ruleset"]:checked')?.value==='god'?'god':'classic');
 $('joinBtn').onclick=()=>{const room=$('codeInput').value.trim().toUpperCase();if(!/^[A-Z2-9]{6,10}$/.test(room))return message('Mã phòng không hợp lệ.');enter(room,'online','classic');};
