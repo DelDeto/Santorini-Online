@@ -66,7 +66,7 @@ const cell=(r,c)=>Number.isInteger(r)&&Number.isInteger(c)&&r>=0&&r<5&&c>=0&&c<5
 const near=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col))===1;
 const eq=(a,b)=>!!a&&!!b&&a.row===b.row&&a.col===b.col;
 const pawnAt=(g,r,c)=>{for(let p=0;p<g.workers.length;p++)for(let i=0;i<g.workers[p].length;i++)if(eq(g.workers[p][i],{row:r,col:c}))return {p,i};return null;};
-const free=(g,r,c)=>cell(r,c)&&g.board[r][c]!==4&&!pawnAt(g,r,c);
+const free=(g,r,c)=>cell(r,c)&&g.board[r][c]!==4&&!pawnAt(g,r,c)&&!(g.ram&&g.ram.row===r&&g.ram.col===c);
 const god=(g,p)=>activePower(g,p);
 export function legalBuilds(g,from,p=null){if(!from)return [];const out=[];
  for(let row=0;row<5;row++)for(let col=0;col<5;col++)if(near(from,{row,col})&&free(g,row,col)){
