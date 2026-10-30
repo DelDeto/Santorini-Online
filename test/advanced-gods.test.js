@@ -68,7 +68,7 @@ test('Chronus wins at five domed towers even from opponent build',()=>{
  assert.equal(g.winner,1);assert.equal(g.phase,'ended');
 });
 test('Circe borrows ability when opponent workers are separated',()=>{
- const g=game('circe','pan');beginAdvancedTurn(g,0);
+ const g=game('circe','pan');g.workers[1][1]={row:0,col:4};beginAdvancedTurn(g,0);
  assert.equal(g.advanced.circe.owner,0);
  assert.equal(g.advanced.circe.power,'pan');
 });
@@ -146,7 +146,7 @@ test('Selene female worker may build a dome after male worker moves',()=>{
  assert.ok(options.some(a=>a.row===0&&a.col===1));
 });
 test('Triton can continue moving after entering a perimeter square',()=>{
- const g=game('triton');g.workers[0][0]={row:1,col:0};
+ const g=game('triton');g.workers[0][0]={row:1,col:0};g.workers[0][1]={row:4,col:0};
  act(g,0,'move',{worker:0,row:0,col:0});
  assert.equal(g.phase,'tritonMove');
  assert.ok(legalActions(g).some(a=>a.type==='skip'));
