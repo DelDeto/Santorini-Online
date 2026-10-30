@@ -164,3 +164,15 @@ Các BOT là đối thủ theo thuật toán heuristic, không phải mô hình 
 - Apollo/Minotaur/Pan/Athena tự động khi đáp ứng điều kiện; Artemis/Demeter/Hephaestus tự mở bước di chuyển hoặc xây thêm; Atlas dùng nút **◆ Đặt mái vòm**, Prometheus dùng **⚡ Xây trước**, Hermes dùng **Xây ngay →**.
 - **Fix Prometheus:** sau khi chọn ô xây trước, giao diện tự trở về chế độ di chuyển đúng quân; không bị kẹt vòng highlight ô xây trước.
 - Áp dụng cho Solo BOT 2–4, online 2–4 người, và phòng hỗn hợp. Giữ 3D/2D fallback và điều khiển PC/mobile 1 màn hình.
+
+## V1.2 — Strategic BOT · Complete-turn tactical planning
+
+- **Easy**: chọn nước hợp lệ ngẫu nhiên để làm quen với luật, không tìm kiếm chiến thuật chuyên sâu.
+- **Normal**: ước lượng toàn bộ chuỗi hành động của lượt hiện tại (di chuyển + xây + lượt phụ của God Powers), nhận diện cơ hội thắng ngay, tránh để đối thủ có nước thắng ngay.
+- **Hard**: mở rộng nhiều nhánh trong một lượt và đánh giá phản đòn của đối thủ ở lượt kế tiếp (lookahead giới hạn); ưu tiên chặn đường leo tầng 3, đặt mái vòm đúng lúc, kiểm soát khu vực và tạo đường thắng.
+- Phân tích riêng Pan (thắng khi đi xuống ít nhất 2 tầng), Atlas (mái vòm), Apollo/Minotaur (tương tác quân), Artemis, Demeter, Hephaestus, Hermes, Prometheus (nhiều bước).
+- Hỗ trợ BOT ở trận 2 người, 3 người đấu tự do, 4 người đấu đội. Khi dự đoán đối thủ trong 4 người, sử dụng God Power của đúng ghế kế tiếp.
+- Mỗi lần tính dùng ngân sách hữu hạn (beam search hạn chế độ rộng/độ sâu, giới hạn số trạng thái), tránh tìm kiếm vô hạn với Hermes và giảm chi phí CPU trên Cloudflare. Không có API trả phí, không dùng mô hình ngôn ngữ.
+- Các bài kiểm thử chiến thuật mới kiểm tra thắng ở tầng 3, Pan thắng xuống tầng, Atlas chặn đường thắng, không xây tầng 3 cho đối thủ, ba người nhận diện mối đe dọa và Hermes không lặp vô hạn.
+
+**Giới hạn:** mức Khó dùng tìm kiếm ngắn hạn + heuristic, chưa phải minimax toàn trận hoặc BOT bất bại. Dự báo phản đòn của các God Powers nhiều pha là xấp xỉ để bảo đảm hiệu năng. Phần luật cơ bản và 10 God Powers của V1.1 được giữ nguyên.
