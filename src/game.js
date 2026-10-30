@@ -11,13 +11,14 @@ export const GODS={
  pan:{name:'Pan',description:'Thắng khi di chuyển xuống ít nhất hai tầng.'},
  prometheus:{name:'Prometheus',description:'Có thể xây trước rồi đi, nhưng sau đó không được đi lên.'}
 };
-export function newGame(ruleset='classic'){
- return {board:Array.from({length:5},()=>Array(5).fill(0)),workers:[[],[]],phase:ruleset==='god'?'godpick':'place',ruleset:ruleset==='god'?'god':'classic',gods:[null,null],turn:0,selected:null,winner:null,revision:0,lastAction:'Bắt đầu trận đấu.',ctx:{},athenaBlocked:null};
+export function newGame(ruleset='classic',players=2){
+ const count=players===3?3:2;
+ return {board:Array.from({length:5},()=>Array(5).fill(0)),workers:Array.from({length:count},()=>[]),phase:ruleset==='god'?'godpick':'place',ruleset:ruleset==='god'?'god':'classic',gods:Array(count).fill(null),turn:0,selected:null,winner:null,eliminated:Array(count).fill(false),revision:0,lastAction:'Bắt đầu trận đấu.',ctx:{},athenaBlocked:null};
 }
 const cell=(r,c)=>Number.isInteger(r)&&Number.isInteger(c)&&r>=0&&r<5&&c>=0&&c<5;
 const near=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col))===1;
 const eq=(a,b)=>!!a&&!!b&&a.row===b.row&&a.col===b.col;
-const pawnAt=(g,r,c)=>{for(let p=0;p<2;p++)for(let i=0;i<g.workers[p].length;i++)if(eq(g.workers[p][i],{row:r,col:c}))return {p,i};return null;};
+const pawnAt=(g,r,c)=>{for(let p=0;p<g.workers.length;p++)for(let i=0;i<g.workers[p].length;i++)if(eq(g.workers[p][i],{row:r,col:c}))return {p,i};return null;};
 const free=(g,r,c)=>cell(r,c)&&g.board[r][c]!==4&&!pawnAt(g,r,c);
 const god=(g,p)=>g.ruleset==='god'?g.gods[p]:null;
 export function legalBuilds(g,from){if(!from)return [];const out=[];for(let row=0;row<5;row++)for(let col=0;col<5;col++)if(near(from,{row,col})&&free(g,row,col))out.push({row,col});return out;}
@@ -36,7 +37,7 @@ function legalMoveDetails(g,p,i){
  for(let col=Math.max(0,from.col-1);col<=Math.min(4,from.col+1);col++){
   const dest={row,col};if(!near(from,dest))continue;
   const h=g.board[row][col];if(h===4||h>before+1)continue;
-  if((g.athenaBlocked===p||g.ctx?.prometheusUsed)&&h>before)continue;
+  if(((g.athenaBlocked!==null&&g.athenaBlocked!==p)||g.ctx?.prometheusUsed)&&h>before)continue;
   if(g.phase==='hermesMove'&&h!==before)continue;
   if(g.phase==='extraMove'&&eq(dest,g.ctx?.origin))continue;
   const blocker=pawnAt(g,row,col);let special=null,forced=null;
@@ -112,28 +113,47 @@ function matches(expected,a){
  (expected.worker===undefined||expected.worker===a.worker)&&
  (expected.dome===undefined? a.dome!==true : expected.dome===a.dome);
 }
-function endTurn(g,p){
- if(g.athenaBlocked===p)g.athenaBlocked=null;
- g.ctx={};g.phase='move';g.selected=null;g.turn=1-p;
- if(!canTakeTurn(g,g.turn)){
-  g.winner=p;g.phase='ended';g.lastAction='Đối thủ không còn lượt di chuyển hợp lệ. Người chơi '+(p+1)+' chiến thắng!';
+function advance(g,p){
+ const count=g.workers.length;let next=(p+1)%count;
+ for(let k=0;k<count;k++){
+  if(g.eliminated?.[next]){next=(next+1)%count;continue;}
+  // Athena's power expires when its owner takes their next turn.
+  if(g.athenaBlocked===next)g.athenaBlocked=null;
+  const trial={...g,phase:'move',turn:next,ctx:{}};
+  if(canTakeTurn(trial,next)){g.turn=next;g.phase='move';g.selected=null;return;}
+  if(count===2){
+   g.winner=p;g.phase='ended';g.lastAction='Đối thủ không thể di chuyển. Người chơi '+(p+1)+' chiến thắng!';return;
+  }
+  g.eliminated[next]=true;g.workers[next]=[];g.gods[next]=null;
+  g.lastAction='Người chơi '+(next+1)+' bị loại vì không còn lượt hợp lệ.';
+  const alive=g.eliminated.map((lost,i)=>lost?null:i).filter(x=>x!==null);
+  if(alive.length===1){
+   g.winner=alive[0];g.turn=alive[0];g.phase='ended';
+   g.lastAction='Chỉ còn một người chơi. Người chơi '+(g.winner+1)+' chiến thắng!';return;
+  }
+  next=(next+1)%count;
  }
+ throw Error('Không thể xác định người chơi tiếp theo.');
+}
+function endTurn(g,p){
+ g.ctx={};g.phase='move';g.selected=null;
+ advance(g,p);
 }
 export function applyAction(g,p,a){
  if(!a||typeof a!=='object'||!['place','move','build','skip','selectGod','prebuild','endMove'].includes(a.type))throw Error('Hành động không hợp lệ.');
  if(g.winner!==null)throw Error('Ván đã kết thúc.');
- if(p!==0&&p!==1||p!==g.turn)throw Error('Chưa đến lượt của bạn.');
+ if(!Number.isInteger(p)||p<0||p>=g.workers.length||p!==g.turn)throw Error('Chưa đến lượt của bạn.');
  const allowed=legalActions(g,p).find(x=>matches(x,a));
  if(!allowed)throw Error('Nước đi hoặc kỹ năng không hợp lệ.');
  const power=god(g,p);
  if(a.type==='selectGod'){
   g.gods[p]=a.god;g.lastAction='Người chơi '+(p+1)+' chọn '+GODS[a.god].name+'.';
-  if(p===0)g.turn=1;else{g.turn=0;g.phase='place';}
+  if(p<g.gods.length-1)g.turn=p+1;else{g.turn=0;g.phase='place';}
  }else if(a.type==='place'){
   g.workers[p].push({row:a.row,col:a.col});
   g.lastAction='Người chơi '+(p+1)+' đã đặt quân '+g.workers[p].length+'/2.';
   if(g.workers[p].length===2){
-   if(p===0)g.turn=1;
+   if(p<g.workers.length-1)g.turn=p+1;
    else{g.turn=0;g.phase='move';g.lastAction='Đã đặt đủ quân. Người chơi 1 đi trước.';}
   }
  }else if(a.type==='prebuild'){
@@ -155,7 +175,7 @@ export function applyAction(g,p,a){
    g.winner=p;g.phase='ended';g.selected=null;
    g.lastAction=power==='pan'&&before-after>=2?'Pan chiến thắng nhờ hạ xuống ít nhất hai tầng!':'Người chơi '+(p+1)+' leo lên tầng 3 và chiến thắng!';
   }else{
-   if(power==='athena'&&after>before)g.athenaBlocked=1-p;
+   if(power==='athena'&&after>before)g.athenaBlocked=p;
    if(power==='artemis'&&g.phase==='move'){
     g.ctx={origin:{...from}};g.selected=a.worker;g.phase='extraMove';
     g.lastAction='Artemis có thể di chuyển thêm một lần hoặc bỏ qua.';
@@ -181,4 +201,4 @@ export function applyAction(g,p,a){
  g.revision++;
  return g;
 }
-export function resetGame(g){const next=newGame(g.ruleset);return {...next,revision:g.revision+1,lastAction:'Ván mới. Chọn thần hoặc đặt quân để bắt đầu.'};}
+export function resetGame(g){const next=newGame(g.ruleset,g.workers.length);return {...next,revision:g.revision+1,lastAction:'Ván mới. Chọn thần hoặc đặt quân để bắt đầu.'};}
