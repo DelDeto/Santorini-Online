@@ -6,40 +6,30 @@ const BOT_TOKEN='bot:server-managed';
 const LEVELS=['easy','normal','hard'];
 const cleanName=value=>String(value??'Người chơi').trim().slice(0,24).replace(/[<>]/g,'')||'Người chơi';
 const team=seat=>seat%2;
-const makeStats=()=>({wins:[0,0],matches:0});
-function freshRoom(){return {game:newGame(),players:[null,null],mode:null,difficulty:'normal',ruleset:'classic',capacity:2,activeSeat:0,nextTeam0:0,history:[],stats:makeStats()};}
+const makeStats=(n=2)=>({wins:Array(n===3?3:2).fill(0),matches:0});
+function freshRoom(){return {game:newGame(),players:[null,null],mode:null,difficulty:'normal',ruleset:'classic',capacity:2,activeSeat:0,nextTeam0:0,seatGods:null,draftIndex:0,history:[],stats:makeStats()};}
 function capacity(r){return [2,3,4].includes(r.capacity)?r.capacity:2;}
 function ready(r){return r.players.length===capacity(r)&&r.players.every(Boolean);}
 function seatForTurn(r){
- if(capacity(r)===2)return r.game.turn;
- if(r.game.phase==='place'){
-  if(r.game.turn===0)return r.game.workers[0].length===0?0:2;
-  if(capacity(r)===4)return r.game.workers[1].length===0?1:3;
-  return 1;
- }
- return [0,1,2,3].includes(r.activeSeat)?r.activeSeat:0;
-}
-function ownedWorker(r,seat){
- if(capacity(r)===2||seat===1)return null;
- if(seat===0)return 0;
- if(seat===2)return 1;
- if(seat===3)return 1;
- return null;
+ if(capacity(r)!==4)return r.game.turn;
+ if(r.game.phase==='godpick')return r.draftIndex??0;
+ if(r.game.phase==='place')return r.game.turn;
+ return r.activeSeat??2;
 }
 function availableActions(r){
  if(!ready(r))return [];
- const allowed=legalActions(r.game);
- const worker=ownedWorker(r,seatForTurn(r));
- return worker===null?allowed:allowed.filter(a=>a.worker===undefined||a.worker===worker);
+ if(capacity(r)===4&&r.game.phase==='godpick')
+  return Object.keys(GODS).filter(id=>!(r.seatGods||[]).includes(id)).map(god=>({type:'selectGod',god}));
+ return legalActions(r.game);
 }
 function view(r,spectators=0){
  const n=capacity(r);
  return {
-  game:r.game,legalActions:availableActions(r),gods:GODS,
+  game:r.game,legalActions:availableActions(r),gods:GODS,seatGods:r.seatGods||null,
   ruleset:r.game.ruleset||'classic',mode:r.mode||'online',difficulty:r.difficulty,
   capacity:n,activeSeat:seatForTurn(r),spectators,
-  history:r.history||[],stats:r.stats||makeStats(),
-  players:r.players.map((p,i)=>({name:p?.name??('Ghế '+(i+1)+' · Đang chờ'),joined:!!p,seat:i,team:team(i),bot:p?.token===BOT_TOKEN})),
+  history:r.history||[],stats:r.stats||makeStats(n),
+  players:r.players.map((p,i)=>({name:p?.name??('Ghế '+(i+1)+' · Đang chờ'),joined:!!p,seat:i,team:n===3?i:team(i),bot:p?.token===BOT_TOKEN})),
   ready:ready(r)
  };
 }
@@ -53,6 +43,8 @@ export class SantoriniRoom extends DurableObject{
    this.room.stats??=makeStats();
    this.room.activeSeat??=0;
    this.room.nextTeam0??=0;
+   this.room.draftIndex??=0;
+   this.room.seatGods??=null;
   });
  }
  async persist(){await this.ctx.storage.put('room',this.room);}
@@ -67,7 +59,7 @@ export class SantoriniRoom extends DurableObject{
  }
  resolveBlockedTeam(){
   const r=this.room;
-  if(capacity(r)===2||r.game.phase!=='move'||r.game.winner!==null||!ready(r))return;
+  if(capacity(r)!==4||r.game.phase!=='move'||r.game.winner!==null||!ready(r))return;
   if(availableActions(r).some(a=>a.type==='move'||a.type==='endMove'))return;
   const winner=1-r.game.turn;
   r.game.winner=winner;r.game.phase='ended';
@@ -75,23 +67,18 @@ export class SantoriniRoom extends DurableObject{
   r.game.revision++;
  }
   advanceAfterAction(previousPhase,previousTurn,actionSeat){
-  const r=this.room;
-  if(capacity(r)===2)return;
-  if(r.game.phase==='ended')return;
-  if(r.game.phase==='place'||r.game.phase==='godpick')return;
-  if(previousPhase==='place'&&r.game.phase==='move'){
-   r.activeSeat=0;r.nextTeam0=0;return;
-  }
-  if(r.game.turn!==previousTurn){
-   if(team(actionSeat)===0){
-    r.activeSeat=capacity(r)===4&&actionSeat===2?3:1;
-   }else{
-    r.nextTeam0=r.nextTeam0===0?2:0;
-    r.activeSeat=r.nextTeam0;
-   }
-  }
+ const r=this.room;
+ if(capacity(r)!==4||r.game.phase==='ended')return;
+ if(previousPhase==='place'&&r.game.phase==='move'){
+  r.activeSeat=2;r.game.gods[0]=r.seatGods[2];r.game.gods[1]=r.seatGods[3];return;
  }
- record(action,seat,oldWinner,oldRevision){
+ if(r.game.phase==='place'||r.game.phase==='godpick')return;
+ if(r.game.turn!==previousTurn){
+  r.activeSeat=({2:3,3:0,0:1,1:2})[actionSeat];
+  r.game.gods[team(r.activeSeat)]=r.seatGods[r.activeSeat];
+ }
+}
+record(action,seat,oldWinner,oldRevision){
   const r=this.room;
   if(r.game.revision===oldRevision)return;
   r.history??=[];
@@ -114,11 +101,12 @@ export class SantoriniRoom extends DurableObject{
    r.mode=u.searchParams.get('mode')==='bot'?'bot':'online';
    r.ruleset=u.searchParams.get('ruleset')==='god'?'god':'classic';
    r.capacity=r.mode==='bot'?2:([3,4].includes(Number(u.searchParams.get('players')))?Number(u.searchParams.get('players')):2);
-   // Team matches with 3 or 4 participants use official two-team mechanics without God Powers.
-   if(r.capacity>2)r.ruleset='classic';
-   r.game=newGame(r.ruleset);
+   // Official multi-player matches require individual God Powers.
+   if(r.capacity>2)r.ruleset='god';
+   r.game=newGame(r.ruleset,r.capacity===3?3:2);
+   r.seatGods=r.capacity===4?Array(4).fill(null):null;r.draftIndex=0;
    r.players=Array(r.capacity).fill(null);
-   r.activeSeat=0;r.nextTeam0=0;r.history=[];r.stats=makeStats();
+   r.activeSeat=r.capacity===4?2:0;r.nextTeam0=0;r.history=[];r.stats=makeStats(r.capacity);
    if(r.mode==='bot'){
     r.difficulty=LEVELS.includes(u.searchParams.get('difficulty'))?u.searchParams.get('difficulty'):'normal';
     r.players[1]={name:'BOT · '+({easy:'Tập sự',normal:'Chiến thuật',hard:'Bậc thầy'}[r.difficulty]),token:BOT_TOKEN};
@@ -199,7 +187,7 @@ export class SantoriniRoom extends DurableObject{
 export default{
  async fetch(request,env){
   const u=new URL(request.url);
-  if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'0.8.0'});
+  if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'0.9.0'});
   if(u.pathname==='/ws'){
    const room=u.searchParams.get('room')||'';
    if(!/^[A-Z2-9]{6,10}$/.test(room))return new Response('Room code invalid',{status:400});
