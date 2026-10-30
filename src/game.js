@@ -238,7 +238,7 @@ function winnerChronus(g){
 }
 function setupChaos(g){
  for(let p=0;p<g.gods.length;p++)if(g.gods[p]==='chaos'&&!g.advanced.chaos[p]){
-  const deck=SIMPLE_GODS.filter(id=>!g.gods.includes(id));
+  const deck=SIMPLE_GODS.filter(id=>!(g.advanced?.allSelected||g.gods).includes(id));
   for(let i=deck.length-1;i>0;i--){const k=Math.floor(Math.random()*(i+1));[deck[i],deck[k]]=[deck[k],deck[i]];}
   g.advanced.chaos[p]={deck,index:0,current:deck[0]??'apollo'};
  }
