@@ -19,7 +19,7 @@ async function until(fn,timeout=16000){
   throw Error('Timed out: '+output.slice(-2200));
 }
 async function connect(code,name,mode){
-  const path='/ws?room='+code+'&token='+token()+'&name='+encodeURIComponent(name)+(mode==='bot'?'&mode=bot&difficulty=normal':mode==='bot3'?'&mode=bot&difficulty=normal&players=3&ruleset=god':mode==='bot4'?'&mode=bot&difficulty=normal&players=4&ruleset=god':mode==='god'?'&ruleset=god':mode==='botgod'?'&mode=bot&difficulty=normal&ruleset=god':mode==='3'?'&players=3':mode==='4'?'&players=4':mode==='watch'?'&spectate=1':'');
+  const path='/ws?room='+code+'&token='+token()+'&name='+encodeURIComponent(name)+(mode==='fleece'?'&variant=fleece':mode==='agora'?'&variant=agora':mode==='botfleece'?'&mode=bot&difficulty=normal&variant=fleece':mode==='bot'?'&mode=bot&difficulty=normal':mode==='bot3'?'&mode=bot&difficulty=normal&players=3&ruleset=god':mode==='bot4'?'&mode=bot&difficulty=normal&players=4&ruleset=god':mode==='god'?'&ruleset=god':mode==='botgod'?'&mode=bot&difficulty=normal&ruleset=god':mode==='3'?'&players=3':mode==='4'?'&players=4':mode==='watch'?'&spectate=1':'');
   const ws=new WebSocket('ws://127.0.0.1:'+PORT+path);sockets.push(ws);
   const inbox=[];
   ws.addEventListener('message',e=>{try{inbox.push(JSON.parse(e.data));}catch{}});
@@ -218,6 +218,75 @@ try{
   hostHybrid.ws.send(JSON.stringify({type:'fillBots',difficulty:'normal'}));
   const hybridReady=await guestHybrid.until(v=>v.ready&&v.players[2].bot);
   assert.equal(hybridReady.mode,'hybrid');
+
+  // V1.4 modes are server-authoritative and work over real two-client WebSockets.
+  const fleeceRoom=room();
+  const fleeceHost=await connect(fleeceRoom,'Fleece Host','fleece');
+  const fleeceGuest=await connect(fleeceRoom,'Fleece Guest','online');
+  const fleeceReady=await fleeceHost.until(v=>v.ready&&v.modeId==='fleece'&&v.game.phase==='fleecePick');
+  assert.equal(fleeceReady.game.gods[0],null);
+  fleeceHost.ws.send(JSON.stringify({type:'selectGod',god:'pan'}));
+  await fleeceHost.until(v=>v.game.phase==='place'&&v.game.fleeceGod==='pan');
+  fleeceHost.ws.send(JSON.stringify({type:'place',row:0,col:0}));
+  await fleeceHost.until(v=>v.game.workers[0].length===1);
+  fleeceHost.ws.send(JSON.stringify({type:'place',row:0,col:1}));
+  await fleeceGuest.until(v=>v.game.turn===1);
+  fleeceGuest.ws.send(JSON.stringify({type:'place',row:4,col:4}));
+  await fleeceGuest.until(v=>v.game.workers[1].length===1);
+  fleeceGuest.ws.send(JSON.stringify({type:'place',row:4,col:3}));
+  const ramStage=await fleeceHost.until(v=>v.game.phase==='ramPlace'&&v.activeSeat===0);
+  assert.equal(ramStage.legalActions.filter(a=>a.type==='placeRam').length,21);
+  fleeceHost.ws.send(JSON.stringify({type:'placeRam',row:3,col:4}));
+  const activeRam=await fleeceGuest.until(v=>v.game.phase==='move'&&v.game.turn===1&&v.game.ram?.row===3);
+  assert.equal(activeRam.game.ctx.fleeceActive,1);
+  assert.deepEqual(activeRam.game.ram,{row:3,col:4});
+  const agoraRoom=room();
+  const agoraA=await connect(agoraRoom,'Agora A','agora');
+  const agoraB=await connect(agoraRoom,'Agora B','online');
+  const agoraReady=await agoraA.until(v=>v.modeId==='agora'&&v.ready);
+  assert.equal(agoraReady.game.phase,'godpick');
+  assert.equal(agoraReady.legalActions.filter(a=>a.type==='selectGod').length,10);
+  agoraA.ws.send(JSON.stringify({type:'selectGod',god:'apollo'}));
+  await agoraB.until(v=>v.game.turn===1);
+  agoraB.ws.send(JSON.stringify({type:'selectGod',god:'pan'}));
+  await agoraA.until(v=>v.game.phase==='place');
+  agoraA.ws.send(JSON.stringify({type:'place',row:0,col:0}));
+  await agoraA.until(v=>v.game.workers[0].length===1);
+  agoraA.ws.send(JSON.stringify({type:'place',row:0,col:1}));
+  await agoraB.until(v=>v.game.turn===1);
+  agoraB.ws.send(JSON.stringify({type:'place',row:4,col:4}));
+  await agoraB.until(v=>v.game.workers[1].length===1);
+  agoraB.ws.send(JSON.stringify({type:'place',row:4,col:3}));
+  const agoraStart=await agoraA.until(v=>v.game.phase==='move'&&v.game.turn===0);
+  const agoraMove=agoraStart.legalActions.find(a=>a.type==='move');
+  agoraA.ws.send(JSON.stringify({type:'move',worker:agoraMove.worker,row:agoraMove.row,col:agoraMove.col}));
+  const agoraBuildState=await agoraA.until(v=>v.game.phase==='build');
+  const agoraBuild=agoraBuildState.legalActions.find(a=>a.type==='build');
+  agoraA.ws.send(JSON.stringify({type:'build',row:agoraBuild.row,col:agoraBuild.col}));
+  const agoraNext=await agoraB.until(v=>v.game.turn===1&&v.game.phase==='move');
+  const agoraMoveB=agoraNext.legalActions.find(a=>a.type==='move');
+  agoraB.ws.send(JSON.stringify({type:'move',worker:agoraMoveB.worker,row:agoraMoveB.row,col:agoraMoveB.col}));
+  const agoraBuildB=await agoraB.until(v=>v.game.phase==='build');
+  const agoraBld=agoraBuildB.legalActions.find(a=>a.type==='build');
+  agoraB.ws.send(JSON.stringify({type:'build',row:agoraBld.row,col:agoraBld.col}));
+  const rotated=await agoraA.until(v=>v.game.agoraTurns===2&&v.game.phase==='move');
+  assert.deepEqual(rotated.game.gods,['pan','apollo']);
+
+  // BOT automatically follows a shared Golden Fleece match after ram placement.
+  const fleeceBot=await connect(room(),'Fleece SOLO','botfleece');
+  assert.equal(fleeceBot.hello.view.modeId,'fleece');
+  fleeceBot.ws.send(JSON.stringify({type:'selectGod',god:'athena'}));
+  await fleeceBot.until(v=>v.game.phase==='place');
+  fleeceBot.ws.send(JSON.stringify({type:'place',row:0,col:0}));
+  await fleeceBot.until(v=>v.game.workers[0].length===1);
+  fleeceBot.ws.send(JSON.stringify({type:'place',row:0,col:1}));
+  const botRam=await fleeceBot.until(v=>v.game.phase==='ramPlace'&&v.game.workers[1].length===2,20000);
+  assert.equal(botRam.activeSeat,0);
+  fleeceBot.ws.send(JSON.stringify({type:'placeRam',row:2,col:2}));
+  const botPlaying=await fleeceBot.until(v=>v.game.ram?.row===2&&v.game.turn===1&&v.game.phase==='move');
+  const botPlayed=await fleeceBot.until(v=>v.game.revision>botPlaying.game.revision,20000);
+  assert.ok(botPlayed.history.some(x=>x.seat===1));
+  console.log('PASS: V1.4 Golden Fleece human/BOT and online Agora turn rotation.');
 
   // Leaving a room before game setup releases the seat.
   const exitRoom=room();
