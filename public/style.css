@@ -256,3 +256,17 @@ body{overflow-x:hidden}
  .players:has(#player2:not(.hidden)) .player-info b{font-size:10px}
  .god-info:has(#god2:not(.hidden)) #godEffect{display:none}
 }
+
+
+/* V1.0 — configurable 1/2/3 BOT seats, compact on mobile */
+.bot-entry-controls{display:flex;gap:7px;align-items:stretch;flex-wrap:wrap}
+.bot-entry-controls #botCountSelect{flex:1.2;min-width:100px;background:#113d58;color:#f5fffb;border:1px solid #a4ddde70;border-radius:9px;padding:9px 7px;font-weight:750;font-size:12px}
+.bot-entry-controls #difficultySelect{flex:1;min-width:105px}
+.bot-entry-controls #demoBtn{flex:1;min-width:95px}
+#fillBotsBtn{background:linear-gradient(145deg,#3b947b,#196c72);color:#fff;border:1px solid #98e9c0}
+@media(max-width:650px){
+ .bot-entry-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px}
+ .bot-entry-controls #botCountSelect,.bot-entry-controls #difficultySelect{width:100%;min-width:0;font-size:11px;padding:9px 5px}
+ .bot-entry-controls #demoBtn{grid-column:1 / -1;width:100%;min-width:0;padding:10px}
+ .game-bottom #fillBotsBtn{flex:1.4}
+}
