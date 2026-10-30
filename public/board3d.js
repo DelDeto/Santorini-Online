@@ -28,6 +28,40 @@ export function createBoard3D(container,onCell){
  const sea=mat('#0a8e9e',.32), cliff=mat('#d2b68c'),stone=mat('#f2f1e8'),edge=mat('#ddd4bd'),grass=mat('#b5d3b7'),
  blue=mat('#187fbb',.27),darkBlue=mat('#11538b',.34),windowMat=mat('#3c91ad',.32),white=mat('#fffff5'),sand=mat('#e7cc9d'),
  rock=mat('#a6a095'),olive=mat('#456e51'),oliveLight=mat('#78956a'),bronze=mat('#d2b37a',.42,.2),terracotta=mat('#b66d57');
+
+ // Procedural hand-painted PBR micro-textures: fine plaster grain and limestone pores.
+ // Deterministic and local, so there are no texture downloads and no licensing issues.
+ const textures=[];
+ function surfaceTexture(kind,size=192) {
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=size;
+  const ctx=canvas.getContext('2d');const img=ctx.createImageData(size,size);
+  let seed=kind==='plaster'?2973:kind==='rock'?4517:9731;
+  const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)|0;return (seed>>>0)/4294967296;};
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+   const idx=(y*size+x)*4;
+   const slow=Math.sin(x*.065+Math.cos(y*.042))*4+Math.sin(y*.071+x*.024)*5;
+   const fleck=rand();
+   const grain=(rand()-.5)*(kind==='rock'?25:kind==='plaster'?12:18);
+   const val=Math.max(145,Math.min(255,(kind==='plaster'?241:kind==='rock'?209:218)+slow+grain-(fleck>.995?42:0)));
+   img.data[idx]=val;
+   img.data[idx+1]=Math.min(255,val+(kind==='plaster'?2:0));
+   img.data[idx+2]=Math.max(0,val-(kind==='rock'?9:1));
+   img.data[idx+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+  const tx=new THREE.CanvasTexture(canvas);
+  tx.wrapS=tx.wrapT=THREE.RepeatWrapping;
+  tx.repeat.set(kind==='rock'?2.4:1.8,kind==='rock'?2.4:1.8);
+  tx.colorSpace=THREE.SRGBColorSpace;
+  tx.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+  textures.push(tx);return tx;
+ }
+ const plasterTex=surfaceTexture('plaster'),rockTex=surfaceTexture('rock'),pavingTex=surfaceTexture('paving');
+ stone.map=plasterTex;stone.bumpMap=plasterTex;stone.bumpScale=.014;stone.needsUpdate=true;
+ cliff.map=rockTex;cliff.bumpMap=rockTex;cliff.bumpScale=.08;cliff.needsUpdate=true;
+ sand.map=pavingTex;sand.bumpMap=pavingTex;sand.bumpScale=.018;sand.needsUpdate=true;
+ grass.map=pavingTex;grass.bumpMap=pavingTex;grass.bumpScale=.019;grass.needsUpdate=true;
+
  const tiles=[],pieces=new THREE.Group();scene.add(pieces);
  const cache=new Map(),materials=new Set();
  const cached=(key,create)=>{if(!cache.has(key))cache.set(key,create());return cache.get(key)};
@@ -259,5 +293,5 @@ export function createBoard3D(container,onCell){
   renderer.render(scene,camera);
  }
  requestAnimationFrame(loop);
- return {update,resetCamera:setView,destroy(){active=false;resize.disconnect();orbit.dispose();seaMaterial.dispose();seaGeometry.dispose();for(const geo of cache.values())geo.dispose();renderer.dispose();renderer.domElement.remove();}};
+ return {update,resetCamera:setView,destroy(){active=false;resize.disconnect();orbit.dispose();for(const tx of textures)tx.dispose();seaMaterial.dispose();seaGeometry.dispose();for(const geo of cache.values())geo.dispose();renderer.dispose();renderer.domElement.remove();}};
 }
