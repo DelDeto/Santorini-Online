@@ -313,6 +313,7 @@ function render(){
  $('domeBtn').classList.toggle('chosen',S.powerMode==='dome');
  $('domeBtn').textContent=S.powerMode==='dome'?'↩ Xây tầng':'◆ Đặt mái vòm';
  $('skipBtn').classList.toggle('hidden',!(turn&&getActions('skip').length));
+ $('advancedActions').innerHTML=turn?getActions('commandeer').map(a=>'<button type="button" class="mini" data-command="'+a.target+'">Điều khiển phe '+(a.target+1)+'</button>').join(''):'';
  const end=turn&&S.selected!==null&&getActions('endMove',S.selected).length>0;
  $('endMoveBtn').classList.toggle('hidden',!end);
  $('restartBtn').classList.toggle('hidden',g.phase!=='ended'||S.seat<0);
@@ -358,6 +359,7 @@ $('lightingBtn').onclick=()=>{S.lighting=S.lighting==='golden'?'noon':'golden';l
 $('qualityBtn').onclick=()=>{S.quality=S.quality==='auto'?'hd':S.quality==='hd'?'eco':'auto';localStorage.setItem('santorini-quality',S.quality);const actual=S.three?.setQuality(S.quality);if(S.quality==='hd'&&actual==='eco')message('Đồ họa HD không bật khi chế độ tiết kiệm dữ liệu đang hoạt động.');render();};
 $('powerBtn').onclick=()=>{S.powerMode=S.powerMode==='prebuild'?'move':'prebuild';render();};
 $('domeBtn').onclick=()=>{S.powerMode=S.powerMode==='dome'?'move':'dome';render();};
+$('advancedActions').onclick=e=>{const b=e.target.closest('[data-command]');if(b)send({type:'commandeer',target:Number(b.dataset.command)});};
 $('skipBtn').onclick=()=>send({type:'skip'});
 $('endMoveBtn').onclick=()=>{if(S.selected!==null)send({type:'endMove',worker:S.selected});};
 $('restartBtn').onclick=()=>send({type:'restart'});
