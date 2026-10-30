@@ -154,3 +154,13 @@ Nguồn đối chiếu: https://files.roxley.com/Santorini-Rulebook-Web-2016.08.
 - Kiểm thử: `npm test && npm run smoke` bao gồm cả websocket phòng BOT 3/4, luồng God Powers và chuyển lượt liên tục.
 
 Các BOT là đối thủ theo thuật toán heuristic, không phải mô hình AI học sâu; chưa bảo đảm độ mạnh ngang người chơi giàu kinh nghiệm. Không có phí API hay dịch vụ AI bên ngoài.
+
+
+## V1.1 — God Powers Guide · Live gameplay instructions
+
+- Khi chơi God Powers, thanh **các thần trong trận** luôn hiển thị cùng tên và chủ sở hữu; mỗi thần có thể chạm để mở hướng dẫn.
+- Ở phần **tính năng đang dùng**, tên thần của người đến lượt và hướng dẫn theo *giai đoạn chơi hiện tại* tự động thay đổi. Khi chưa đến lượt, người chơi vẫn đọc được năng lực đối thủ và BOT.
+- Bấm **ⓘ Chi tiết** để xem toàn bộ 10 kỹ năng trong trận, phân biệt năng lực tự động với hành động chủ động và cách kích hoạt từng bước; popup cuộn riêng, không cần cuộn cả trang.
+- Apollo/Minotaur/Pan/Athena tự động khi đáp ứng điều kiện; Artemis/Demeter/Hephaestus tự mở bước di chuyển hoặc xây thêm; Atlas dùng nút **◆ Đặt mái vòm**, Prometheus dùng **⚡ Xây trước**, Hermes dùng **Xây ngay →**.
+- **Fix Prometheus:** sau khi chọn ô xây trước, giao diện tự trở về chế độ di chuyển đúng quân; không bị kẹt vòng highlight ô xây trước.
+- Áp dụng cho Solo BOT 2–4, online 2–4 người, và phòng hỗn hợp. Giữ 3D/2D fallback và điều khiển PC/mobile 1 màn hình.
