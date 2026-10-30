@@ -194,9 +194,9 @@ function tileClick(row,col){
  const v=S.view;if(!isTurn()||!v)return;
  const g=v.game,phase=g.phase;
  if(phase==='place'){const a=getActions('place').find(a=>a.row===row&&a.col===col);if(a)send({type:'place',row,col});return;}
- if(['move','extraMove','hermesMove','tritonMove','dionysusMove'].includes(phase)){
+ if(['move','extraMove','hermesMove'].includes(phase)){
   const actor=phase==='dionysusMove'?g.ctx?.dionysusTarget:myTeam();
-   const worker=g.workers[actor]?.findIndex(w=>w.row===row&&w.col===col);
+  const worker=g.workers[actor]?.findIndex(w=>w.row===row&&w.col===col);
   const allowedWorker=worker!==-1&&worker!==undefined&&getActions('move',worker).length+getActions('prebuild',worker).length+getActions('endMove',worker).length+getActions('ferry',worker).length>0;
   if(allowedWorker&&!(phase==='extraMove'&&worker!==g.selected)){
    S.selected=worker;S.powerMode='move';beep(380);render();return;
@@ -208,8 +208,12 @@ function tileClick(row,col){
   const a=availableTiles().find(a=>a.row===row&&a.col===col);
   if(a)send({type:'build',row,col,...(a.dome?{dome:true}:{}),...(a.under?{under:true}:{})});
   else message('Hãy chọn vị trí xây có vòng sáng.');
+ }else if(phase==='aresRemove'){
+  const a=availableTiles().find(x=>x.row===row&&x.col===col);
+  if(a)send({type:'removeBlock',row,col});else message('Chạm khối cần phá hoặc Bỏ qua.');
  }
-  else if(phase==='aresRemove'){const a=availableTiles().find(x=>x.row===row&&x.col===col);if(a)send({type:'removeBlock',row,col});else message('Chạm khối cần phá hoặc Bỏ qua.');}function drawFallback(){
+}
+function drawFallback(){
  const g=S.view?.game;if(!g)return;
  const options=availableTiles(),tiles=new Set(options.map(a=>a.row+','+a.col));
  const own=myTeam();
@@ -219,7 +223,7 @@ function tileClick(row,col){
   const owner=g.workers.findIndex(team=>team.some(w=>w.row===row&&w.col===col));
   const wi=owner<0?-1:g.workers[owner].findIndex(w=>w.row===row&&w.col===col);
   const control=g.phase==='dionysusMove'?g.ctx?.dionysusTarget:own;
-   const choose=owner===control&&['move','extraMove','hermesMove','tritonMove','dionysusMove'].includes(g.phase);
+  const choose=owner===control&&['move','extraMove','hermesMove','tritonMove','dionysusMove'].includes(g.phase);
   html+='<button class="tile '+(active?'legal ':'')+(choose&&wi===S.selected?'selected ':'')+'" data-row="'+row+'" data-col="'+col+'" aria-label="Ô '+(row+1)+'-'+(col+1)+' tầng '+level+'">';
   if(level){html+='<span class="building">';for(let n=0;n<Math.min(3,level);n++)html+='<span class="block"></span>';if(level===4)html+='<span class="dome"></span>';html+='</span><span class="level-pill">'+(level===4?'◆':level)+'</span>';}
   if(owner>=0)html+='<span class="worker p'+owner+'"><span class="worker-head"></span><span class="worker-body"></span><span class="worker-base"></span></span>';
