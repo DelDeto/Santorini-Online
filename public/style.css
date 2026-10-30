@@ -233,3 +233,26 @@ body{overflow-x:hidden}
  .game-top .room-tag strong{font-size:10px}
  .history-panel{max-height:88dvh}
 }
+
+
+/* V0.9 — Roxley official three-person free-for-all */
+.players:has(#player2:not(.hidden)){grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:8px}
+.players:has(#player2:not(.hidden)) .vs{display:none}
+.players:has(#player2:not(.hidden)) #player2{order:3}
+.players:has(#player2:not(.hidden)) #player1{order:2}
+.players:has(#player2:not(.hidden)) #player0{order:1}
+.violet{background:linear-gradient(145deg,#c9a4f0,#7053a1)}
+.worker.p2{--a:#dbb8ff;--b:#9472d2;--c:#5f4599}
+.player.eliminated{opacity:.35!important;filter:grayscale(1);border-style:dashed}
+.player.eliminated .player-info b{text-decoration:line-through}
+.god-info:has(#god2:not(.hidden)){gap:4px}
+.god-info:has(#god2:not(.hidden)) .god-token{font-size:9px;padding:4px 6px}
+.god-info:has(#god2:not(.hidden)) #godEffect{font-size:9px}
+@media(max-width:650px){
+ .players:has(#player2:not(.hidden)){gap:4px}
+ .players:has(#player2:not(.hidden)) .player{gap:4px;padding:5px}
+ .players:has(#player2:not(.hidden)) .avatar{width:24px;height:28px;font-size:15px}
+ .players:has(#player2:not(.hidden)) .player-info small{font-size:7px;letter-spacing:0}
+ .players:has(#player2:not(.hidden)) .player-info b{font-size:10px}
+ .god-info:has(#god2:not(.hidden)) #godEffect{display:none}
+}
