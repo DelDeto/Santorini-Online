@@ -9,7 +9,7 @@ import {applyAction,legalActions,GODS} from './game.js';
  */
 const copy=g=>structuredClone(g);
 const pick=a=>a[Math.floor(Math.random()*a.length)];
-const near=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col))===1;
+const botAdjacent=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col))===1;
 const distance=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col));
 const center=a=>4-Math.abs(a.row-2)-Math.abs(a.col-2);
 const godPriority=['pan','athena','apollo','artemis','minotaur','atlas','demeter','hephaestus','prometheus','hermes'];
@@ -63,8 +63,8 @@ function basePosition(g,p){
   const h=g.board[r][c];
   if(h!==2&&h!==3)continue;
   const pos={row:r,col:c},ours=g.workers[p]||[];
-  const ownNear=ours.some(w=>near(w,pos));
-  const enemyNear=enemies.some(o=>g.workers[o].some(w=>near(w,pos)));
+  const ownNear=ours.some(w=>botAdjacent(w,pos));
+  const enemyNear=enemies.some(o=>g.workers[o].some(w=>botAdjacent(w,pos)));
   if(h===2)total+=ownNear?7:0;
   if(h===3){if(ownNear)total+=30;if(enemyNear)total-=45;}
  }
