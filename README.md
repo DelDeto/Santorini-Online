@@ -81,3 +81,18 @@ Giới hạn: Hermes cho phép đi ngang nhiều lần / không đi và chọn q
 - Các mô hình là điêu khắc từ hình học Three.js, chưa phải asset điêu khắc Blender/photogrammetry có texture PBR quét từ thực tế.
 
 Kiểm tra local: `npm test && npm run smoke`. Three.js và RoundedBoxGeometry tải từ CDN jsDelivr phiên bản ghim tại `public/index.html`; fallback 2D tiếp tục hoạt động nếu WebGL không sẵn sàng.
+
+
+## V0.5 — Premium Diorama
+
+- Môi trường bầu trời 3D sử dụng procedural atmospheric shader, quầng nắng và mây mỏng, chiếu sáng chân thực hơn.
+- Hai bối cảnh ánh sáng: **Ban ngày** và **Hoàng hôn**; có nút đổi trực tiếp trong màn chơi và lưu tùy chọn.
+- Biển có sóng hai lớp, vệt glint phản chiếu mặt trời, foam nhẹ quanh đảo và caustics.
+- Chất lượng hình ảnh **Auto / HD / Eco**: desktop tự bật bloom nhẹ khi phù hợp, mobile ưu tiên tiết kiệm tài nguyên, có thể tùy chọn HD; tôn trọng giảm chuyển động và tiết kiệm dữ liệu.
+- Kiến trúc bổ sung portal, ban công, lan can, gờ đá, ribs mái vòm gốm; tượng thứ hai có quyền trượng đặc trưng.
+- Nâng hiệu ứng chiến thắng: camera tiến gần có kiểm soát, dải hoa kim loại vàng/xanh bay trên đảo.
+- Vật liệu và mô hình 3D vẫn được dựng bằng code, không yêu cầu tải ảnh photogrammetry hoặc model có bản quyền.
+- Các tùy chọn FX được đóng gói trong `public/premium3d.js`, có `dispose` để dọn tài nguyên WebGL khi thoát phòng.
+- Kiểm tra bằng `npm test && npm run smoke`; CI xác nhận Classic/BOT và draft God Powers không bị thay đổi.
+
+Lưu ý: Hiệu ứng bloom tăng tải GPU. Trên điện thoại yếu nên để **Auto/Eco**, và 3D có thể trở lại fallback 2D khi browser không hỗ trợ WebGL. Đây là bản dựng miniature bằng Three.js chứ không phải mesh quét thật từ hiện vật.
