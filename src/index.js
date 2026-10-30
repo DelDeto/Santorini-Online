@@ -49,6 +49,13 @@ export class SantoriniRoom extends DurableObject{
    this.room.draftIndex??=0;
    this.room.seatGods??=null;
    this.room.athenaAura??=null;
+   // Backward compatibility: rooms persisted by V1.2 did not have Advanced Gods state.
+   this.room.game.capacity??=this.room.capacity;
+   this.room.game.advanced??={chaos:{},morpheus:{},circe:null,bonus:null,erasures:[]};
+   this.room.game.advanced.chaos??={};
+   this.room.game.advanced.morpheus??={};
+   this.room.game.advanced.erasures??=[];
+
   });
  }
  async persist(){await this.ctx.storage.put('room',this.room);}
