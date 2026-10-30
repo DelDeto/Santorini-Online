@@ -133,6 +133,7 @@ function connect(epoch){
   else return;
   S.ruleset=S.view.ruleset??'classic';S.capacity=S.view.capacity||2;
   if(old&&old.revision!==S.view.game.revision){
+   if(S.view.game.ctx?.prometheusUsed)S.powerMode='move';
    const g=S.view.game;
    if(g.phase==='move'&&g.ctx?.fixedWorker!==undefined)S.selected=g.ctx.fixedWorker;
    else if(g.phase==='extraMove')S.selected=g.selected;
@@ -177,7 +178,7 @@ function tileClick(row,col){
    S.selected=worker;S.powerMode='move';beep(380);render();return;
   }
   const action=availableTiles().find(a=>a.row===row&&a.col===col);
-  if(action){send({type:action.type,worker:action.worker,row,col});if(action.type==='move')S.selected=null;}
+  if(action){send({type:action.type,worker:action.worker,row,col});if(action.type==='move')S.selected=null;if(action.type==='prebuild'){S.selected=action.worker;S.powerMode='move';}}
   else message('Chọn quân của bạn rồi chạm vào ô có vòng sáng.');
  }else if(['build','extraBuild'].includes(phase)){
   const a=availableTiles().find(a=>a.row===row&&a.col===col);
@@ -252,6 +253,7 @@ function render(){
   $('god1').textContent=v.capacity===4?[1,3].map(i=>(i+1)+': '+(v.gods[v.seatGods?.[i]]?.name||'—')).join(' · '):(v.gods[g.gods?.[1]]?.name||'Chưa chọn');
   const activeGod=v.capacity===4?v.seatGods?.[v.activeSeat]:g.gods?.[g.turn];
   $('godEffect').textContent=activeGod?v.gods[activeGod]?.description:'Chọn thần để bắt đầu.';
+  renderPowers();
  }
  const phases={godpick:'CHỌN THẦN',place:'ĐẶT QUÂN',move:'DI CHUYỂN',extraMove:'DI CHUYỂN 2',hermesMove:'HERMES',build:'XÂY DỰNG',extraBuild:'XÂY THÊM',ended:'KẾT THÚC'};
  $('phaseChip').textContent=phases[g.phase]||'CHƠI';
@@ -288,6 +290,11 @@ function render(){
  }
  renderBoard();
 }
+$('powersHelpBtn').onclick=()=>openPowers(null);
+$('godRoster').addEventListener('click',e=>{const b=e.target.closest('[data-power-seat]');if(b)openPowers(Number(b.dataset.powerSeat));});
+$('powersCloseBtn').onclick=closePowers;
+$('powersOverlay').addEventListener('click',e=>{if(e.target===$('powersOverlay'))closePowers();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('powersOverlay').classList.contains('hidden'))closePowers();});
 $('board').addEventListener('click',e=>{const b=e.target.closest('.tile');if(b)tileClick(+b.dataset.row,+b.dataset.col);});
 $('godCards').addEventListener('click',e=>{const b=e.target.closest('button[data-god]');if(b&&!b.disabled)send({type:'selectGod',god:b.dataset.god});});
 $('createBtn').onclick=()=>{const n=Number($('teamSize').value),rule=n>2?'god':document.querySelector('input[name="ruleset"]:checked')?.value==='god'?'god':'classic';if(n>2)document.querySelector('input[name="ruleset"][value="god"]').checked=true;enter(roomCode(),'online',rule,n);};
@@ -302,7 +309,7 @@ $('copyBtn').onclick=async()=>{const link=location.origin+location.pathname+'?ro
 $('exitBtn').onclick=()=>{
  if(S.seat>=0&&S.ws?.readyState===WebSocket.OPEN)S.ws.send(JSON.stringify({type:'leave'}));
  S.active=false;S.epoch++;S.ws?.close();S.view=null;S.seat=-1;S.room=null;
- $('historyOverlay').classList.add('hidden');
+ $('historyOverlay').classList.add('hidden');closePowers();
  S.three?.destroy();S.three=null;
  $('scene3d').classList.remove('ready');$('scene3d').classList.remove('hidden');$('scene3d').dataset.state='';
  $('boardFallback').classList.remove('hidden');
