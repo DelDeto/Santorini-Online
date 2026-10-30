@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#09263b">
-  <meta name="description" content="Santorini Online V1.3 Premium Diorama: boardgame 3D điêu khắc, biển Địa Trung Hải, ánh sáng điện ảnh, 30 God Powers, Classic và đấu BOT. Chơi trực tiếp trên PC và điện thoại.">
-  <title>Santorini Online V1.3 | 30 God Powers · Advanced Expansion</title>
+  <meta name="description" content="Santorini Online V1.4 Premium Diorama: boardgame 3D điêu khắc, biển Địa Trung Hải, ánh sáng điện ảnh, nhiều chế độ, God Powers, Golden Fleece và đấu BOT. Chơi trực tiếp trên PC và điện thoại.">
+  <title>Santorini Online V1.3 | All Play Modes · Gameplay UX</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <link rel="canonical" href="https://santorini-online-v01.duc-nguyen-ndd127.workers.dev/">
@@ -35,11 +35,25 @@
   <div class="entry">
     <label for="nameInput">Tên hiển thị</label>
     <input id="nameInput" maxlength="24" autocomplete="nickname" placeholder="Nhập tên của bạn">
+
+    <div class="mode-choice" id="modeChoice" aria-label="Lựa chọn chế độ trước khi chơi">
+      <div class="mode-choice-heading"><strong>CHỌN CHẾ ĐỘ CHƠI</strong><span>6 chế độ · BOT hoặc Multiplayer</span></div>
+      <div class="mode-grid" id="modeGrid" role="group" aria-label="Chế độ chơi">
+        <button type="button" data-mode="classic" class="mode-card"><span class="mode-ico">♟</span><strong>Classic</strong><small>2 người · Không thần</small></button>
+        <button type="button" data-mode="duel" class="mode-card selected" aria-pressed="true"><span class="mode-ico">⚡</span><strong>God Powers</strong><small>2 người · 30 thần</small></button>
+        <button type="button" data-mode="trio" class="mode-card"><span class="mode-ico">♜</span><strong>3 người</strong><small>Đấu tự do · Thần</small></button>
+        <button type="button" data-mode="teams" class="mode-card"><span class="mode-ico">♟♟</span><strong>4 người</strong><small>Đấu đội 2v2 · Thần</small></button>
+        <button type="button" data-mode="agora" class="mode-card"><span class="mode-ico">⇄</span><strong>Agora</strong><small>2 người · Thần luân chuyển</small></button>
+        <button type="button" data-mode="fleece" class="mode-card"><span class="mode-ico">🐏</span><strong>Golden Fleece</strong><small>2 người · Tranh năng lực</small></button>
+      </div>
+      <div class="mode-description" id="modeDescription">⚡ God Powers — Mỗi người sở hữu một thần riêng, di chuyển và xây dựng để giành chiến thắng.</div>
+      <div class="mode-disclaimer">Classic / 3 người / 4 người theo luật truyền thống; Golden Fleece theo biến thể cổ điển. Agora dùng quy tắc xoay thần được điều chỉnh cho phiên bản online.</div>
+    </div>
     <div class="bot-entry"><div class="bot-entry-head"><div><strong>⚡ Đấu BOT · 2–4 người</strong><small>Chọn 1, 2 hoặc 3 BOT, không cần chờ người thật</small></div><span class="bot-mark">AI BOT</span></div>
     <div class="bot-entry-controls"><label for="botCountSelect" class="sr-only">Số người chơi cùng BOT</label><select id="botCountSelect" aria-label="Tổng số người bao gồm BOT"><option value="2">1 + 1 BOT</option><option value="3">1 + 2 BOT</option><option value="4">1 + 3 BOT</option></select><label for="difficultySelect" class="sr-only">Độ khó BOT</label><select id="difficultySelect" aria-label="Độ khó BOT"><option value="easy">Dễ · Làm quen</option><option value="normal" selected>Vừa · Tính trọn lượt</option><option value="hard">Khó · Dự đoán phản đòn</option></select><button id="demoBtn" class="primary">Đấu BOT ▶</button></div></div>
     <div class="divider-text">HOẶC CHƠI VỚI BẠN BÈ</div>
-    <div class="ruleset-control"><label class="ruleset-option"><input type="radio" name="ruleset" value="classic" checked> Classic</label><label class="ruleset-option"><input type="radio" name="ruleset" value="god"> ⚡ God Powers</label></div>
-    <div class="participant-row"><label for="teamSize">Số người chơi</label><select id="teamSize"><option value="2">2 người · Đối kháng</option><option value="3">3 người · Độc lập (God Powers)</option><option value="4">4 người · Đội 2 đấu 2 (God Powers)</option></select></div>
+    <div class="ruleset-control legacy-options" aria-hidden="true"><label class="ruleset-option"><input type="radio" name="ruleset" value="classic" checked> Classic</label><label class="ruleset-option"><input type="radio" name="ruleset" value="god"> ⚡ God Powers</label></div>
+    <div class="participant-row legacy-options" aria-hidden="true"><label for="teamSize">Số người chơi</label><select id="teamSize"><option value="2">2 người · Đối kháng</option><option value="3">3 người · Độc lập (God Powers)</option><option value="4">4 người · Đội 2 đấu 2 (God Powers)</option></select></div>
     <button id="createBtn" class="secondary online-create">⚔ Tạo phòng ↗</button>
     <div class="divider-text">THAM GIA PHÒNG ĐÃ CÓ</div>
     <div class="join-row"><input id="codeInput" maxlength="10" autocomplete="off" placeholder="MÃ PHÒNG"><button id="joinBtn" class="secondary">Tham gia</button><button id="watchBtn" class="mini" title="Xem phòng với vai trò khán giả">Xem</button></div>
@@ -52,13 +66,13 @@
   </div>
 </section>
 <section class="game hidden" id="game">
-  <div class="game-top"><div class="room-tag"><span class="live-dot" id="liveDot"></span><span id="gameMode">PHÒNG</span> <strong id="roomCode"></strong><button class="copy-btn" id="copyBtn">Chia sẻ</button></div><span class="connection" id="connection">Đang kết nối…</span><span class="match-quick" id="scoreChip">Thắng 0–0</span><span class="match-quick" id="watcherChip">👁 0</span></div>
+  <div class="game-top"><div class="room-tag"><span class="live-dot" id="liveDot"></span><span id="gameMode">PHÒNG</span> <strong id="roomCode"></strong><button class="copy-btn" id="copyBtn">Chia sẻ</button></div><span class="mode-live" id="modeLive" title="Chế độ hiện tại">⚡ GOD POWERS</span><span class="connection" id="connection">Đang kết nối…</span><span class="match-quick" id="scoreChip">Thắng 0–0</span><span class="match-quick" id="watcherChip">👁 0</span></div>
   <div class="players">
     <div class="player p0" id="player0"><span class="avatar blue">♟</span><div class="player-info"><small id="teamLabel0">NGƯỜI CHƠI 01</small><b id="name0">Đang chờ…</b></div><span class="turn-dot"></span></div>
     <div class="vs">VS</div>
     <div class="player p2 hidden" id="player2"><span class="avatar violet">♟</span><div class="player-info"><small id="teamLabel2">NGƯỜI CHƠI 03</small><b id="name2">Đang chờ…</b></div><span class="turn-dot"></span></div><div class="player p1" id="player1"><span class="avatar coral">♟</span><div class="player-info"><small id="teamLabel1">NGƯỜI CHƠI 02</small><b id="name1">Đang chờ…</b></div><span class="turn-dot"></span></div>
   </div>
-  <div class="board-stage"><div class="stage-label">ĐẢO SANTORINI · XOAY BÀN • ZOOM • CHẠM ĐỂ CHƠI</div><div class="stage3d" id="scene3d"><div class="loading-3d">Đang dựng đảo Santorini 3D…</div></div><div class="water" id="boardFallback"><div class="island"><div class="board" id="board" role="grid" aria-label="Bàn Santorini 5 nhân 5"></div></div></div></div>
+  <div class="board-stage"><div id="ramMarker2d" class="ram-marker hidden" aria-label="Vị trí tượng Cừu Vàng"></div><div class="stage-label">ĐẢO SANTORINI · XOAY BÀN • ZOOM • CHẠM ĐỂ CHƠI</div><div class="stage3d" id="scene3d"><div class="loading-3d">Đang dựng đảo Santorini 3D…</div></div><div class="water" id="boardFallback"><div class="island"><div class="board" id="board" role="grid" aria-label="Bàn Santorini 5 nhân 5"></div></div></div></div>
   <div class="god-info power-center hidden" id="godInfo">
     <div class="god-roster" id="godRoster" aria-label="Các vị thần trong trận"></div>
     <div class="power-spotlight" id="powerSpotlight" aria-live="polite">
