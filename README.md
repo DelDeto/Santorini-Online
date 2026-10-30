@@ -96,3 +96,30 @@ Kiểm tra local: `npm test && npm run smoke`. Three.js và RoundedBoxGeometry t
 - Kiểm tra bằng `npm test && npm run smoke`; CI xác nhận Classic/BOT và draft God Powers không bị thay đổi.
 
 Lưu ý: Hiệu ứng bloom tăng tải GPU. Trên điện thoại yếu nên để **Auto/Eco**, và 3D có thể trở lại fallback 2D khi browser không hỗ trợ WebGL. Đây là bản dựng miniature bằng Three.js chứ không phải mesh quét thật từ hiện vật.
+
+
+## V0.6 → V0.7 → V0.8 — Gameplay and social multiplayer
+
+### V0.6 · Stability, legal moves and room management
+- Fix Hermes: cho phép di chuyển qua ô cùng cao độ dù ô đó chưa có vị trí xây.
+- Người chơi **Thoát phòng** gửi hành động `leave`: ghế được giải phóng; nếu trận đang diễn ra, đội còn lại thắng xử thua.
+- Giữ ghế qua sự cố ngắt kết nối ngắn để người chơi có thể refresh và tiếp tục bằng token cũ; rời phòng chủ động mới giải phóng ghế.
+- Tự động chọn quân nếu lượt chỉ có một quân có thể di chuyển; giảm thao tác trên màn hình cảm ứng.
+- Tối ưu WebGL: tự giảm nhịp render khi không có chuyển động, tạm dừng khi tab ẩn.
+
+### V0.7 · God Powers bot
+- Solo BOT có thể chọn **God Powers** trên màn hình bắt đầu và phản ứng qua các pha kỹ năng phụ.
+- BOT sử dụng các hành động hợp lệ do server tạo, xem xét cao độ, nguy cơ thắng của đối phương và vị trí xây.
+- BOT 3 cấp: Dễ chọn ngẫu nhiên, Vừa cân bằng, Khó chú trọng phòng thủ; kiểm thử riêng từng God.
+- Không cam kết BOT mạnh tương đương công cụ tìm kiếm nước đi nhiều tầng (minimax sâu); đây là heuristic an toàn.
+
+### V0.8 · Team multiplayer, spectator & room stats
+- Chọn **2 người (1vs1)**, **3 người (đội 2vs1)** hoặc **4 người (đội 2vs2)** ngay ở lobby.
+- Với 3–4 người, game hiện dùng biến thể **hai đội**: mỗi thành viên đội 2 người điều khiển **một quân**, người chơi đơn trong đội 1 người điều khiển **hai quân**. Lượt xen kẽ theo đội và từng thành viên. Đây **không phải luật 3 người tự do**; God Powers chỉ áp dụng cho 1vs1.
+- Người vào phòng có thể chọn **Xem** (khán giả, không tham gia thao tác); khi phòng đủ người, người vào sau tự thành khán giả.
+- Hiển thị số khán giả, tỷ số thắng đội, tổng trận và 12 hành động gần nhất; lịch sử và điểm số thuộc phạm vi phòng chơi đó.
+- Khi thành viên đến lượt bị khóa hết hành động, đội thua để không mắc kẹt.
+- Hệ thống tái đấu giữ điểm tổng; làm mới lượt setup và giai đoạn chọn thần khi cần.
+- Không tự động chuyển người chơi mất mạng thành khán giả để tránh mất ghế oan; nếu muốn nhường ghế phải bấm Thoát phòng.
+
+Kiểm thử: `npm test` và `npm run smoke`, bao gồm thử God Power BOT, 3 người, 4 người, khán giả, rời phòng và WebSocket multiplayer.
