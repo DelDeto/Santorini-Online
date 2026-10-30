@@ -57,6 +57,7 @@ export function createBoard3D(container,onCell){
  }
  function tower(group,row,col,h,isDome){
   const {x,z}=tileAt(row,col);
+  const towerGroup=new THREE.Group();towerGroup.userData={row,col};group.add(towerGroup);group=towerGroup;
   for(let level=0;level<Math.min(3,h);level++){
    const base=.34+level*.49;
    const box=cube(.89,.42,.89,stone,x,base+.22,z,group);
@@ -125,8 +126,12 @@ export function createBoard3D(container,onCell){
   const rect=renderer.domElement.getBoundingClientRect();
   const pos=new THREE.Vector2((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);
   const raycaster=new THREE.Raycaster();raycaster.setFromCamera(pos,camera);
-  const hits=raycaster.intersectObjects(tiles,false);
-  if(hits.length){const {row,col}=hits[0].object.userData;onCell(row,col);}
+  const hits=raycaster.intersectObjects([...tiles,...pieces.children],true);
+  for(const hit of hits){
+   let obj=hit.object;
+   while(obj&&!Number.isInteger(obj.userData?.row))obj=obj.parent;
+   if(obj){onCell(obj.userData.row,obj.userData.col);break;}
+  }
  }
  let down=null;
  renderer.domElement.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY};});
