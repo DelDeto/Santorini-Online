@@ -51,7 +51,8 @@ function legalMoveDetails(g,p,i){
   }
   const projected=movedCopy(g,p,i,dest,blocker?{...blocker,forced}:null);
   const wins=(h===3&&before<3)||(power==='pan'&&before-h>=2);
-  if(!wins&&!legalBuilds(projected,dest).length)continue;
+  // Hermes may traverse an intermediate same-level square even when it is not a final build position.
+  if(!wins&&!legalBuilds(projected,dest).length&&!(power==='hermes'&&h===before))continue;
   out.push({row,col,worker:i,...(special?{special}:{}),...(wins?{wins:true}:{})});
  }
  return out;
