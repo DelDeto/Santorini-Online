@@ -44,7 +44,8 @@ test('Hard BOT Atlas domes enemy winning tower when it can',()=>{
  const action=chooseBotAction(g,'hard');
  assert.equal(action.type,'build');
  assert.equal(action.row,1);assert.equal(action.col,1);
- assert.equal(action.dome,true);
+ applyAction(g,1,action);
+ assert.equal(g.board[1][1],4);
 });
 test('Hard BOT does not hand opponent an immediate third-floor win',()=>{
  const g=ready('classic');g.phase='build';g.selected=0;
@@ -67,7 +68,9 @@ test('Three-player FFA BOT sees and prevents the next player winning immediately
  assert.ok(candidates.some(a=>a.type==='build'&&a.dome&&a.row===2&&a.col===4));
  const action=chooseMultiplayerBotAction(g,'hard',1,candidates);
  // Player 2 may act after player 1, so a dome on level 3 is a strong defense.
- assert.equal(action.row,2);assert.equal(action.col,4);assert.equal(action.dome,true);
+ assert.equal(action.row,2);assert.equal(action.col,4);
+ applyAction(g,1,action);
+ assert.equal(g.board[2][4],4);
 });
 test('Hard BOT handles Hermes late-phase safely without looping',()=>{
  const g=ready('god');g.gods[1]='hermes';
