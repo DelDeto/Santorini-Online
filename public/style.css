@@ -323,3 +323,26 @@ body{overflow-x:hidden}
  .power-detail-card{padding:10px}
 }
 @media(max-height:640px){.power-center{min-height:53px}.power-spotlight #powerUseHint{-webkit-line-clamp:1}.powers-panel{max-height:95dvh}}
+
+
+/* V1.3 — 30 God Powers, accessible draft modal on narrow/mobile screens */
+.god-panel{display:flex;flex-direction:column;overflow:hidden!important;max-height:90dvh}
+.god-filter{display:flex;align-items:center;gap:8px;flex:none;font-size:11px;color:#c2e5e8;margin:2px 0 8px}
+.god-filter select{background:#17445f;color:#f0fff9;border:1px solid #86c8cc;border-radius:8px;padding:7px;font-weight:800}
+.god-filter span{margin-left:auto;font-size:10px;max-width:200px}
+.god-cards{overflow-y:auto;overscroll-behavior:contain;min-height:80px;padding:2px 4px 9px;scrollbar-width:thin}
+.god-card.advanced{background:linear-gradient(150deg,#3a3f76,#1e3659);border-color:#c2a2e568}
+.god-card.unavailable{opacity:.4;filter:grayscale(.7)}
+.god-card .type-tag{font-size:9px;letter-spacing:.2px;color:#e5d2a1;font-weight:800}
+.advanced-actions{display:flex;align-items:center;gap:4px}
+.advanced-actions button{background:#2b6473;color:#f5fffe;font-size:10px;padding:7px}
+@media(max-width:650px){
+ .god-panel{max-height:94dvh!important;padding:12px!important}
+ .god-cards{grid-template-columns:repeat(2,minmax(0,1fr));overflow-y:auto;max-height:none}
+ .god-filter{flex-wrap:wrap;font-size:10px}
+ .god-filter span{max-width:unset;margin-left:0;width:100%}
+ .god-card{min-height:95px;padding:7px}
+ .god-card strong{font-size:11px}
+ .god-card small{font-size:9px}
+ .advanced-actions button{padding:5px;font-size:9px}
+}
