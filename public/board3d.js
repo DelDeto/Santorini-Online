@@ -70,16 +70,35 @@ export function createBoard3D(container,onCell){
  function cube(w,h,d,material,x,y,z,parent=scene){return mesh(cached('rounded:'+w+':'+h+':'+d,()=>new RoundedBoxGeometry(w,h,d,3,Math.min(.06,w/5,h/5,d/5))),material,x,y,z,parent);}
  const seaGeometry=new THREE.PlaneGeometry(100,100,48,48);
  const seaMaterial=new THREE.ShaderMaterial({
-  uniforms:{time:{value:0},deep:{value:new THREE.Color('#086982')},light:{value:new THREE.Color('#3bbdc6')}},
-  vertexShader:['uniform float time;','varying vec3 vWorld;',
-   'void main(){vec3 p=position;','p.z += .06*sin(p.x*1.08+time*.55)*cos(p.y*1.4-time*.3);',
-   'vec4 w=modelMatrix*vec4(p,1.0);vWorld=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}'].join('\n'),
-  fragmentShader:['uniform float time;uniform vec3 deep,light;','varying vec3 vWorld;',
-   'void main(){float a=sin(vWorld.x*2.1+time*.5)*cos(vWorld.z*2.5-time*.36);',
-   'float coast=1.-smoothstep(3.0,8.0,length(vWorld.xz));',
-   'vec3 col=mix(deep,light,clamp(.21+coast*.51+a*.07,0.,1.));',
-   'float sparkle=pow(max(0.,sin(vWorld.x*7.0+time)*sin(vWorld.z*5.2-time*.7)),18.);',
-   'gl_FragColor=vec4(col+vec3(.14,.22,.23)*sparkle,1.0);}'].join('\n')
+  uniforms:{time:{value:0},deep:{value:new THREE.Color('#055974')},light:{value:new THREE.Color('#38c9cc')},foam:{value:new THREE.Color('#a8ebdb')}},
+  vertexShader:[
+    'uniform float time;varying vec3 vWorld;varying float vWave;',
+    'void main(){vec3 p=position;',
+    'float w1=sin(p.x*1.08+time*.49)*cos(p.y*1.36-time*.32);',
+    'float w2=sin(p.x*2.7-p.y*2.1+time*.80)*.35;',
+    'p.z+=.064*w1+.025*w2;vWave=w1;',
+    'vec4 w=modelMatrix*vec4(p,1.0);vWorld=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}'
+  ].join('\n'),
+  fragmentShader:[
+    'uniform float time;uniform vec3 deep,light,foam;',
+    'varying vec3 vWorld;varying float vWave;',
+    'float wave(vec2 p,float t){return sin(p.x*1.52+t*.44)*sin(p.y*1.78-t*.36);}',
+    'void main(){',
+    'float dist=length(vWorld.xz);',
+    'float shallows=1.-smoothstep(3.1,8.0,dist);',
+    'float big=wave(vWorld.xz,time);',
+    'float tiny=sin(vWorld.x*9.4+vWorld.z*3.6+time*.75)*sin(vWorld.z*8.1-time*.66);',
+    'vec3 color=mix(deep,light,clamp(.19+shallows*.58+big*.071+tiny*.022,0.,1.));',
+    'float glint=pow(max(0.,sin(vWorld.x*5.3+time*.42)*sin(vWorld.z*6.9-time*.57)),19.);',
+    'color+=vec3(.29,.41,.39)*glint*.47;',
+    'float coast=(1.-smoothstep(.10,.36,abs(dist-(3.88+vWave*.045))));',
+    'float broken=sin(atan(vWorld.z,vWorld.x)*22.3+time*.22)*.19+.81;',
+    'color=mix(color,foam,coast*broken*.23);',
+    'float caustic=pow(max(0.,sin(vWorld.x*5.2+time*.38)+sin(vWorld.z*6.5-time*.29)),4.)/16.;',
+    'color+=vec3(.10,.20,.15)*caustic*shallows*.35;',
+    'gl_FragColor=vec4(color,1.);',
+    '}'
+  ].join('\n')
  });
  const seaPlane=mesh(seaGeometry,seaMaterial,0,-.94,0);seaPlane.rotation.x=-Math.PI/2;seaPlane.castShadow=false;seaPlane.receiveShadow=false;
  const premium=createPremiumEnvironment({scene,camera,renderer,container,sun,seaMaterial,mobile});
