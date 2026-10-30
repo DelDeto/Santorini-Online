@@ -157,7 +157,7 @@ export function legalActions(g,p=g.turn){
  if(g.winner!==null||p!==g.turn)return [];
  if(g.phase==='fleecePick')return SIMPLE_GODS.filter(id=>validGodFor(id,2)).map(god=>({type:'selectGod',god}));
  if(g.phase==='ramPlace')return Array.from({length:5},(_,row)=>Array.from({length:5},(_,col)=>free(g,row,col)?{type:'placeRam',row,col}:null)).flat().filter(Boolean);
- if(g.phase==='godpick')return Object.keys(GODS).filter(id=>validGodFor(id,g.capacity||g.workers.length,g.gods.filter(Boolean))).map(id=>({type:'selectGod',god:id}));
+ if(g.phase==='godpick')return Object.keys(GODS).filter(id=>(g.modeId!=='agora'||SIMPLE_GODS.includes(id))&&validGodFor(id,g.capacity||g.workers.length,g.gods.filter(Boolean))).map(id=>({type:'selectGod',god:id}));
  if(g.phase==='place'){const out=[];
  for(let row=0;row<5;row++)for(let col=0;col<5;col++)if(free(g,row,col)){
   if((g.gods[p]==='eros'||g.advanced?.setupEros?.includes(p))&&(!isEdge(row,col)||(g.workers[p].length===1&&!isOppositeEdge(g.workers[p][0],{row,col}))))continue;
@@ -273,7 +273,8 @@ function advance(g,p){
  for(let k=0;k<count;k++){
   if(g.eliminated?.[next]){next=(next+1)%count;continue;}
   if(count===3&&g.athenaBlocked===next)g.athenaBlocked=null;
-  const trial={...g,phase:'move',turn:next,ctx:{}};
+  const fleeceEligible=g.modeId==='fleece'&&g.ram&&g.workers[next].some(w=>near(w,g.ram));
+  const trial={...g,phase:'move',turn:next,ctx:g.modeId==='fleece'?{fleeceActive:fleeceEligible?next:null}:{}};
   if(canTakeTurn(trial,next)){g.turn=next;g.phase='move';g.selected=null;if(g.capacity!==4)beginAdvancedTurn(g,next);return;}
   if(count===2){
    g.winner=p;g.phase='ended';g.lastAction='Đối thủ không thể di chuyển. Người chơi '+(p+1)+' chiến thắng!';return;
