@@ -37,7 +37,7 @@ function legalMoveDetails(g,p,i){
  for(let col=Math.max(0,from.col-1);col<=Math.min(4,from.col+1);col++){
   const dest={row,col};if(!near(from,dest))continue;
   const h=g.board[row][col];if(h===4||h>before+1)continue;
-  if(((g.athenaBlocked!==null&&g.athenaBlocked!==p)||g.ctx?.prometheusUsed)&&h>before)continue;
+  if(((g.workers.length===2?g.athenaBlocked===p:(g.athenaBlocked!==null&&g.athenaBlocked!==p))||g.ctx?.prometheusUsed)&&h>before)continue;
   if(g.phase==='hermesMove'&&h!==before)continue;
   if(g.phase==='extraMove'&&eq(dest,g.ctx?.origin))continue;
   const blocker=pawnAt(g,row,col);let special=null,forced=null;
@@ -118,7 +118,7 @@ function advance(g,p){
  for(let k=0;k<count;k++){
   if(g.eliminated?.[next]){next=(next+1)%count;continue;}
   // Athena's power expires when its owner takes their next turn.
-  if(g.athenaBlocked===next)g.athenaBlocked=null;
+  if(count===3&&g.athenaBlocked===next)g.athenaBlocked=null;
   const trial={...g,phase:'move',turn:next,ctx:{}};
   if(canTakeTurn(trial,next)){g.turn=next;g.phase='move';g.selected=null;return;}
   if(count===2){
@@ -136,6 +136,7 @@ function advance(g,p){
  throw Error('Không thể xác định người chơi tiếp theo.');
 }
 function endTurn(g,p){
+ if(g.workers.length===2&&g.athenaBlocked===p)g.athenaBlocked=null;
  g.ctx={};g.phase='move';g.selected=null;
  advance(g,p);
 }
@@ -175,7 +176,7 @@ export function applyAction(g,p,a){
    g.winner=p;g.phase='ended';g.selected=null;
    g.lastAction=power==='pan'&&before-after>=2?'Pan chiến thắng nhờ hạ xuống ít nhất hai tầng!':'Người chơi '+(p+1)+' leo lên tầng 3 và chiến thắng!';
   }else{
-   if(power==='athena'&&after>before)g.athenaBlocked=p;
+   if(power==='athena'&&after>before)g.athenaBlocked=g.workers.length===2?1-p:p;
    if(power==='artemis'&&g.phase==='move'){
     g.ctx={origin:{...from}};g.selected=a.worker;g.phase='extraMove';
     g.lastAction='Artemis có thể di chuyển thêm một lần hoặc bỏ qua.';
