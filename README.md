@@ -68,3 +68,16 @@ Vào trang chủ, nhập tên, chọn độ khó và bấm **Đấu BOT**. BOT �
 - `scripts/smoke.mjs`: kiểm thử multiplayer God Powers và Solo BOT qua WebSocket.
 
 Giới hạn: Hermes cho phép đi ngang nhiều lần / không đi và chọn quân xây; các bước đi ngang trung gian trong bản hiện tại vẫn yêu cầu còn ô xây hợp lệ. God Powers chưa có BOT AI riêng; mô hình tượng 3D là procedural, chưa sculpt chi tiết như sản phẩm vật lý.
+
+
+## V0.4 — Sculpted Island Edition
+
+- Mô hình kiến trúc mini 3D bo góc: cột, cửa vòm, chớp xanh, lan can, gờ chỉ, mái vòm có viền kim loại.
+- Quân cờ là tượng điêu khắc procedural với áo choàng tạo nếp, tay, đầu, tóc, vòng nguyệt quế, đế tượng; hai quân một đội có phụ kiện khác nhau.
+- Môi trường biển Địa Trung Hải: bề mặt nước chuyển động bằng GPU shader, đảo vách đá vôi bất quy tắc, ô cờ lát đá, cây olive, gốm, đá cuội và viền sóng.
+- Bóng đổ mềm, ánh sáng ban ngày, phối màu limestone/cobalt/sea teal, camera tự căn khung ở điện thoại và PC.
+- Đã tối ưu cập nhật cảnh theo `game.revision`: chỉ thay công trình nếu tầng thay đổi; quân cờ giữ lại giữa các thao tác; click xuyên qua mô hình bằng raycast.
+- Luật chơi Classic, Solo BOT, God Powers và WebSocket server được giữ nguyên.
+- Các mô hình là điêu khắc từ hình học Three.js, chưa phải asset điêu khắc Blender/photogrammetry có texture PBR quét từ thực tế.
+
+Kiểm tra local: `npm test && npm run smoke`. Three.js và RoundedBoxGeometry tải từ CDN jsDelivr phiên bản ghim tại `public/index.html`; fallback 2D tiếp tục hoạt động nếu WebGL không sẵn sàng.
