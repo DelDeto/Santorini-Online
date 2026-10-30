@@ -19,7 +19,7 @@ async function until(fn,timeout=16000){
   throw Error('Timed out: '+output.slice(-2200));
 }
 async function connect(code,name,mode){
-  const path='/ws?room='+code+'&token='+token()+'&name='+encodeURIComponent(name)+(mode==='bot'?'&mode=bot&difficulty=normal':mode==='god'?'&ruleset=god':mode==='botgod'?'&mode=bot&difficulty=normal&ruleset=god':mode==='3'?'&players=3':mode==='4'?'&players=4':mode==='watch'?'&spectate=1':'');
+  const path='/ws?room='+code+'&token='+token()+'&name='+encodeURIComponent(name)+(mode==='bot3'?'&mode=bot&difficulty=normal&players=3&ruleset=god':mode==='bot4'?'&mode=bot&difficulty=normal&players=4&ruleset=god':mode==='god'?'&ruleset=god':mode==='botgod'?'&mode=bot&difficulty=normal&ruleset=god':mode==='3'?'&players=3':mode==='4'?'&players=4':mode==='watch'?'&spectate=1':'');
   const ws=new WebSocket('ws://127.0.0.1:'+PORT+path);sockets.push(ws);
   const inbox=[];
   ws.addEventListener('message',e=>{try{inbox.push(JSON.parse(e.data));}catch{}});
@@ -37,7 +37,7 @@ try{
     try{const res=await fetch(base+'/api/health');if(res.ok){health=await res.json();break;}}catch{}
     await delay(300);
   }
-  assert.equal(health?.version,'0.9.0','server should boot with V0.9');
+  assert.equal(health?.version,'1.0.0','server should boot with V1.0');
   const html=await (await fetch(base)).text();
   assert.match(html,/id="demoBtn"/);
   const og=await fetch(base+'/og.png');
@@ -167,6 +167,58 @@ try{
   assert.deepEqual(threeReady.game.workers.map(a=>a.length),[2,2,2]);
   assert.deepEqual(threeReady.game.gods,['apollo','pan','atlas']);
   assert.deepEqual(threeReady.players.map(x=>x.team),[0,1,2]);
+
+  // V1.0: one human + two BOTs, all three individually choose God Powers.
+  const solo3=await connect(room(),'Solo 3P Tester','bot3');
+  assert.equal(solo3.hello.view.capacity,3);
+  assert.deepEqual(solo3.hello.view.players.map(p=>p.bot),[false,true,true]);
+  solo3.ws.send(JSON.stringify({type:'selectGod',god:'apollo'}));
+  const gods3=await solo3.until(v=>v.game.phase==='place'&&v.game.gods.every(Boolean),20000);
+  assert.equal(new Set(gods3.game.gods).size,3);
+  solo3.ws.send(JSON.stringify({type:'place',row:0,col:0}));
+  await solo3.until(v=>v.game.workers[0].length===1);
+  solo3.ws.send(JSON.stringify({type:'place',row:0,col:1}));
+  const start3=await solo3.until(v=>v.game.phase==='move'&&v.game.workers.every(a=>a.length===2),25000);
+  assert.equal(start3.activeSeat,0);
+  assert.equal(start3.game.workers.length,3);
+  // One human turn then both independent bots take their actions.
+  const firstMove=start3.legalActions.find(a=>a.type==='move');
+  assert.ok(firstMove);
+  solo3.ws.send(JSON.stringify({type:'move',worker:firstMove.worker,row:firstMove.row,col:firstMove.col}));
+  const building3=await solo3.until(v=>v.game.phase==='build');
+  const firstBuild=building3.legalActions.find(a=>a.type==='build');
+  assert.ok(firstBuild);
+  solo3.ws.send(JSON.stringify({type:'build',row:firstBuild.row,col:firstBuild.col}));
+  const next3=await solo3.until(v=>v.game.turn===1&&v.game.phase==='move');
+  const botRound3=await solo3.until(v=>v.game.turn===0&&v.game.revision>next3.game.revision+1||v.game.phase==='ended',25000);
+  assert.ok(botRound3.game.turn===0||botRound3.game.phase==='ended');
+
+  // V1.0: one human + three BOTs, individual God selection and 2v2 turn order.
+  const solo4=await connect(room(),'Solo 4P Tester','bot4');
+  assert.equal(solo4.hello.view.capacity,4);
+  assert.deepEqual(solo4.hello.view.players.map(p=>p.bot),[false,true,true,true]);
+  solo4.ws.send(JSON.stringify({type:'selectGod',god:'apollo'}));
+  const gods4=await solo4.until(v=>v.game.phase==='place'&&v.seatGods?.every(Boolean),25000);
+  assert.equal(new Set(gods4.seatGods).size,4);
+  solo4.ws.send(JSON.stringify({type:'place',row:0,col:0}));
+  await solo4.until(v=>v.game.workers[0].length===1);
+  solo4.ws.send(JSON.stringify({type:'place',row:0,col:1}));
+  const mid4=await solo4.until(v=>v.game.phase==='move'&&v.game.workers[1].length===2&&v.activeSeat===2,18000);
+  assert.equal(mid4.game.gods[0],mid4.seatGods[2]);
+  const reachedHuman=await solo4.until(v=>v.activeSeat===0&&v.game.phase==='move'||v.game.phase==='ended',30000);
+  assert.ok(reachedHuman.game.phase==='ended'||reachedHuman.activeSeat===0);
+  assert.ok(reachedHuman.history.some(e=>e.seat===2));
+  assert.ok(reachedHuman.history.some(e=>e.seat===3));
+
+  // Hybrid match: two humans can fill the third seat with one bot.
+  const hybridRoom=room();
+  const hostHybrid=await connect(hybridRoom,'Hybrid host','3');
+  const guestHybrid=await connect(hybridRoom,'Hybrid guest','online');
+  assert.equal(hostHybrid.hello.seat,0);
+  hostHybrid.ws.send(JSON.stringify({type:'fillBots',difficulty:'normal'}));
+  const hybridReady=await guestHybrid.until(v=>v.ready&&v.players[2].bot);
+  assert.equal(hybridReady.mode,'hybrid');
+
   // Leaving a room before game setup releases the seat.
   const exitRoom=room();
   const leaver=await connect(exitRoom,'First guest','online');
