@@ -78,7 +78,7 @@ export class SantoriniRoom extends DurableObject{
  const r=this.room;
  if(capacity(r)!==4||r.game.phase==='ended')return;
  if(previousPhase==='place'&&r.game.phase==='move'){
-  r.activeSeat=2;r.game.gods[0]=r.seatGods[2];r.game.gods[1]=r.seatGods[3];beginAdvancedTurn(r.game,r.game.turn);return;
+  r.activeSeat=r.game.turn===1?3:2;r.game.gods[0]=r.seatGods[2];r.game.gods[1]=r.seatGods[3];beginAdvancedTurn(r.game,r.game.turn);return;
  }
  if(r.game.phase==='place'||r.game.phase==='godpick')return;
  if(r.game.turn!==previousTurn){
@@ -211,6 +211,7 @@ record(action,seat,oldWinner,oldRevision){
      r.game.turn=biaIndex===-1?0:team(biaIndex);
      r.game.ctx={startSeat:r.game.turn};
      r.game.advanced.setupEros=[0,1].filter(teamId=>r.seatGods.some((id,seat)=>team(seat)===teamId&&id==='eros'));
+     r.game.advanced.allSelected=r.seatGods.slice();
      r.game.gods=[r.seatGods[0],r.seatGods[1]];
     }
    }else{
@@ -254,6 +255,7 @@ record(action,seat,oldWinner,oldRevision){
     r.game.turn=biaIndex===-1?0:team(biaIndex);
     r.game.ctx={startSeat:r.game.turn};
     r.game.advanced.setupEros=[0,1].filter(teamId=>r.seatGods.some((id,seat)=>team(seat)===teamId&&id==='eros'));
+     r.game.advanced.allSelected=r.seatGods.slice();
     r.game.gods=[r.seatGods[0],r.seatGods[1]];
    }
   }else{
