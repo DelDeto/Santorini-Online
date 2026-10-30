@@ -4,23 +4,43 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#09263b">
-  <meta name="description" content="Santorini Online - boardgame chiến thuật 5×5, chơi cùng bạn bè.">
-  <title>Santorini Online · V0.1</title>
+  <meta name="description" content="Santorini Online V0.2: đấu BOT 3 độ khó hoặc thách đấu bạn bè. Chơi trực tiếp trên PC và điện thoại.">
+  <title>Santorini Online V0.2 | Chơi với BOT & Bạn bè</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="canonical" href="https://santorini-online-v01.duc-nguyen-ndd127.workers.dev/">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="vi_VN">
+  <meta property="og:site_name" content="Santorini Online">
+  <meta property="og:title" content="SANTORINI ONLINE · SOLO BOT & MULTIPLAYER">
+  <meta property="og:description" content="Xây thành phố Hy Lạp, chinh phục tầng ba. Chơi với BOT hoặc mời bạn bè, miễn phí trên điện thoại và PC.">
+  <meta property="og:url" content="https://santorini-online-v01.duc-nguyen-ndd127.workers.dev/">
+  <meta property="og:image" content="https://santorini-online-v01.duc-nguyen-ndd127.workers.dev/og.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Santorini Online · Chơi với BOT hoặc bạn bè">
+  <meta name="twitter:description" content="Boardgame chiến thuật 5×5, chơi ngay không cần đăng ký.">
+  <meta name="twitter:image" content="https://santorini-online-v01.duc-nguyen-ndd127.workers.dev/og.png">
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
-<header class="topbar"><div class="brand">♜ SANTORINI <small>ONLINE</small></div><div class="header-right"><span class="version">V0.1 · MULTIPLAYER</span><button class="mini hidden" id="exitBtn">Thoát phòng</button></div></header>
+<header class="topbar"><div class="brand">♜ SANTORINI <small>ONLINE</small></div><div class="header-right"><span class="version">V0.2 · SOLO & ONLINE</span><button class="mini hidden" id="exitBtn">Thoát phòng</button></div></header>
 <main>
 <section class="landing" id="landing">
   <div class="intro"><div class="eyebrow">THE ISLAND OF STRATEGY</div><h1>Xây dựng thành phố.<br><em>Chinh phục tầng ba.</em></h1><p>Mỗi lượt chỉ cần di chuyển và xây dựng. Một nước đi có thể thay đổi cả trận đấu.</p></div>
   <div class="entry">
     <label for="nameInput">Tên hiển thị</label>
     <input id="nameInput" maxlength="24" autocomplete="nickname" placeholder="Nhập tên của bạn">
-    <button id="createBtn" class="primary">Tạo phòng chơi mới ↗</button>
-    <div class="divider-text">HOẶC THAM GIA BẰNG MÃ</div>
+    <div class="bot-entry"><div class="bot-entry-head"><div><strong>⚡ Solo Demo</strong><small>Chơi ngay với BOT · Không cần chờ người khác</small></div><span class="bot-mark">AI BOT</span></div>
+    <div class="bot-entry-controls"><label for="difficultySelect" class="sr-only">Độ khó BOT</label><select id="difficultySelect" aria-label="Độ khó BOT"><option value="easy">Dễ · Làm quen</option><option value="normal" selected>Vừa · Chiến thuật</option><option value="hard">Khó · Thử thách</option></select><button id="demoBtn" class="primary">Đấu BOT ▶</button></div></div>
+    <div class="divider-text">HOẶC CHƠI VỚI BẠN BÈ</div>
+    <button id="createBtn" class="secondary online-create">⚔ Tạo phòng 2 người ↗</button>
+    <div class="divider-text">THAM GIA PHÒNG ĐÃ CÓ</div>
     <div class="join-row"><input id="codeInput" maxlength="10" autocomplete="off" placeholder="MÃ PHÒNG"><button id="joinBtn" class="secondary">Tham gia</button></div>
-    <p class="small-note">2 người chơi trực tuyến · Không cần đăng ký</p>
+    <p class="small-note">Solo BOT hoặc multiplayer · Không cần đăng ký</p>
   </div>
   <div class="howto">
     <div><b>01</b><span>Đặt 2 quân trên bàn 5×5</span></div>
@@ -29,15 +49,15 @@
   </div>
 </section>
 <section class="game hidden" id="game">
-  <div class="game-top"><div class="room-tag"><span class="live-dot" id="liveDot"></span>PHÒNG <strong id="roomCode"></strong><button class="copy-btn" id="copyBtn">Sao chép link</button></div><span class="connection" id="connection">Đang kết nối…</span></div>
+  <div class="game-top"><div class="room-tag"><span class="live-dot" id="liveDot"></span><span id="gameMode">PHÒNG</span> <strong id="roomCode"></strong><button class="copy-btn" id="copyBtn">Chia sẻ</button></div><span class="connection" id="connection">Đang kết nối…</span></div>
   <div class="players">
     <div class="player p0" id="player0"><span class="avatar blue">♟</span><div class="player-info"><small>NGƯỜI CHƠI 01</small><b id="name0">Đang chờ…</b></div><span class="turn-dot"></span></div>
     <div class="vs">VS</div>
     <div class="player p1" id="player1"><span class="avatar coral">♟</span><div class="player-info"><small>NGƯỜI CHƠI 02</small><b id="name1">Đang chờ…</b></div><span class="turn-dot"></span></div>
   </div>
-  <div class="board-stage"><div class="water"><div class="island"><div class="board" id="board" role="grid" aria-label="Bàn Santorini 5 nhân 5"></div></div></div></div>
-  <div class="action-bar"><div class="action-text"><strong id="phaseLabel">Đang tải…</strong><span id="hint">Đồng bộ bàn chơi</span></div><button class="secondary hidden" id="restartBtn">Chơi lại ↻</button></div>
-  <div class="game-bottom"><span id="seatText">Đang xác nhận vị trí</span><button id="viewBtn" class="mini">Góc nhìn 3D: Tắt</button><button id="soundBtn" class="mini">Âm thanh: Bật</button></div>
+  <div class="board-stage"><div class="stage-label">CHỌN QUÂN → DI CHUYỂN → XÂY DỰNG</div><div class="water"><div class="island"><div class="board" id="board" role="grid" aria-label="Bàn Santorini 5 nhân 5"></div></div></div></div>
+  <div class="action-bar"><div class="action-text"><strong id="phaseLabel">Đang tải…</strong><span id="hint">Đồng bộ bàn chơi</span></div><span class="phase-chip" id="phaseChip">● ĐANG CHƠI</span><button class="secondary hidden" id="restartBtn">Chơi lại ↻</button></div>
+  <div class="game-bottom"><span id="seatText">Đang xác nhận vị trí</span><button id="viewBtn" class="mini">Góc nhìn: 2.5D</button><button id="soundBtn" class="mini">Âm thanh: Bật</button></div>
   <div class="win-overlay hidden" id="winOverlay"><div class="win-card"><div class="trophy">🏆</div><div class="eyebrow">GAME OVER</div><h2 id="winTitle">Chiến thắng!</h2><p id="winText"></p><button class="primary" id="rematchBtn">Tái đấu ↻</button></div></div>
 </section>
 </main><div id="toast" class="toast" role="alert"></div>
