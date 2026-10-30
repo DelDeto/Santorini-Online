@@ -19,7 +19,7 @@ async function until(fn,timeout=16000){
   throw Error('Timed out: '+output.slice(-2200));
 }
 async function connect(code,name,mode){
-  const path='/ws?room='+code+'&token='+token()+'&name='+encodeURIComponent(name)+(mode==='bot3'?'&mode=bot&difficulty=normal&players=3&ruleset=god':mode==='bot4'?'&mode=bot&difficulty=normal&players=4&ruleset=god':mode==='god'?'&ruleset=god':mode==='botgod'?'&mode=bot&difficulty=normal&ruleset=god':mode==='3'?'&players=3':mode==='4'?'&players=4':mode==='watch'?'&spectate=1':'');
+  const path='/ws?room='+code+'&token='+token()+'&name='+encodeURIComponent(name)+(mode==='bot'?'&mode=bot&difficulty=normal':mode==='bot3'?'&mode=bot&difficulty=normal&players=3&ruleset=god':mode==='bot4'?'&mode=bot&difficulty=normal&players=4&ruleset=god':mode==='god'?'&ruleset=god':mode==='botgod'?'&mode=bot&difficulty=normal&ruleset=god':mode==='3'?'&players=3':mode==='4'?'&players=4':mode==='watch'?'&spectate=1':'');
   const ws=new WebSocket('ws://127.0.0.1:'+PORT+path);sockets.push(ws);
   const inbox=[];
   ws.addEventListener('message',e=>{try{inbox.push(JSON.parse(e.data));}catch{}});
