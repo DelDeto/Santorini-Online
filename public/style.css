@@ -159,3 +159,28 @@ body{overflow-x:hidden}
  .god-info{grid-column:3;grid-row:3}
  .game-bottom{display:none}
 }
+
+
+/* V0.4 — Sculpted Edition visual treatment. Keep the table as the dominant subject. */
+.stage3d{background:radial-gradient(ellipse at 50% 35%,#91e0e3 0%,#248eab 57%,#075574 100%);box-shadow:inset 0 0 0 1px #cfede36b,0 12px 40px #051c2f55}
+.board-stage{border-radius:15px;background:linear-gradient(180deg,#397a8d15,#0a446c2b)}
+.board-stage:after{content:"";position:absolute;inset:8px;border-radius:12px;border:1px solid #e0ffff14;pointer-events:none;z-index:4}
+.stage3d.ready canvas{animation:dioramaAppear .65s ease-out both}
+.game .stage-label{top:11px;border:1px solid #c1efea4a;border-radius:16px;background:#073e599f;padding:5px 12px;color:#effff8;font-size:9px;letter-spacing:1.25px;box-shadow:0 6px 15px #10395233;backdrop-filter:blur(5px)}
+.game{max-width:1220px}
+.game .player{background:linear-gradient(120deg,#184b5ac4,#113950a6);border-color:#d5f2e536}
+.game .player.active{border-color:#e3d3a0d0;box-shadow:inset 0 0 0 1px #c2b88750,0 0 12px #76a3a93d}
+.game .action-bar{background:linear-gradient(105deg,#fffaf0,#d9e7df);box-shadow:0 6px 17px #04172c41}
+.game .action-text strong{color:#16445a}
+.game .game-top .room-tag strong{letter-spacing:2px}
+.brand{color:#f8f8e9}
+.version{color:#c2e2d4}
+.god-info{background:#103d51c9;border-color:#d7cc9d64}
+.god-token{background:linear-gradient(110deg,#eee5cc,#dce8dc);color:#264d57}
+@keyframes dioramaAppear{0%{opacity:.3;filter:blur(4px);transform:scale(.98)}100%{opacity:1;filter:blur(0);transform:scale(1)}}
+@media(max-width:650px){
+ .game{padding:5px 7px 9px}
+ .game .stage-label{top:6px;font-size:7px;max-width:97%;padding:4px 7px;letter-spacing:.35px}
+ .board-stage:after{inset:3px}
+}
+@media(prefers-reduced-motion:reduce){.stage3d.ready canvas{animation:none}}
