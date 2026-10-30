@@ -64,7 +64,11 @@ const eq=(a,b)=>!!a&&!!b&&a.row===b.row&&a.col===b.col;
 const pawnAt=(g,r,c)=>{for(let p=0;p<g.workers.length;p++)for(let i=0;i<g.workers[p].length;i++)if(eq(g.workers[p][i],{row:r,col:c}))return {p,i};return null;};
 const free=(g,r,c)=>cell(r,c)&&g.board[r][c]!==4&&!pawnAt(g,r,c);
 const god=(g,p)=>activePower(g,p);
-export function legalBuilds(g,from){if(!from)return [];const out=[];for(let row=0;row<5;row++)for(let col=0;col<5;col++)if(near(from,{row,col})&&free(g,row,col))out.push({row,col});return out;}
+export function legalBuilds(g,from,p=null){if(!from)return [];const out=[];
+ for(let row=0;row<5;row++)for(let col=0;col<5;col++)if(near(from,{row,col})&&free(g,row,col)){
+  if(p!==null&&adjacentGodWorkers(g,p,'limus',{row,col})&&g.board[row][col]!==3)continue;
+  out.push({row,col});
+ }return out;}
 function movedCopy(g,p,i,to,occupant=null){
  const workers=g.workers.map(t=>t.map(w=>({...w})));
  const from=workers[p][i];workers[p][i]={row:to.row,col:to.col};
@@ -72,9 +76,10 @@ function movedCopy(g,p,i,to,occupant=null){
  return {...g,workers};
 }
 function legalMoveDetails(g,p,i){
- const from=g.workers[p]?.[i];if(!from||!['move','extraMove','hermesMove'].includes(g.phase))return [];
+ const from=g.workers[p]?.[i];if(!from||!['move','extraMove','hermesMove','tritonMove','dionysusMove'].includes(g.phase))return [];
  if(g.ctx?.fixedWorker!==undefined&&g.ctx.fixedWorker!==i)return [];
- if(g.phase==='extraMove'&&g.selected!==i)return [];
+ if(['extraMove','tritonMove'].includes(g.phase)&&g.selected!==i)return [];
+ if(opponentsOf(g,p).some(other=>god(g,other)==='hypnus')&&g.workers[p].length>1&&g.workers[p].every((w,j)=>j===i||g.board[w.row][w.col]<g.board[from.row][from.col]))return [];
  const power=god(g,p),before=g.board[from.row][from.col],out=[];
  for(let row=Math.max(0,from.row-1);row<=Math.min(4,from.row+1);row++)
  for(let col=Math.max(0,from.col-1);col<=Math.min(4,from.col+1);col++){
@@ -83,6 +88,7 @@ function legalMoveDetails(g,p,i){
   if(((g.workers.length===2?g.athenaBlocked===p:(g.athenaBlocked!==null&&g.athenaBlocked!==p))||g.ctx?.prometheusUsed)&&h>before)continue;
   if(g.phase==='hermesMove'&&h!==before)continue;
   if(g.phase==='extraMove'&&eq(dest,g.ctx?.origin))continue;
+  if(restrictedByAphrodite(g,p)&&!opponentsOf(g,p).some(j=>g.gods[j]==='aphrodite'&&g.workers[j].some(w=>near(w,dest)))&&g.phase!=='move')continue;
   const blocker=pawnAt(g,row,col);let special=null,forced=null;
   if(blocker){
    if(blocker.p===p)continue;
@@ -94,14 +100,38 @@ function legalMoveDetails(g,p,i){
    }else continue;
   }
   const projected=movedCopy(g,p,i,dest,blocker?{...blocker,forced}:null);
-  const wins=(h===3&&before<3)||(power==='pan'&&before-h>=2);
+  if(power==='bia'&&!blocker){
+   const forward={row:row+(row-from.row),col:col+(col-from.col)};
+   const victim=cell(forward.row,forward.col)?pawnAt(projected,forward.row,forward.col):null;
+   if(victim&&victim.p!==p)projected.workers[victim.p].splice(victim.i,1);
+  }
+  const erosWin=power==='eros'&&g.workers[p].some((w,j)=>j!==i&&near(w,dest)&&(g.workers.length===3?h===g.board[w.row][w.col]:h===1&&g.board[w.row][w.col]===1));
+  const rawWins=(h===3&&before<3)||(power==='pan'&&before-h>=2)||erosWin;
+  const wins=rawWins&&!(isEdge(row,col)&&hasEnemyGod(g,p,'hera'));
   // Hermes may traverse an intermediate same-level square even when it is not a final build position.
-  if(!wins&&!legalBuilds(projected,dest).length&&!(power==='hermes'&&h===before))continue;
+  if(!wins&&!legalBuilds(projected,dest,p).length&&!(power==='hermes'&&h===before)&&!(power==='triton'&&isEdge(row,col)))continue;
   out.push({row,col,worker:i,...(special?{special}:{}),...(wins?{wins:true}:{})});
  }
  return out;
 }
 export function legalMoves(g,p,i){return legalMoveDetails(g,p,i).map(({row,col})=>({row,col}));}
+function rawFerryActions(g,p){
+ if(g.phase!=='move'||god(g,p)!=='charon'||g.ctx?.charonUsed)return [];
+ const choices=[];
+ for(let worker=0;worker<g.workers[p].length;worker++){
+  const w=g.workers[p][worker];
+  for(const enemy of opponentsOf(g,p))for(const e of g.workers[enemy]){
+   if(!near(w,e))continue;
+   const landing={row:w.row+(w.row-e.row),col:w.col+(w.col-e.col)};
+   if(!free(g,landing.row,landing.col))continue;
+   const proj=structuredClone(g),victim=pawnAt(proj,e.row,e.col);
+   proj.workers[victim.p][victim.i]=landing;
+   proj.ctx={charonUsed:true,fixedWorker:worker};
+   if(legalMoveDetails(proj,p,worker).length)choices.push({type:'ferry',worker,row:e.row,col:e.col});
+  }
+ }
+ return choices;
+}
 export function canTakeTurn(g,p){
  if(g.phase==='godpick'||g.phase==='place')return true;
  if(god(g,p)==='hermes'&&g.workers[p].some(w=>legalBuilds(g,w).length))return true;
