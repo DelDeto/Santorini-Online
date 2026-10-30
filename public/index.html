@@ -66,7 +66,7 @@
   </div>
 </section>
 <section class="game hidden" id="game">
-  <div class="game-top"><div class="room-tag"><span class="live-dot" id="liveDot"></span><span id="gameMode">PHÒNG</span> <strong id="roomCode"></strong><button class="copy-btn" id="copyBtn">Chia sẻ</button></div><span class="mode-live" id="modeLive" title="Chế độ hiện tại">⚡ GOD POWERS</span><span class="connection" id="connection">Đang kết nối…</span><span class="match-quick" id="scoreChip">Thắng 0–0</span><span class="match-quick" id="watcherChip">👁 0</span></div>
+  <div class="game-top"><div class="room-tag"><span class="live-dot" id="liveDot"></span><span id="gameMode">PHÒNG</span> <strong id="roomCode"></strong><button class="copy-btn" id="copyBtn">Chia sẻ</button></div><button class="mode-live" id="modeLive" type="button" title="Xem luật và cơ chế của chế độ hiện tại">⚡ GOD POWERS ⓘ</button><span class="connection" id="connection">Đang kết nối…</span><span class="match-quick" id="scoreChip">Thắng 0–0</span><span class="match-quick" id="watcherChip">👁 0</span></div>
   <div class="players">
     <div class="player p0" id="player0"><span class="avatar blue">♟</span><div class="player-info"><small id="teamLabel0">NGƯỜI CHƠI 01</small><b id="name0">Đang chờ…</b></div><span class="turn-dot"></span></div>
     <div class="vs">VS</div>
@@ -85,6 +85,13 @@
   </div>
   <div class="action-bar"><div class="action-text"><strong id="phaseLabel">Đang tải…</strong><span id="hint">Đồng bộ bàn chơi</span></div><div class="power-actions"><button id="powerBtn" class="mini hidden">⚡ Xây trước</button><button id="domeBtn" class="mini hidden">◆ Đặt mái vòm</button><button id="skipBtn" class="mini hidden">Bỏ qua →</button><button id="endMoveBtn" class="mini hidden">Xây ngay →</button><span id="advancedActions" class="advanced-actions"></span></div><span class="phase-chip" id="phaseChip">● ĐANG CHƠI</span><button class="secondary hidden" id="restartBtn">Chơi lại ↻</button></div>
   <div class="game-bottom"><button id="fillBotsBtn" class="mini hidden" title="Tự thêm BOT vào các ghế còn trống của phòng">+ Thêm BOT</button><span id="seatText">Đang xác nhận vị trí</span><button id="viewBtn" class="mini">⟳ Góc nhìn</button><button id="lightingBtn" class="mini" title="Chuyển ánh sáng ban ngày/hoàng hôn">☀ Ban ngày</button><button id="qualityBtn" class="mini" title="Đổi chất lượng đồ họa">✧ Auto</button><button id="soundBtn" class="mini">Âm thanh: Bật</button><button id="historyBtn" class="mini">☷ Lượt đấu</button></div>
+  <div class="mode-help-overlay hidden" id="modeOverlay" role="dialog" aria-modal="true" aria-label="Luật chế độ chơi">
+    <div class="mode-help-panel">
+      <div class="mode-help-top"><div><small>GAME MODE · LUẬT CHƠI</small><h2 id="modeHelpTitle">Santorini</h2></div><button class="mini" id="modeCloseBtn" type="button">Đóng ✕</button></div>
+      <p id="modeHelpText">Chọn chế độ ở màn bắt đầu để xem luật.</p>
+      <p class="mode-help-note" id="modeHelpNote"></p>
+    </div>
+  </div>
   <div class="powers-overlay hidden" id="powersOverlay" role="dialog" aria-modal="true" aria-label="Hướng dẫn God Powers">
     <div class="powers-panel">
       <div class="powers-panel-top"><div><div class="eyebrow">OLYMPUS · GOD POWERS</div><h2>Kỹ năng các vị thần</h2></div><button type="button" id="powersCloseBtn" class="mini">Đóng ✕</button></div>
