@@ -191,3 +191,29 @@ Các BOT là đối thủ theo thuật toán heuristic, không phải mô hình 
 **Giới hạn/khác biệt cần biết:** Khâu setup Challenger chọn đúng N thẻ và chọn người bắt đầu vẫn là cơ chế rút gọn trong game. Một số tổ hợp Advanced Gods rất hiếm, hiệu ứng nhiều bước và quyền mượn thần của Circe chưa được chứng minh tương đương hoàn toàn mọi ví dụ của sách luật. BOT V1.3 hiểu các hành động hợp lệ và chấm điểm chiến thuật ngắn hạn nhưng không bảo đảm chuyên sâu với toàn bộ 20 thần. Quy tắc tham chiếu là **Roxley Classic 2017**, không phải bộ thẻ Pantheon 2025 có luật đã điều chỉnh.
 
 Quy tắc: https://files.roxley.com/Santorini-Rulebook-Web-2016.08.14.pdf
+
+
+## V1.4 — Game Modes & Full-Screen Gameplay UX
+
+Chọn mode trên màn hình chính trước khi tạo phòng hay đấu BOT. Cả client và server phải dùng một mode được lưu trong phòng, không được chỉnh luật bằng URL khi đã tạo.
+
+| Mode | Số người | Cơ chế |
+| --- | --- | --- |
+| Classic | 2 | Không thần |
+| God Powers | 2 | Hai thần riêng trong 30 thẻ hợp lệ |
+| Three-player FFA | 3 | Ba người độc lập, ba thần |
+| Four-player Teams | 4 | Hai đội, một thần cho mỗi ghế |
+| Agora Online | 2 | Hai thần Cơ bản đổi chủ sau mỗi hai lượt hoàn chỉnh |
+| Golden Fleece | 2 | Một năng lực chung qua tượng Cừu Vàng |
+
+Golden Fleece: người tạo phòng chọn một thần Cơ bản dùng chung, sau đó mỗi người đặt hai quân. Người đặt trước đặt tượng Cừu Vàng lên ô trống và đối phương đi trước. Nếu một quân của bạn đứng cạnh tượng khi bắt đầu lượt, bạn dùng năng lực chung trong toàn bộ lượt đó. Tượng là ô bị chiếm, hiển thị trên bàn 3D và 2D. BOT cũng được hỗ trợ.
+
+Agora Online: đây là biến thể xoay thần được đơn giản hóa dành cho game online, KHÔNG được tuyên bố là bản sao chuẩn từng bước của mode The Agora. Chỉ dùng 10 thần Cơ bản để hạn chế tổ hợp rủi ro.
+
+UX: màn chọn mode 6 thẻ, menu xem quy tắc mode trong game; toàn bộ khung gameplay theo 100dvh, tối ưu HUD và mở rộng chiều rộng PC; thanh nút phụ cuộn ngang độc lập trên điện thoại, không cuộn cả trang. Vẫn có 3D, fallback 2D, chế độ BOT/online/khán giả, hướng dẫn kỹ năng và phòng qua WebSocket.
+
+Giới hạn: sáu lựa chọn trên là các mode chức năng hiện có, KHÔNG phải đầy đủ 12 Pantheon Mode Cards 2025 với 100 thần. Những mode yêu cầu token, tướng hoặc cơ chế chưa có trong 30 thẻ hiện tại không được công bố là đã hỗ trợ.
+
+Nguồn: https://roxley.com/collections/santorini/products/santorini và https://gamers-hq.de/media/pdf/b4/72/15/Santorini_Rulebooks_v11_WEB.pdf
+
+Kiểm thử: npm test; npm run smoke (gồm Golden Fleece solo BOT, Golden Fleece online và Agora online).
