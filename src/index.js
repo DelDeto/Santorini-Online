@@ -88,7 +88,7 @@ export class SantoriniRoom extends DurableObject {
 export default {
   async fetch(request,env){
     const u=new URL(request.url);
-    if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'0.4.0'});
+    if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'0.5.0'});
     if(u.pathname==='/ws'){
       const room=u.searchParams.get('room')||'';
       if(!/^[A-Z2-9]{6,10}$/.test(room))return new Response('Room code invalid',{status:400});
