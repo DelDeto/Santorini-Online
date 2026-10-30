@@ -6,7 +6,7 @@ import {GODS,legalActions,newGame,applyAction} from '../src/game.js';
 const app=readFileSync('public/app.js','utf8'),html=readFileSync('public/index.html','utf8'),style=readFileSync('public/style.css','utf8');
 test('V1.1: all ten God Powers have actionable Vietnamese gameplay instructions',()=>{
  for(const [id,info] of Object.entries(GODS)){
-  assert.match(app,new RegExp(' '+id+':\\\\{'),'The '+info.name+' guide must exist');
+  assert.ok(app.includes(' '+id+':{'),'The '+info.name+' guide must exist');
   assert.ok(app.includes('Cách thực hiện:'));
  }
 });
