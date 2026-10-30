@@ -151,7 +151,7 @@ function render(){
  $('seatText').textContent=S.seat===-1?'Khán giả · Chỉ theo dõi':S.mode==='bot'?'Solo · Bạn ở ghế 1':'Bạn ở ghế '+(S.seat+1)+(S.capacity>2?' · Đội '+(myTeam()+1):'');
  if(!v){$('phaseLabel').textContent='Đang tải bàn chơi…';$('hint').textContent='Kết nối máy chủ';return;}
  const g=v.game,solo=v.mode==='bot',turn=isTurn();
- $('gameMode').textContent=solo?'SOLO DEMO':v.ruleset==='god'?'GOD POWERS':'PHÒNG';
+ $('gameMode').textContent=solo?'SOLO DEMO':v.capacity===4?'ĐẤU ĐỘI 2V2':v.capacity===3?'ĐẤU ĐỘI 2V1':v.ruleset==='god'?'GOD POWERS':'PHÒNG';
  $('roomCode').textContent=solo?'VS BOT':S.room;
  $('copyBtn').classList.toggle('hidden',solo);
  const teamNames=t=>v.players.filter(p=>p.team===t).map(p=>p.name).join(' + ');
@@ -172,7 +172,7 @@ function render(){
  }
  const phases={godpick:'CHỌN THẦN',place:'ĐẶT QUÂN',move:'DI CHUYỂN',extraMove:'DI CHUYỂN 2',hermesMove:'HERMES',build:'XÂY DỰNG',extraBuild:'XÂY THÊM',ended:'KẾT THÚC'};
  $('phaseChip').textContent=phases[g.phase]||'CHƠI';
- const turnName=solo&&g.turn===1?'BOT':v.players[g.turn]?.name||'Đối thủ';
+ const turnName=solo&&g.turn===1?'BOT':v.players[v.activeSeat]?.name||'Đối thủ';
  const messages={godpick:'Chọn vị thần cho trận đấu',place:'Đặt hai quân lên bàn cờ',move:'Chọn quân, sau đó chọn ô muốn đi',extraMove:'Artemis: đi thêm hoặc bỏ qua',hermesMove:'Hermes: tiếp tục đi ngang hoặc chọn quân để xây',build:'Chạm ô sáng để xây một tầng',extraBuild:'Có thể xây thêm hoặc bỏ qua',ended:'Trận đấu kết thúc'};
  $('phaseLabel').textContent=!v.ready?'Đợi đủ '+(v.capacity||2)+' người':g.phase==='ended'?'Đã kết thúc':turn?messages[g.phase]:(turnName+' đang thực hiện lượt');
  $('hint').textContent=!v.ready?'Sao chép link mời bạn bè tham gia.':turn?(g.phase==='move'&&g.ctx?.prometheusUsed?'Prometheus đã xây trước: không được di chuyển lên tầng.':messages[g.phase]):g.lastAction;
@@ -180,6 +180,10 @@ function render(){
  if(g.phase==='extraMove')S.selected=g.selected;
  if(g.phase==='move'&&g.ctx?.fixedWorker!==undefined)S.selected=g.ctx.fixedWorker;
  if(!turn&&g.phase!=='ended')S.selected=null;
+ if(turn&&S.selected===null&&['move','hermesMove'].includes(g.phase)){
+  const legalWorkers=[...new Set(getActions('move').map(a=>a.worker))];
+  if(legalWorkers.length===1)S.selected=legalWorkers[0];
+ }
  const showPower=turn&&g.phase==='move'&&S.selected!==null&&getActions('prebuild',S.selected).length>0;
  $('powerBtn').classList.toggle('hidden',!showPower);
  $('powerBtn').classList.toggle('chosen',S.powerMode==='prebuild');
