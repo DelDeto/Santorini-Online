@@ -7,7 +7,7 @@ const LEVELS=['easy','normal','hard'];
 const cleanName=value=>String(value??'Người chơi').trim().slice(0,24).replace(/[<>]/g,'')||'Người chơi';
 const team=seat=>seat%2;
 const makeStats=(n=2)=>({wins:Array(n===3?3:2).fill(0),matches:0});
-function freshRoom(){return {game:newGame(),players:[null,null],mode:null,difficulty:'normal',ruleset:'classic',capacity:2,activeSeat:0,nextTeam0:0,seatGods:null,draftIndex:0,history:[],stats:makeStats()};}
+function freshRoom(){return {game:newGame(),players:[null,null],mode:null,difficulty:'normal',ruleset:'classic',capacity:2,activeSeat:0,nextTeam0:0,seatGods:null,draftIndex:0,athenaAura:null,history:[],stats:makeStats()};}
 function capacity(r){return [2,3,4].includes(r.capacity)?r.capacity:2;}
 function ready(r){return r.players.length===capacity(r)&&r.players.every((p,i)=>!!p||(capacity(r)===3&&!['godpick','place'].includes(r.game.phase)&&r.game.eliminated?.[i]));}
 function seatForTurn(r){
@@ -45,6 +45,7 @@ export class SantoriniRoom extends DurableObject{
    this.room.nextTeam0??=0;
    this.room.draftIndex??=0;
    this.room.seatGods??=null;
+   this.room.athenaAura??=null;
   });
  }
  async persist(){await this.ctx.storage.put('room',this.room);}
@@ -76,6 +77,11 @@ export class SantoriniRoom extends DurableObject{
  if(r.game.turn!==previousTurn){
   r.activeSeat=({2:3,3:0,0:1,1:2})[actionSeat];
   r.game.gods[team(r.activeSeat)]=r.seatGods[r.activeSeat];
+  // Athena restricts opponents until the SAME god holder's next turn, not their teammate's.
+  if(r.athenaAura!==null){
+   if(r.athenaAura===r.activeSeat){r.athenaAura=null;r.game.athenaBlocked=null;}
+   else r.game.athenaBlocked=1-team(r.athenaAura);
+  }
  }
 }
 record(action,seat,oldWinner,oldRevision){
@@ -104,6 +110,7 @@ record(action,seat,oldWinner,oldRevision){
    // Official multi-player matches require individual God Powers.
    if(r.capacity>2)r.ruleset='god';
    r.game=newGame(r.ruleset,r.capacity===3?3:2);
+   r.athenaAura=null;
    r.seatGods=r.capacity===4?Array(4).fill(null):null;r.draftIndex=0;
    r.players=Array(r.capacity).fill(null);
    r.activeSeat=r.capacity===4?2:0;r.nextTeam0=0;r.history=[];r.stats=makeStats(r.capacity);
@@ -154,7 +161,7 @@ record(action,seat,oldWinner,oldRevision){
       r.game.revision++;
       r.history.push({seat,action:'leave',description:r.game.lastAction,revision:r.game.revision});
      }else if(r.game.phase==='place'||r.game.phase==='godpick'){
-      r.game=newGame(r.ruleset,capacity(r)===3?3:2);
+      r.game=newGame(r.ruleset,capacity(r)===3?3:2);r.athenaAura=null;
       r.seatGods=capacity(r)===4?Array(4).fill(null):null;r.draftIndex=0;
       r.activeSeat=capacity(r)===4?2:0;r.history=[];
      }
@@ -168,7 +175,7 @@ record(action,seat,oldWinner,oldRevision){
   if(!ready(r)){this.send(ws,{type:'error',message:'Đợi đủ người vào phòng.'});return;}
   if(action.type==='restart'){
    if(r.game.phase!=='ended'){this.send(ws,{type:'error',message:'Chỉ tái đấu sau khi kết thúc ván.'});return;}
-   r.game=resetGame(r.game);r.seatGods=capacity(r)===4?Array(4).fill(null):null;r.draftIndex=0;r.activeSeat=capacity(r)===4?2:0;r.nextTeam0=0;r.history=[];
+   r.game=resetGame(r.game);r.athenaAura=null;r.seatGods=capacity(r)===4?Array(4).fill(null):null;r.draftIndex=0;r.activeSeat=capacity(r)===4?2:0;r.nextTeam0=0;r.history=[];
   }else{
    if(seat!==seatForTurn(r)){this.send(ws,{type:'error',message:'Chưa đến lượt ghế của bạn.'});return;}
    const previousTurn=r.game.turn,previousPhase=r.game.phase,oldWinner=r.game.winner,oldRevision=r.game.revision;
@@ -184,8 +191,11 @@ record(action,seat,oldWinner,oldRevision){
      r.game.gods=[r.seatGods[0],r.seatGods[1]];
     }
    }else{
+    const from=capacity(r)===4&&action.type==='move'?r.game.workers[team(seat)]?.[action.worker]:null;
+    const athenaUp=from&&r.seatGods?.[seat]==='athena'&&r.game.board[action.row]?.[action.col]>r.game.board[from.row]?.[from.col];
     try{applyAction(r.game,capacity(r)===4?team(seat):seat,action);}
     catch(e){this.send(ws,{type:'error',message:e.message||'Hành động không hợp lệ.'});return;}
+    if(athenaUp)r.athenaAura=seat;
     this.advanceAfterAction(previousPhase,previousTurn,seat);
     this.resolveBlockedTeam();
    }
