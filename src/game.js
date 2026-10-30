@@ -160,7 +160,7 @@ export function applyAction(g,p,a){
     g.ctx={origin:{...from}};g.selected=a.worker;g.phase='extraMove';
     g.lastAction='Artemis có thể di chuyển thêm một lần hoặc bỏ qua.';
    }else if(power==='hermes'&&((g.phase==='move'&&after===before)||g.phase==='hermesMove')){
-    g.phase='hermesMove';g.selected=null;g.ctx={hermesStarted:true};
+    g.phase='hermesMove';g.selected=null;g.ctx={...g.ctx,hermesStarted:true,hermesSteps:(g.ctx?.hermesSteps??0)+1};
     g.lastAction='Hermes có thể tiếp tục đi trên cùng độ cao hoặc chọn quân để xây.';
    }else{
     g.phase='build';g.selected=a.worker;
