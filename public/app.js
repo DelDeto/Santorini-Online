@@ -242,10 +242,10 @@ function renderGodPick(g){
  if(g.phase!=='godpick'||!S.view?.ready)return;
  $('godPickTitle').textContent=active?'Chọn vị thần của bạn':!S.view.ready?'Đợi đối thủ tham gia':'Đối thủ đang chọn thần';
  $('godPickHint').textContent='Mỗi ghế được chọn một vị thần riêng trước khi đặt quân.';
- const choices=S.view.gods||{};
- $('godCards').innerHTML=Object.entries(choices).map(([id,info])=>{
-  const picked=(S.view.capacity===4?S.view.seatGods:g.gods).includes(id),disabled=!active||picked;
-  return '<button class="god-card '+(picked?'picked ':'')+'" data-god="'+id+'" '+(disabled?'disabled':'')+'><span class="god-symbol">✦</span><strong>'+info.name+'</strong><small>'+info.description+'</small>'+(picked?'<span class="taken">ĐÃ CHỌN</span>':'')+'</button>';
+ const choices=S.view.gods||{},available=new Set(getActions('selectGod').map(x=>x.god)),group=$('godGroup').value;
+ $('godCards').innerHTML=Object.entries(choices).filter(([id,info])=>group==='all'||(group==='advanced')===!!info.players).map(([id,info])=>{
+  const picked=(S.view.capacity===4?S.view.seatGods:g.gods).includes(id),eligible=available.has(id),disabled=!active||picked||!eligible;
+  return '<button class="god-card '+(info.players?'advanced ':'')+(picked?'picked ':'')+(!eligible?'unavailable ':'')+'" data-god="'+id+'" '+(disabled?'disabled':'')+'><span class="type-tag">'+(info.players?'NÂNG CAO':'CƠ BẢN')+'</span><span class="god-symbol">✦</span><strong>'+escHtml(info.name)+'</strong><small>'+escHtml(info.description)+'</small>'+(picked?'<span class="taken">ĐÃ CHỌN</span>':!eligible?'<span class="taken">KHÓA</span>':'')+'</button>';
  }).join('');
 }
 function render(){
@@ -324,6 +324,7 @@ $('powersCloseBtn').onclick=closePowers;
 $('powersOverlay').addEventListener('click',e=>{if(e.target===$('powersOverlay'))closePowers();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('powersOverlay').classList.contains('hidden'))closePowers();});
 $('board').addEventListener('click',e=>{const b=e.target.closest('.tile');if(b)tileClick(+b.dataset.row,+b.dataset.col);});
+$('godGroup').onchange=()=>{if(S.view)renderGodPick(S.view.game);};
 $('godCards').addEventListener('click',e=>{const b=e.target.closest('button[data-god]');if(b&&!b.disabled)send({type:'selectGod',god:b.dataset.god});});
 $('createBtn').onclick=()=>{const n=Number($('teamSize').value),rule=n>2?'god':document.querySelector('input[name="ruleset"]:checked')?.value==='god'?'god':'classic';if(n>2)document.querySelector('input[name="ruleset"][value="god"]').checked=true;enter(roomCode(),'online',rule,n);};
 $('teamSize').onchange=()=>{if(+$('teamSize').value>2){const gods=document.querySelector('input[name="ruleset"][value="god"]');gods.checked=true;message('Luật Roxley: phòng 3–4 người bắt buộc dùng God Powers.');}};
