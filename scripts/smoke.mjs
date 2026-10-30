@@ -19,7 +19,7 @@ async function until(fn,timeout=16000){
   throw Error('Timed out: '+output.slice(-2200));
 }
 async function connect(code,name,mode){
-  const path='/ws?room='+code+'&token='+token()+'&name='+encodeURIComponent(name)+(mode==='bot'?'&mode=bot&difficulty=normal':mode==='god'?'&ruleset=god':'');
+  const path='/ws?room='+code+'&token='+token()+'&name='+encodeURIComponent(name)+(mode==='bot'?'&mode=bot&difficulty=normal':mode==='god'?'&ruleset=god':mode==='botgod'?'&mode=bot&difficulty=normal&ruleset=god':mode==='3'?'&players=3':mode==='4'?'&players=4':mode==='watch'?'&spectate=1':'');
   const ws=new WebSocket('ws://127.0.0.1:'+PORT+path);sockets.push(ws);
   const inbox=[];
   ws.addEventListener('message',e=>{try{inbox.push(JSON.parse(e.data));}catch{}});
@@ -87,7 +87,76 @@ try{
   host.ws.send(JSON.stringify({type:'build',row:0,col:0}));
   const done=await host.until(v=>v.game.turn===1&&v.game.phase==='move');
   assert.ok(done.legalActions.some(a=>a.type==='move'));
-  console.log('PASS: bot demo + multiplayer God Powers draft, move, and build via WebSocket.');
+
+  // V0.7: solo bot picks a God and responds through setup turns.
+  const olympus=await connect(room(),'Solo Gods','botgod');
+  assert.equal(olympus.hello.view.ruleset,'god');
+  olympus.ws.send(JSON.stringify({type:'selectGod',god:'apollo'}));
+  const botGod=await olympus.until(v=>v.game.gods[1]!==null&&v.game.phase==='place',15000);
+  assert.notEqual(botGod.game.gods[1],'apollo');
+  olympus.ws.send(JSON.stringify({type:'place',row:0,col:0}));
+  await olympus.until(v=>v.game.workers[0].length===1);
+  olympus.ws.send(JSON.stringify({type:'place',row:0,col:1}));
+  const godReady=await olympus.until(v=>v.game.workers[1].length===2&&v.game.phase==='move',20000);
+  assert.equal(godReady.game.turn,0);
+  // V0.8: 4 participants split into 2 teams with one worker each; a spectator cannot steal a seat.
+  const teamRoom=room();
+  const p0=await connect(teamRoom,'Team A · A1','4');
+  const p1=await connect(teamRoom,'Team B · B1','online');
+  const p2=await connect(teamRoom,'Team A · A2','online');
+  const p3=await connect(teamRoom,'Team B · B2','online');
+  const watchers=await connect(teamRoom,'Spectator','watch');
+  const teamReady=await p0.until(v=>v.ready&&v.capacity===4&&v.spectators>=1);
+  assert.equal(teamReady.activeSeat,0);
+  assert.equal(watchers.hello.seat,-1);
+  p0.ws.send(JSON.stringify({type:'place',row:0,col:0}));
+  await p2.until(v=>v.game.workers[0].length===1&&v.activeSeat===2);
+  p2.ws.send(JSON.stringify({type:'place',row:0,col:1}));
+  await p1.until(v=>v.game.workers[0].length===2&&v.activeSeat===1);
+  p1.ws.send(JSON.stringify({type:'place',row:4,col:4}));
+  await p3.until(v=>v.game.workers[1].length===1&&v.activeSeat===3);
+  p3.ws.send(JSON.stringify({type:'place',row:4,col:3}));
+  const turnStart=await p0.until(v=>v.game.phase==='move'&&v.activeSeat===0);
+  assert.ok(turnStart.legalActions.every(a=>a.worker===undefined||a.worker===0));
+  // Seat 2 may not act when teammate seat 0 has the turn.
+  p2.ws.send(JSON.stringify({type:'move',worker:1,row:1,col:1}));
+  await delay(120);
+  const gameOnSeat2=p2.state().game;
+  assert.equal(gameOnSeat2.turn,0);
+  const m=turnStart.legalActions.find(a=>a.type==='move');
+  assert.ok(m);
+  p0.ws.send(JSON.stringify({type:'move',worker:m.worker,row:m.row,col:m.col}));
+  const afterMove=await p0.until(v=>v.game.phase==='build');
+  const bld=afterMove.legalActions.find(a=>a.type==='build');
+  p0.ws.send(JSON.stringify({type:'build',row:bld.row,col:bld.col}));
+  const seat1Turn=await p1.until(v=>v.activeSeat===1&&v.game.phase==='move');
+  assert.equal(seat1Turn.game.turn,1);
+  assert.ok(seat1Turn.history.length>=6);
+  // A normal 3 participant room uses the 2-versus-1 team variant.
+  const trioRoom=room();
+  const t0=await connect(trioRoom,'A1','3');
+  const t1=await connect(trioRoom,'B','online');
+  const t2=await connect(trioRoom,'A2','online');
+  assert.equal((await t0.until(v=>v.ready&&v.capacity===3)).activeSeat,0);
+  t0.ws.send(JSON.stringify({type:'place',row:0,col:0}));
+  await t2.until(v=>v.activeSeat===2);
+  t2.ws.send(JSON.stringify({type:'place',row:0,col:1}));
+  await t1.until(v=>v.activeSeat===1);
+  t1.ws.send(JSON.stringify({type:'place',row:4,col:4}));
+  await t1.until(v=>v.game.workers[1].length===1);
+  t1.ws.send(JSON.stringify({type:'place',row:4,col:3}));
+  const trioReady=await t0.until(v=>v.game.phase==='move'&&v.activeSeat===0);
+  assert.equal(trioReady.game.workers[0].length,2);
+  // Leaving a room before game setup releases the seat.
+  const exitRoom=room();
+  const leaver=await connect(exitRoom,'First guest','online');
+  assert.equal(leaver.hello.seat,0);
+  leaver.ws.send(JSON.stringify({type:'leave'}));
+  await until(()=>leaver.state()?.players[0]?.joined===false);
+  const replacement=await connect(exitRoom,'Replacement','online');
+  assert.equal(replacement.hello.seat,0);
+  console.log('PASS: Classic BOT, God Powers BOT, online God Powers, 3/4 player team matches, spectator and leave/replace.');
+
 }finally{
   sockets.forEach(s=>{try{s.close();}catch{}});
   worker.kill('SIGTERM');
