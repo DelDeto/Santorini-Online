@@ -138,13 +138,27 @@ record(action,seat,oldWinner,oldRevision){
    if(authorized){
     r.players[seat]=null;
     if(!['godpick','place','ended'].includes(r.game.phase)&&r.game.winner===null){
-     const winner=1-team(seat);r.game.winner=winner;r.game.phase='ended';r.game.lastAction='Đối thủ rời trận. Đội '+(winner+1)+' chiến thắng!';
-     r.game.revision++;r.stats.matches++;r.stats.wins[winner]++;
-     r.history.push({seat,action:'leave',description:r.game.lastAction,revision:r.game.revision});
-    }else if(r.game.phase==='place'||r.game.phase==='godpick'){
-     r.game=newGame(r.ruleset);r.activeSeat=0;r.nextTeam0=0;r.history=[];
-    }
-    await this.persist();
+      if(capacity(r)===3){
+       r.game.eliminated[seat]=true;r.game.workers[seat]=[];r.game.gods[seat]=null;
+       const alive=r.game.eliminated.map((out,i)=>out?null:i).filter(i=>i!==null);
+       if(alive.length===1){r.game.winner=alive[0];r.game.phase='ended';r.stats.matches++;r.stats.wins[alive[0]]++;}
+       else if(r.game.turn===seat){
+        r.game.turn=alive.find(i=>i>seat)??alive[0];r.game.phase='move';r.game.selected=null;r.game.ctx={};
+       }
+       r.game.lastAction='Người chơi '+(seat+1)+' rời trận và bị loại.';
+      }else{
+       const winner=1-team(seat);r.game.winner=winner;r.game.phase='ended';
+       r.game.lastAction='Đối thủ rời trận. Đội '+(winner+1)+' chiến thắng!';
+       r.stats.matches++;r.stats.wins[winner]++;
+      }
+      r.game.revision++;
+      r.history.push({seat,action:'leave',description:r.game.lastAction,revision:r.game.revision});
+     }else if(r.game.phase==='place'||r.game.phase==='godpick'){
+      r.game=newGame(r.ruleset,capacity(r)===3?3:2);
+      r.seatGods=capacity(r)===4?Array(4).fill(null):null;r.draftIndex=0;
+      r.activeSeat=capacity(r)===4?2:0;r.history=[];
+     }
+     await this.persist();
     this.broadcast();
    }
    this.send(ws,{type:'left'});try{ws.close(1000,'Left room');}catch{}
@@ -154,18 +168,27 @@ record(action,seat,oldWinner,oldRevision){
   if(!ready(r)){this.send(ws,{type:'error',message:'Đợi đủ người vào phòng.'});return;}
   if(action.type==='restart'){
    if(r.game.phase!=='ended'){this.send(ws,{type:'error',message:'Chỉ tái đấu sau khi kết thúc ván.'});return;}
-   r.game=resetGame(r.game);r.activeSeat=0;r.nextTeam0=0;r.history=[];
+   r.game=resetGame(r.game);r.seatGods=capacity(r)===4?Array(4).fill(null):null;r.draftIndex=0;r.activeSeat=capacity(r)===4?2:0;r.nextTeam0=0;r.history=[];
   }else{
    if(seat!==seatForTurn(r)){this.send(ws,{type:'error',message:'Chưa đến lượt ghế của bạn.'});return;}
-   const legal=availableActions(r);
-   if(action.worker!==undefined&&ownedWorker(r,seat)!==null&&action.worker!==ownedWorker(r,seat)){
-    this.send(ws,{type:'error',message:'Bạn chỉ được điều khiển quân của mình.'});return;
-   }
-   // Even when the team has two workers, the current seat can only submit its own legal action.
    const previousTurn=r.game.turn,previousPhase=r.game.phase,oldWinner=r.game.winner,oldRevision=r.game.revision;
-   try{applyAction(r.game,team(seat),action);}catch(e){this.send(ws,{type:'error',message:e.message||'Hành động không hợp lệ.'});return;}
-   this.advanceAfterAction(previousPhase,previousTurn,seat);
-   this.resolveBlockedTeam();
+   if(capacity(r)===4&&r.game.phase==='godpick'){
+    if(!availableActions(r).some(a=>a.type==='selectGod'&&a.god===action.god)){
+     this.send(ws,{type:'error',message:'Vị thần đã được chọn hoặc không hợp lệ.'});return;
+    }
+    r.seatGods[seat]=action.god;
+    r.game.lastAction='Ghế '+(seat+1)+' chọn '+GODS[action.god].name+'.';
+    r.game.revision++;r.draftIndex++;
+    if(r.draftIndex===4){
+     r.game.phase='place';r.game.turn=0;
+     r.game.gods=[r.seatGods[0],r.seatGods[1]];
+    }
+   }else{
+    try{applyAction(r.game,capacity(r)===4?team(seat):seat,action);}
+    catch(e){this.send(ws,{type:'error',message:e.message||'Hành động không hợp lệ.'});return;}
+    this.advanceAfterAction(previousPhase,previousTurn,seat);
+    this.resolveBlockedTeam();
+   }
    this.record(action,seat,oldWinner,oldRevision);
   }
   await this.persist();this.broadcast();await this.scheduleBot();
