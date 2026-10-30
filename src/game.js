@@ -49,6 +49,9 @@ function activePower(g,p){
 function restrictedByAphrodite(g,p){
  return opponentsOf(g,p).flatMap(i=>g.gods[i]==='aphrodite'?g.workers[i]:[]).some(w=>(g.ctx?.turnStart||g.workers[p]).some(x=>near(x,w)));
 }
+function nearAphrodite(g,p,dest){
+ return opponentsOf(g,p).some(i=>g.gods[i]==='aphrodite'&&g.workers[i].some(w=>near(w,dest)));
+}
 export const validGodFor=(id,players,selected=[])=>{
  const info=GODS[id];if(!info||info.players&&!info.players.includes(players))return false;
  if(selected.some(other=>other===id||info.banned?.includes(other)||GODS[other]?.banned?.includes(id)))return false;
@@ -88,7 +91,8 @@ function legalMoveDetails(g,p,i){
   if(((g.workers.length===2?g.athenaBlocked===p:(g.athenaBlocked!==null&&g.athenaBlocked!==p))||g.ctx?.prometheusUsed)&&h>before)continue;
   if(g.phase==='hermesMove'&&h!==before)continue;
   if(g.phase==='extraMove'&&eq(dest,g.ctx?.origin))continue;
-  if(restrictedByAphrodite(g,p)&&!opponentsOf(g,p).some(j=>g.gods[j]==='aphrodite'&&g.workers[j].some(w=>near(w,dest)))&&g.phase!=='move')continue;
+  if(restrictedByAphrodite(g,p)&&!nearAphrodite(g,p,dest)&&!['move'].includes(g.phase))continue;
+  if(restrictedByAphrodite(g,p)&&!nearAphrodite(g,p,dest)&&g.phase==='move'&&!['artemis','triton'].includes(power))continue;
   const blocker=pawnAt(g,row,col);let special=null,forced=null;
   if(blocker){
    if(blocker.p===p)continue;
@@ -153,7 +157,7 @@ export function legalActions(g,p=g.turn){
  if(g.phase==='godpick')return Object.keys(GODS).filter(id=>validGodFor(id,g.capacity||g.workers.length,g.gods.filter(Boolean))).map(id=>({type:'selectGod',god:id}));
  if(g.phase==='place'){const out=[];
  for(let row=0;row<5;row++)for(let col=0;col<5;col++)if(free(g,row,col)){
-  if(g.gods[p]==='eros'&&(!isEdge(row,col)||(g.workers[p].length===1&&!isOppositeEdge(g.workers[p][0],{row,col}))))continue;
+  if((g.gods[p]==='eros'||g.advanced?.setupEros?.includes(p))&&(!isEdge(row,col)||(g.workers[p].length===1&&!isOppositeEdge(g.workers[p][0],{row,col}))))continue;
   out.push({type:'place',row,col});
  }
  return out;}
@@ -164,8 +168,14 @@ export function legalActions(g,p=g.turn){
     out.push(...legalMoveDetails(g,controlled,i).map(x=>({type:'move',...x})));
     if(g.phase==='move')out.push(...legalPrebuilds(g,p,i));
    }
-   if(g.phase==='extraMove'||g.phase==='tritonMove')out.push({type:'skip'});
+   if(g.phase==='extraMove'||g.phase==='tritonMove'){
+    if(!restrictedByAphrodite(g,p)||nearAphrodite(g,p,g.workers[p][g.selected]))out.push({type:'skip'});
+   }
    if(g.phase==='move')out.push(...rawFerryActions(g,p));
+   if(g.phase==='move'&&hasEnemyGod(g,p,'persephone')&&!g.ctx?.upThisTurn){
+    const ascents=out.filter(a=>a.type==='move'&&g.board[a.row][a.col]>g.board[g.workers[p][a.worker].row][g.workers[p][a.worker].col]);
+    if(ascents.length)return ascents;
+   }
    if(god(g,p)==='hermes'&&(g.phase==='hermesMove'||g.phase==='move'))
     g.workers[p].forEach((w,worker)=>{if(legalBuilds(g,w).length)out.push({type:'endMove',worker});});
    return out;
@@ -242,8 +252,9 @@ function refreshChaos(g){
   entry.current=entry.deck[entry.index];
  }
 }
-function beginTurn(g,p){
+export function beginAdvancedTurn(g,p){
  g.ctx={turnStart:g.workers[p].map(w=>({...w}))};
+ setupChaos(g);
  if(g.advanced?.circe?.owner===p)g.advanced.circe=null;
  if(g.gods[p]==='circe'&&g.workers.length===2){
   const target=1-p,ws=g.workers[target];
@@ -259,7 +270,7 @@ function advance(g,p){
   if(g.eliminated?.[next]){next=(next+1)%count;continue;}
   if(count===3&&g.athenaBlocked===next)g.athenaBlocked=null;
   const trial={...g,phase:'move',turn:next,ctx:{}};
-  if(canTakeTurn(trial,next)){g.turn=next;g.phase='move';g.selected=null;beginTurn(g,next);return;}
+  if(canTakeTurn(trial,next)){g.turn=next;g.phase='move';g.selected=null;if(g.capacity!==4)beginAdvancedTurn(g,next);return;}
   if(count===2){
    g.winner=p;g.phase='ended';g.lastAction='Đối thủ không thể di chuyển. Người chơi '+(p+1)+' chiến thắng!';return;
   }
@@ -333,7 +344,7 @@ export function applyAction(g,p,a){
    const start=g.ctx?.startSeat??0;
    const next=(p+1)%g.workers.length;
    if(next!==start)g.turn=next;
-   else{g.turn=start;g.phase='move';beginTurn(g,start);g.lastAction='Đã đặt đủ quân. Bắt đầu chơi.';}
+   else{g.turn=start;g.phase='move';if(g.capacity!==4)beginAdvancedTurn(g,start);g.lastAction='Đã đặt đủ quân. Bắt đầu chơi.';}
   }
  }else if(a.type==='ferry'){
   const from=g.workers[p][a.worker],victim=pawnAt(g,a.row,a.col);
@@ -442,4 +453,4 @@ export function applyAction(g,p,a){
  g.revision++;
  return g;
 }
-export function resetGame(g){const next=newGame(g.ruleset,g.workers.length);return {...next,revision:g.revision+1,lastAction:'Ván mới. Chọn thần hoặc đặt quân để bắt đầu.'};}
+export function resetGame(g){const next=newGame(g.ruleset,g.capacity||g.workers.length);return {...next,revision:g.revision+1,lastAction:'Ván mới. Chọn thần hoặc đặt quân để bắt đầu.'};}
