@@ -211,7 +211,7 @@ export function legalActions(g,p=g.turn){
    const female=g.workers[p][1];
    if(female)out.push(...legalBuilds(g,female,p).map(pos=>({type:'build',...pos,dome:true})));
   }
-  if(g.phase==='build'&&god(g,p)==='zeus'&&g.board[from.row][from.col]<3)out.push({type:'build',row:from.row,col:from.col,under:true});
+  if(g.phase==='build'&&god(g,p)==='zeus'&&g.board[from.row][from.col]<3&&!adjacentGodWorkers(g,p,'limus',from))out.push({type:'build',row:from.row,col:from.col,under:true});
   if(g.phase==='build'&&god(g,p)==='atlas')
    out.push(...positions.filter(pos=>g.board[pos.row][pos.col]<4).map(pos=>({type:'build',...pos,dome:true})));
   if(['extraBuild','poseidonBuild','morpheusBuild','dionysusBuild'].includes(g.phase))out.push({type:'skip'});
