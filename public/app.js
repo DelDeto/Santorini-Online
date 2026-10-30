@@ -1,7 +1,7 @@
 const $=id=>document.getElementById(id);
 const ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const S={room:null,seat:-1,view:null,ws:null,selected:null,mode:'online',ruleset:'classic',difficulty:'normal',powerMode:'move',
- sound:localStorage.getItem('santorini-sound')!=='false',epoch:0,attempt:0,active:false,three:null,oldRevision:-1};
+ sound:localStorage.getItem('santorini-sound')!=='false',quality:localStorage.getItem('santorini-quality')||'auto',lighting:localStorage.getItem('santorini-lighting')||'noon',epoch:0,attempt:0,active:false,three:null,oldRevision:-1};
 let audio,toastTimer;
 function message(s){$('toast').textContent=s;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2500);}
 function beep(f=520){if(!S.sound)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),v=audio.createGain();o.type='triangle';o.frequency.value=f;v.gain.setValueAtTime(.034,audio.currentTime);v.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.17);o.connect(v).connect(audio.destination);o.start();o.stop(audio.currentTime+.17);}catch{}}
@@ -20,6 +20,7 @@ function ensure3d(){
  import('./board3d.js').then(({createBoard3D})=>{
   if(!S.active)return;
   S.three=createBoard3D($('scene3d'),tileClick);
+  S.three.setQuality(S.quality);S.three.setLighting(S.lighting);
   $('scene3d').classList.add('ready');
   $('boardFallback').classList.add('hidden');
   $('scene3d').dataset.state='ready';renderBoard();
@@ -139,6 +140,8 @@ function render(){
  $('connection').textContent=connected?'● Trực tuyến':'○ Đang kết nối';
  $('liveDot').classList.toggle('off',!connected);
  $('soundBtn').textContent='Âm thanh: '+(S.sound?'Bật':'Tắt');
+ $('lightingBtn').textContent=S.lighting==='golden'?'🌅 Hoàng hôn':'☀ Ban ngày';
+ $('qualityBtn').textContent=S.quality==='hd'?'✦ HD':S.quality==='eco'?'⚡ Eco':'✧ Auto';
  $('seatText').textContent=S.seat===-1?'Chế độ xem':S.mode==='bot'?'Solo · Bạn ở ghế 1':'Bạn ở ghế '+(S.seat+1);
  if(!v){$('phaseLabel').textContent='Đang tải bàn chơi…';$('hint').textContent='Kết nối máy chủ';return;}
  const g=v.game,solo=v.mode==='bot',turn=isTurn();
@@ -203,6 +206,8 @@ $('exitBtn').onclick=()=>{
 };
 $('viewBtn').onclick=()=>{S.three?.resetCamera();message('Đã đưa camera về góc nhìn mặc định.');};
 $('soundBtn').onclick=()=>{S.sound=!S.sound;localStorage.setItem('santorini-sound',String(S.sound));render();beep(450);};
+$('lightingBtn').onclick=()=>{S.lighting=S.lighting==='golden'?'noon':'golden';localStorage.setItem('santorini-lighting',S.lighting);S.three?.setLighting(S.lighting);render();};
+$('qualityBtn').onclick=()=>{S.quality=S.quality==='auto'?'hd':S.quality==='hd'?'eco':'auto';localStorage.setItem('santorini-quality',S.quality);const actual=S.three?.setQuality(S.quality);if(S.quality==='hd'&&actual==='eco')message('Đồ họa HD không bật khi chế độ tiết kiệm dữ liệu đang hoạt động.');render();};
 $('powerBtn').onclick=()=>{S.powerMode=S.powerMode==='prebuild'?'move':'prebuild';render();};
 $('domeBtn').onclick=()=>{S.powerMode=S.powerMode==='dome'?'move':'dome';render();};
 $('skipBtn').onclick=()=>send({type:'skip'});
