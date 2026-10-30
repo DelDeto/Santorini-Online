@@ -167,6 +167,8 @@ function render(){
  for(let i=0;i<3;i++)$('player'+i).classList.toggle('active',(v.capacity===4?v.activeSeat%2===i:g.turn===i)&&g.phase!=='ended');
  $('player1').classList.toggle('bot-player',solo);
  $('godInfo').classList.toggle('hidden',v.ruleset!=='god');
+ $('god2').classList.toggle('hidden',v.capacity!==3);
+ if(v.capacity===3)$('god2').textContent=g.gods?.[2]?v.gods[g.gods[2]]?.name:'Chưa chọn';
  if(v.ruleset==='god'){
   $('god0').textContent=(v.capacity===4?v.seatGods?.[0]:g.gods?.[0])?v.gods[v.capacity===4?v.seatGods[0]:g.gods[0]].name:'Chưa chọn';
   $('god1').textContent=(v.capacity===4?v.seatGods?.[1]:g.gods?.[1])?v.gods[v.capacity===4?v.seatGods[1]:g.gods[1]].name:'Chưa chọn';
