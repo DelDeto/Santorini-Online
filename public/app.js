@@ -1,8 +1,32 @@
 const $=id=>document.getElementById(id);
 const ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const S={room:null,seat:-1,view:null,ws:null,selected:null,mode:'online',ruleset:'classic',difficulty:'normal',capacity:2,spectate:false,powerMode:'move',
+const S={room:null,seat:-1,view:null,ws:null,selected:null,mode:'online',ruleset:'classic',difficulty:'normal',capacity:2,variant:'duel',spectate:false,powerMode:'move',
  sound:localStorage.getItem('santorini-sound')!=='false',quality:localStorage.getItem('santorini-quality')||'auto',lighting:localStorage.getItem('santorini-lighting')||'noon',epoch:0,attempt:0,active:false,three:null,oldRevision:-1};
 let audio,toastTimer;
+const MODE_UI={
+ classic:{n:2,god:false,title:'♟ CLASSIC',description:'Classic — Hai người đấu trí, không dùng năng lực thần. Mỗi lượt di chuyển một quân rồi xây một tầng.'},
+ duel:{n:2,god:true,title:'⚡ GOD POWERS',description:'God Powers — Hai người chọn thần riêng trong 30 lá, sử dụng năng lực đặc biệt để chiến thắng.'},
+ trio:{n:3,god:true,title:'♜ 3 NGƯỜI',description:'Đấu tự do — Ba người chơi độc lập, mỗi người hai quân và một thần. Người cuối cùng còn lại chiến thắng.'},
+ teams:{n:4,god:true,title:'♟ 4 NGƯỜI 2V2',description:'Đấu đội — Hai đội, dùng chung hai quân mỗi đội; bốn người có bốn thần riêng.'},
+ agora:{n:2,god:true,title:'⇄ AGORA',description:'Agora Online — Hai người chọn thần cơ bản; sau mỗi vòng hai lượt, hai vị thần đổi chủ tự động.'},
+ fleece:{n:2,god:true,title:'🐏 GOLDEN FLEECE',description:'Golden Fleece — Cả bàn dùng chung một thần; quân đứng cạnh tượng Cừu Vàng lúc bắt đầu lượt được dùng thần ấy.'}
+};
+let chosenMode='duel';
+function selectMode(id){
+ if(!MODE_UI[id])return;
+ chosenMode=id;
+ const m=MODE_UI[id];
+ for(const b of document.querySelectorAll('#modeGrid [data-mode]')){
+  const yes=b.dataset.mode===id;
+  b.classList.toggle('selected',yes);b.setAttribute('aria-pressed',String(yes));
+ }
+ $('modeDescription').textContent=m.description;
+ $('botCountSelect').value=String(m.n);
+ $('teamSize').value=String(m.n);
+ const input=document.querySelector('input[name="ruleset"][value="'+(m.god?'god':'classic')+'"]');
+ if(input)input.checked=true;
+}
+
 
 /* Active God Powers are shown in the HUD and can be inspected at any time. */
 const POWER_GUIDE={
@@ -41,7 +65,7 @@ Object.assign(POWER_GUIDE,{
 });
 const escHtml=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let powerFocus=null;
-function seatGod(v,seat){return v.capacity===4?v.seatGods?.[seat]??null:v.game.gods?.[seat]??null;}
+function seatGod(v,seat){return v.modeId==='fleece'?v.game.fleeceGod:v.capacity===4?v.seatGods?.[seat]??null:v.game.gods?.[seat]??null;}
 function abilityHint(g,id,ownTurn){
  const help=POWER_GUIDE[id];if(!help)return 'Đang đợi chọn thần.';
  if(!ownTurn)return help.tip;
@@ -76,9 +100,9 @@ function renderPowers(){
  const currentGod=seatGod(v,seat);
  const currentPlayer=v.players?.[seat];
  const mine=S.seat===seat,ready=!!v.ready;
- $('powerOwner').textContent=ready?(mine?'⚡ LƯỢT CỦA BẠN':'⚡ '+(currentPlayer?.bot?'BOT ĐANG CHƠI':'ĐANG ĐẾN LƯỢT')):'⚡ CHỜ ĐỦ NGƯỜI';
+ $('powerOwner').textContent=v.modeId==='fleece'?(g.ctx?.fleeceActive===seat?'🐏 ĐƯỢC CỪU BAN PHÉP':'🐏 NĂNG LỰC CHUNG'):ready?(mine?'⚡ LƯỢT CỦA BẠN':'⚡ '+(currentPlayer?.bot?'BOT ĐANG CHƠI':'ĐANG ĐẾN LƯỢT')):'⚡ CHỜ ĐỦ NGƯỜI';
  $('powerActiveName').textContent=currentGod?v.gods?.[currentGod]?.name||currentGod:'Chưa chọn thần';
- $('powerUseHint').textContent=currentGod?abilityHint(g,currentGod,mine&&isTurn()):'Chọn God Power trước khi đặt quân.';
+ $('powerUseHint').textContent=v.modeId==='fleece'&&g.phase==='ramPlace'?'Chạm một ô trống để đặt tượng Cừu Vàng.':v.modeId==='fleece'&&g.ram&&g.ctx?.fleeceActive!==seat?'Đứng cạnh Cừu Vàng khi bắt đầu lượt mới để nhận năng lực.':currentGod?abilityHint(g,currentGod,mine&&isTurn()):'Chọn God Power trước khi đặt quân.';
  const roster=v.players.map((p,i)=>{
   const power=seatGod(v,i),info=v.gods?.[power],you=i===S.seat,active=i===seat;
   const dead=!!g.eliminated?.[i],title=power?info?.name||power:'Chưa chọn';
@@ -114,11 +138,11 @@ function message(s){$('toast').textContent=s;$('toast').classList.add('show');cl
 function beep(f=520){if(!S.sound)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),v=audio.createGain();o.type='triangle';o.frequency.value=f;v.gain.setValueAtTime(.034,audio.currentTime);v.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.17);o.connect(v).connect(audio.destination);o.start();o.stop(audio.currentTime+.17);}catch{}}
 function roomCode(){return Array.from(crypto.getRandomValues(new Uint32Array(8)),x=>ALPHABET[x%ALPHABET.length]).join('');}
 function seatToken(room){const key='santorini-seat:'+room;let t=localStorage.getItem(key);if(!t){t=Array.from(crypto.getRandomValues(new Uint8Array(24)),x=>x.toString(16).padStart(2,'0')).join('');localStorage.setItem(key,t);}return t;}
-function enter(room,mode='online',ruleset='classic',capacity=2,spectate=false){
- S.mode=mode;S.ruleset=ruleset;S.capacity=capacity;S.spectate=spectate;S.room=room;S.seat=-1;S.active=true;S.view=null;S.selected=null;S.attempt=0;S.epoch++;S.oldRevision=-1;S.powerMode='move';
+function enter(room,mode='online',ruleset='classic',capacity=2,spectate=false,variant=chosenMode){
+ S.mode=mode;S.ruleset=ruleset;S.capacity=capacity;S.variant=variant;S.spectate=spectate;S.room=room;S.seat=-1;S.active=true;S.view=null;S.selected=null;S.attempt=0;S.epoch++;S.oldRevision=-1;S.powerMode='move';
  S.difficulty=$('difficultySelect').value;
  $('landing').classList.add('hidden');$('game').classList.remove('hidden');$('exitBtn').classList.remove('hidden');
- history.replaceState({},'',location.pathname+'?room='+encodeURIComponent(room)+(mode==='bot'?'&mode=bot':ruleset==='god'?'&ruleset=god':'')+(capacity>2?'&players='+capacity:'')+(spectate?'&spectate=1':''));
+ history.replaceState({},'',location.pathname+'?room='+encodeURIComponent(room)+(mode==='bot'?'&mode=bot':ruleset==='god'?'&ruleset=god':'')+(capacity>2?'&players='+capacity:'')+'&variant='+encodeURIComponent(S.variant)+(spectate?'&spectate=1':''));
  connect(S.epoch);render();ensure3d();
 }
 function ensure3d(){
@@ -144,6 +168,7 @@ function connect(epoch){
  const url=new URL((location.protocol==='https:'?'wss:':'ws:')+'//'+location.host+'/ws');
  url.searchParams.set('room',S.room);url.searchParams.set('token',seatToken(S.room));url.searchParams.set('name',name);
  if(S.mode==='bot'){url.searchParams.set('mode','bot');url.searchParams.set('difficulty',S.difficulty);}
+ url.searchParams.set('variant',S.variant);
  if(S.capacity>2)url.searchParams.set('players',String(S.capacity));
  if(S.spectate)url.searchParams.set('spectate','1');
  else if(S.ruleset==='god')url.searchParams.set('ruleset','god');
@@ -160,7 +185,7 @@ function connect(epoch){
   if(msg.type==='hello'){S.seat=msg.seat;S.view=msg.view;}
   else if(msg.type==='state'){S.view=msg.view;}
   else return;
-  S.ruleset=S.view.ruleset??'classic';S.capacity=S.view.capacity||2;
+  S.ruleset=S.view.ruleset??'classic';S.capacity=S.view.capacity||2;S.variant=S.view.modeId||S.variant;
   if(old&&old.revision!==S.view.game.revision){
    if(S.view.game.ctx?.prometheusUsed)S.powerMode='move';
    const g=S.view.game;
