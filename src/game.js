@@ -88,6 +88,8 @@ function legalMoveDetails(g,p,i){
  for(let row=Math.max(0,from.row-1);row<=Math.min(4,from.row+1);row++)
  for(let col=Math.max(0,from.col-1);col<=Math.min(4,from.col+1);col++){
   const dest={row,col};if(!near(from,dest))continue;
+  // Golden Fleece Ram is a stationary obstacle: no Worker may occupy its square.
+  if(g.ram&&eq(dest,g.ram))continue;
   const h=g.board[row][col];if(h===4||h>before+1)continue;
   if(((g.workers.length===2?g.athenaBlocked===p:(g.athenaBlocked!==null&&g.athenaBlocked!==p))||g.ctx?.prometheusUsed)&&h>before)continue;
   if(g.phase==='hermesMove'&&h!==before)continue;
