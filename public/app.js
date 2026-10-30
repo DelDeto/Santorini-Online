@@ -367,15 +367,28 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('powersOverlay')
 $('board').addEventListener('click',e=>{const b=e.target.closest('.tile');if(b)tileClick(+b.dataset.row,+b.dataset.col);});
 $('godGroup').onchange=()=>{if(S.view)renderGodPick(S.view.game);};
 $('godCards').addEventListener('click',e=>{const b=e.target.closest('button[data-god]');if(b&&!b.disabled)send({type:'selectGod',god:b.dataset.god});});
-$('createBtn').onclick=()=>{const n=Number($('teamSize').value),rule=n>2?'god':document.querySelector('input[name="ruleset"]:checked')?.value==='god'?'god':'classic';if(n>2)document.querySelector('input[name="ruleset"][value="god"]').checked=true;enter(roomCode(),'online',rule,n);};
-$('teamSize').onchange=()=>{if(+$('teamSize').value>2){const gods=document.querySelector('input[name="ruleset"][value="god"]');gods.checked=true;message('Luật Roxley: phòng 3–4 người bắt buộc dùng God Powers.');}};
-$('demoBtn').onclick=()=>{const n=Number($('botCountSelect').value);enter(roomCode(),'bot',n>2?'god':document.querySelector('input[name="ruleset"]:checked')?.value==='god'?'god':'classic',n);};
+$('createBtn').onclick=()=>{
+ const config=MODE_UI[chosenMode];
+ enter(roomCode(),'online',config.god?'god':'classic',config.n,false,chosenMode);
+};
+$('modeGrid').onclick=e=>{const target=e.target.closest('[data-mode]');if(target)selectMode(target.dataset.mode);};
+$('teamSize').onchange=()=>selectMode($('teamSize').value==='3'?'trio':$('teamSize').value==='4'?'teams':'duel');
+$('botCountSelect').onchange=()=>{
+ const n=Number($('botCountSelect').value);
+ if(n===3)selectMode('trio');
+ else if(n===4)selectMode('teams');
+ else if(MODE_UI[chosenMode].n!==2)selectMode('duel');
+};
+$('demoBtn').onclick=()=>{
+ const config=MODE_UI[chosenMode];
+ enter(roomCode(),'bot',config.god?'god':'classic',config.n,false,chosenMode);
+};
 $('fillBotsBtn').onclick=()=>send({type:'fillBots',difficulty:$('difficultySelect').value});
 $('joinBtn').onclick=()=>{const room=$('codeInput').value.trim().toUpperCase();if(!/^[A-Z2-9]{6,10}$/.test(room))return message('Mã phòng không hợp lệ.');enter(room,'online','classic');};
 $('watchBtn').onclick=()=>{const room=$('codeInput').value.trim().toUpperCase();if(!/^[A-Z2-9]{6,10}$/.test(room))return message('Mã phòng không hợp lệ.');enter(room,'online','classic',2,true);};
 $('codeInput').onkeydown=e=>{if(e.key==='Enter')$('joinBtn').click();};
 $('nameInput').onkeydown=e=>{if(e.key==='Enter')$('createBtn').click();};
-$('copyBtn').onclick=async()=>{const link=location.origin+location.pathname+'?room='+S.room+(S.ruleset==='god'?'&ruleset=god':'')+(S.capacity>2?'&players='+S.capacity:'');try{await navigator.clipboard.writeText(link);message('Đã sao chép link mời.');}catch{prompt('Link mời',link);}};
+$('copyBtn').onclick=async()=>{const link=location.origin+location.pathname+'?room='+S.room+(S.ruleset==='god'?'&ruleset=god':'')+(S.capacity>2?'&players='+S.capacity:'')+'&variant='+encodeURIComponent(S.variant);try{await navigator.clipboard.writeText(link);message('Đã sao chép link mời.');}catch{prompt('Link mời',link);}};
 $('exitBtn').onclick=()=>{
  if(S.seat>=0&&S.ws?.readyState===WebSocket.OPEN)S.ws.send(JSON.stringify({type:'leave'}));
  S.active=false;S.epoch++;S.ws?.close();S.view=null;S.seat=-1;S.room=null;
@@ -408,8 +421,9 @@ $('historyBtn').onclick=()=>{renderHistory();$('historyOverlay').classList.remov
 $('historyClose').onclick=()=>$('historyOverlay').classList.add('hidden');
 $('historyOverlay').addEventListener('click',e=>{if(e.target===$('historyOverlay'))$('historyOverlay').classList.add('hidden');});
 $('nameInput').value=localStorage.getItem('santorini-name')||'';
+selectMode('duel');
 const params=new URLSearchParams(location.search),linkRoom=params.get('room');
 if(linkRoom&&/^[A-Z2-9]{6,10}$/.test(linkRoom.toUpperCase())){
  $('codeInput').value=linkRoom.toUpperCase();
- if(localStorage.getItem('santorini-name')||params.get('spectate')==='1')enter(linkRoom.toUpperCase(),params.get('mode')==='bot'?'bot':'online',params.get('ruleset')==='god'?'god':'classic',Number(params.get('players'))||2,params.get('spectate')==='1');
+ if(localStorage.getItem('santorini-name')||params.get('spectate')==='1')enter(linkRoom.toUpperCase(),params.get('mode')==='bot'?'bot':'online',params.get('ruleset')==='god'?'god':'classic',Number(params.get('players'))||2,params.get('spectate')==='1',params.get('variant')||'duel');
 }
