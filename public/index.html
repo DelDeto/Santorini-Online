@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#09263b">
-  <meta name="description" content="Santorini Online V0.4: đảo Hy Lạp 3D điêu khắc, 10 God Powers, đấu BOT Classic hoặc chơi cùng bạn bè hoặc thách đấu bạn bè. Chơi trực tiếp trên PC và điện thoại.">
-  <title>Santorini Online V0.4 | Sculpted 3D · Island Edition</title>
+  <meta name="description" content="Santorini Online V0.5 Premium Diorama: boardgame 3D điêu khắc, biển Địa Trung Hải, ánh sáng điện ảnh, 10 God Powers, Classic và đấu BOT. Chơi trực tiếp trên PC và điện thoại.">
+  <title>Santorini Online V0.5 | Premium Diorama 3D</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <link rel="canonical" href="https://santorini-online-v01.duc-nguyen-ndd127.workers.dev/">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="vi_VN">
   <meta property="og:site_name" content="Santorini Online">
-  <meta property="og:title" content="SANTORINI ONLINE · SCULPTED 3D · ISLAND EDITION">
+  <meta property="og:title" content="SANTORINI ONLINE · V0.5 PREMIUM DIORAMA">
   <meta property="og:description" content="Xây thành phố Hy Lạp, chinh phục tầng ba. Chơi với BOT hoặc mời bạn bè, miễn phí trên điện thoại và PC.">
   <meta property="og:url" content="https://santorini-online-v01.duc-nguyen-ndd127.workers.dev/">
   <meta property="og:image" content="https://santorini-online-v01.duc-nguyen-ndd127.workers.dev/og.png">
@@ -28,7 +28,7 @@
   <script type="module" src="/app.js"></script>
 </head>
 <body>
-<header class="topbar"><div class="brand">♜ SANTORINI <small>ONLINE</small></div><div class="header-right"><span class="version">V0.4 · 3D & GOD POWERS</span><button class="mini hidden" id="exitBtn">Thoát phòng</button></div></header>
+<header class="topbar"><div class="brand">♜ SANTORINI <small>ONLINE</small></div><div class="header-right"><span class="version">V0.5 · PREMIUM 3D</span><button class="mini hidden" id="exitBtn">Thoát phòng</button></div></header>
 <main>
 <section class="landing" id="landing">
   <div class="intro"><div class="eyebrow">THE ISLAND OF STRATEGY</div><h1>Xây dựng thành phố.<br><em>Chinh phục tầng ba.</em></h1><p>Mỗi lượt chỉ cần di chuyển và xây dựng. Một nước đi có thể thay đổi cả trận đấu.</p></div>
@@ -60,7 +60,7 @@
   <div class="board-stage"><div class="stage-label">ĐẢO SANTORINI · XOAY BÀN • ZOOM • CHẠM ĐỂ CHƠI</div><div class="stage3d" id="scene3d"><div class="loading-3d">Đang dựng đảo Santorini 3D…</div></div><div class="water" id="boardFallback"><div class="island"><div class="board" id="board" role="grid" aria-label="Bàn Santorini 5 nhân 5"></div></div></div></div>
   <div class="god-info hidden" id="godInfo"><span id="god0" class="god-token">THẦN 01</span><span id="godEffect">God Powers · Năng lực đặc biệt</span><span id="god1" class="god-token">THẦN 02</span></div>
   <div class="action-bar"><div class="action-text"><strong id="phaseLabel">Đang tải…</strong><span id="hint">Đồng bộ bàn chơi</span></div><div class="power-actions"><button id="powerBtn" class="mini hidden">⚡ Xây trước</button><button id="domeBtn" class="mini hidden">◆ Đặt mái vòm</button><button id="skipBtn" class="mini hidden">Bỏ qua →</button><button id="endMoveBtn" class="mini hidden">Xây ngay →</button></div><span class="phase-chip" id="phaseChip">● ĐANG CHƠI</span><button class="secondary hidden" id="restartBtn">Chơi lại ↻</button></div>
-  <div class="game-bottom"><span id="seatText">Đang xác nhận vị trí</span><button id="viewBtn" class="mini">⟳ Đặt lại góc nhìn</button><button id="soundBtn" class="mini">Âm thanh: Bật</button></div>
+  <div class="game-bottom"><span id="seatText">Đang xác nhận vị trí</span><button id="viewBtn" class="mini">⟳ Góc nhìn</button><button id="lightingBtn" class="mini" title="Chuyển ánh sáng ban ngày/hoàng hôn">☀ Ban ngày</button><button id="qualityBtn" class="mini" title="Đổi chất lượng đồ họa">✧ Auto</button><button id="soundBtn" class="mini">Âm thanh: Bật</button></div>
   <div class="god-overlay hidden" id="godOverlay"><div class="god-panel"><div class="eyebrow">OLYMPUS · GOD POWERS</div><h2 id="godPickTitle">Chọn vị thần của bạn</h2><p>Chọn một vị thần có năng lực riêng. Mỗi vị thần chỉ được chọn một lần.</p><div id="godCards" class="god-cards"></div><small id="godPickHint">Hai người lần lượt chọn thần trước khi đặt quân.</small></div></div>
   <div class="win-overlay hidden" id="winOverlay"><div class="win-card"><div class="trophy">🏆</div><div class="eyebrow">GAME OVER</div><h2 id="winTitle">Chiến thắng!</h2><p id="winText"></p><button class="primary" id="rematchBtn">Tái đấu ↻</button></div></div>
 </section>
