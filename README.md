@@ -176,3 +176,18 @@ Các BOT là đối thủ theo thuật toán heuristic, không phải mô hình 
 - Các bài kiểm thử chiến thuật mới kiểm tra thắng ở tầng 3, Pan thắng xuống tầng, Atlas chặn đường thắng, không xây tầng 3 cho đối thủ, ba người nhận diện mối đe dọa và Hermes không lặp vô hạn.
 
 **Giới hạn:** mức Khó dùng tìm kiếm ngắn hạn + heuristic, chưa phải minimax toàn trận hoặc BOT bất bại. Dự báo phản đòn của các God Powers nhiều pha là xấp xỉ để bảo đảm hiệu năng. Phần luật cơ bản và 10 God Powers của V1.1 được giữ nguyên.
+
+
+## V1.3 — Roxley Advanced Gods · 30 God Powers
+
+**Danh mục:** 10 Simple Gods + toàn bộ 20 Advanced Gods theo luật Roxley Classic (2017): Aphrodite, Ares, Bia, Chaos, Charon, Chronus, Circe, Dionysus, Eros, Hera, Hestia, Hypnus, Limus, Medusa, Morpheus, Persephone, Poseidon, Selene, Triton, Zeus.
+
+- Engine chạy phía server xử lý hành động nâng cao: Charon kéo quân trước khi đi; Ares phá khối; Bia hạ quân; Zeus xây dưới chân; Hestia/Poseidon/Morpheus xây nhiều lần; Triton đi tiếp ở viền; Dionysus điều khiển quân đối thủ trong lượt phụ; Medusa hóa đá; Chaos xoay thần cơ bản; Circe mượn thần; Chronus/Eros thắng theo điều kiện riêng; Hera/Hypnus/Limus/Persephone/Aphrodite hạn chế đối thủ; Selene làm mái vòm từ quân nữ.
+- Draft trong game có nhóm lọc **Cơ bản / Nâng cao / Tất cả**, các lá bị cấm theo số người hoặc xung đột không được chọn. Trong luật tham chiếu, Aphrodite chỉ 2/4 người, Chronus và Circe chỉ 2 người. Gợi ý với BOT ở 2, 3, 4 người đều dùng danh mục mở rộng phù hợp.
+- Người chơi chạm **ⓘ Chi tiết** hoặc tên thần trong trận để xem lời giải thích và thao tác tiếng Việt. Các bước bổ sung hiển thị trực tiếp trên bàn 3D/2D, có nút **Bỏ qua**, **Điều khiển phe**, hoặc vị trí được highlight tùy thần.
+- Bảo toàn 2D dự phòng, God Powers và BOT chiến thuật V1.2; triển khai trên Cloudflare Workers + Durable Objects, không sử dụng API AI ngoài.
+- Trạng thái V1.2 trong các phòng cũ được nâng cấp dữ liệu tự động. Bộ test kiểm tra từng nhóm thần, điều kiện thắng đặc biệt, số người, BOT và thử kết nối multiplayer.
+
+**Giới hạn/khác biệt cần biết:** Khâu setup Challenger chọn đúng N thẻ và chọn người bắt đầu vẫn là cơ chế rút gọn trong game. Một số tổ hợp Advanced Gods rất hiếm, hiệu ứng nhiều bước và quyền mượn thần của Circe chưa được chứng minh tương đương hoàn toàn mọi ví dụ của sách luật. BOT V1.3 hiểu các hành động hợp lệ và chấm điểm chiến thuật ngắn hạn nhưng không bảo đảm chuyên sâu với toàn bộ 20 thần. Quy tắc tham chiếu là **Roxley Classic 2017**, không phải bộ thẻ Pantheon 2025 có luật đã điều chỉnh.
+
+Quy tắc: https://files.roxley.com/Santorini-Rulebook-Web-2016.08.14.pdf
