@@ -38,5 +38,5 @@ test('User can change graphics and lighting without leaving the game',()=>{
   assert.match(css,/max-width:650px/);
   assert.match(app,/santorini-quality/);
   assert.match(app,/santorini-lighting/);
-  assert.match(ui,/V1\.3/);
+  assert.match(ui,/V1\.4/);
 });
