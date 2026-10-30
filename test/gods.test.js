@@ -7,8 +7,8 @@ function setup(god,enemy='athena'){
  g.workers=[[{row:2,col:2},{row:0,col:0}],[{row:3,col:3},{row:4,col:4}]];
  return g;
 }
-test('ten god powers registered and uniqueness enforced during draft',()=>{
- assert.equal(Object.keys(GODS).length,10);
+test('thirty god powers registered and uniqueness enforced during draft',()=>{
+ assert.equal(Object.keys(GODS).length,30);
  const g=newGame('god');match(g,0,'selectGod',{god:'apollo'});
  assert.equal(g.turn,1);
  assert.throws(()=>match(g,1,'selectGod',{god:'apollo'}));
