@@ -1,13 +1,13 @@
 import { DurableObject } from 'cloudflare:workers';
-import { newGame, applyAction, resetGame } from './game.js';
+import { newGame, applyAction, resetGame, legalActions, GODS } from './game.js';
 import { chooseBotAction } from './bot.js';
 
 const BOT_TOKEN='bot:server-managed';
 const LEVELS=['easy','normal','hard'];
 function cleanName(value){return String(value??'Người chơi').trim().slice(0,24).replace(/[<>]/g,'')||'Người chơi';}
-function freshRoom(){return {game:newGame(),players:[null,null],mode:null,difficulty:'normal'};}
+function freshRoom(){return {game:newGame(),players:[null,null],mode:null,difficulty:'normal',ruleset:'classic'};}
 function view(room){
-  return {game:room.game,mode:room.mode||'online',difficulty:room.difficulty,players:room.players.map((p,i)=>({name:p?.name??('Ghế '+(i+1)+' · Đang chờ'),joined:!!p,seat:i,bot:p?.token===BOT_TOKEN})),ready:room.players.every(Boolean)};
+  return {game:room.game,legalActions:room.players.every(Boolean)?legalActions(room.game):[],gods:GODS,ruleset:room.game.ruleset||'classic',mode:room.mode||'online',difficulty:room.difficulty,players:room.players.map((p,i)=>({name:p?.name??('Ghế '+(i+1)+' · Đang chờ'),joined:!!p,seat:i,bot:p?.token===BOT_TOKEN})),ready:room.players.every(Boolean)};
 }
 export class SantoriniRoom extends DurableObject {
   constructor(ctx,env){
@@ -34,6 +34,8 @@ export class SantoriniRoom extends DurableObject {
     const name=cleanName(u.searchParams.get('name'));
     if(!this.room.mode){
       this.room.mode=u.searchParams.get('mode')==='bot'?'bot':'online';
+      this.room.ruleset=this.room.mode==='online'&&u.searchParams.get('ruleset')==='god'?'god':'classic';
+      this.room.game=newGame(this.room.ruleset);
       if(this.room.mode==='bot'){
         this.room.difficulty=LEVELS.includes(u.searchParams.get('difficulty'))?u.searchParams.get('difficulty'):'normal';
         this.room.players[1]={name:'BOT · '+({easy:'Tập sự',normal:'Chiến thuật',hard:'Bậc thầy'}[this.room.difficulty]),token:BOT_TOKEN};
@@ -86,7 +88,7 @@ export class SantoriniRoom extends DurableObject {
 export default {
   async fetch(request,env){
     const u=new URL(request.url);
-    if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'0.2.0'});
+    if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'0.3.0'});
     if(u.pathname==='/ws'){
       const room=u.searchParams.get('room')||'';
       if(!/^[A-Z2-9]{6,10}$/.test(room))return new Response('Room code invalid',{status:400});
