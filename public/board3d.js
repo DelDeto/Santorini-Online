@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
+import {createPremiumEnvironment} from './premium3d.js';
 
 /** Real-time, raycastable three-dimensional Santorini tabletop, original procedural assets. */
 export function createBoard3D(container,onCell){
@@ -81,6 +82,7 @@ export function createBoard3D(container,onCell){
    'gl_FragColor=vec4(col+vec3(.14,.22,.23)*sparkle,1.0);}'].join('\n')
  });
  const seaPlane=mesh(seaGeometry,seaMaterial,0,-.94,0);seaPlane.rotation.x=-Math.PI/2;seaPlane.castShadow=false;seaPlane.receiveShadow=false;
+ const premium=createPremiumEnvironment({scene,camera,renderer,container,sun,seaMaterial,mobile});
  // Irregular limestone cliff around the inset playing grid.
  const shoreShape=new THREE.Shape(),n=40;
  for(let i=0;i<=n;i++){const t=i/n*Math.PI*2,r=3.72+Math.sin(t*7)*.10+Math.sin(t*3)*.16+Math.sin(t*13)*.045;
@@ -121,9 +123,9 @@ export function createBoard3D(container,onCell){
  pottery(3.18,.15);pottery(-3.10,-.20);
  let highlights=new THREE.Group();scene.add(highlights);
  const tileAt=(r,c)=>({x:(c-2)*1.05,z:(r-2)*1.05});
- const glowMove=new THREE.MeshBasicMaterial({color:0x5cf0dc,transparent:true,opacity:.63,depthWrite:false});
- const glowBuild=new THREE.MeshBasicMaterial({color:0xffc86b,transparent:true,opacity:.77,depthWrite:false});
- const glowSelected=new THREE.MeshBasicMaterial({color:0xfdf29d,transparent:true,opacity:.9,depthWrite:false});
+ const glowMove=new THREE.MeshBasicMaterial({color:0x5cf0dc,transparent:true,opacity:.63,depthWrite:false,side:THREE.DoubleSide});
+ const glowBuild=new THREE.MeshBasicMaterial({color:0xffc86b,transparent:true,opacity:.77,depthWrite:false,side:THREE.DoubleSide});
+ const glowSelected=new THREE.MeshBasicMaterial({color:0xfdf29d,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide});
  const tweens=[];
  function ring(row,col,y,material){
   const {x,z}=tileAt(row,col);
@@ -178,13 +180,14 @@ export function createBoard3D(container,onCell){
   const m=mesh(new THREE.CylinderGeometry(r*.75,r,d.length(),10),material,(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2,parent);
   m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());return m;
  }
+ const pawnColors={blue:{robe:mat('#267eae',.64),acc:mat('#1d577a',.81)},coral:{robe:mat('#c47162',.68),acc:mat('#824b4d',.79)}};
+ const pawnSkin=mat('#ead3b5',.78),pawnHair=mat('#595048',.85);
  function worker(group,p,row,col,level,index=0){
   const {x,z}=tileAt(row,col);
   const w=new THREE.Group();w.position.set(x,.42+level*.53,z);group.add(w);
-  const robe=p===0?mat('#267eae',.64):mat('#c47162',.68);
-  const acc=p===0?mat('#1d577a',.81):mat('#824b4d',.79);
-  const skin=mat('#ead3b5',.78);
-  const hair=mat('#595048',.85);
+  const robe=p===0?pawnColors.blue.robe:pawnColors.coral.robe;
+  const acc=p===0?pawnColors.blue.acc:pawnColors.coral.acc;
+  const skin=pawnSkin,hair=pawnHair;
   // Stone plinth, carved hem and a draped, flaring marble-resin robe.
   mesh(cached('pawn-base',()=>new THREE.CylinderGeometry(.245,.26,.085,24)),edge,0,.05,0,w);
   mesh(cached('pawn-ring',()=>new THREE.CylinderGeometry(.215,.23,.035,24)),bronze,0,.104,0,w);
@@ -213,15 +216,41 @@ export function createBoard3D(container,onCell){
   mesh(cached('brooch',()=>new THREE.SphereGeometry(.038,10,8)),bronze,0,.56,.17,w);
   if(index===1)mesh(cached('helmet',()=>new THREE.ConeGeometry(.09,.16,11)),bronze,0,1.025,0,w);
   else {const cape=cube(.23,.33,.057,acc,0,.38,-.15,w);cape.rotation.x=-.10;}
+  // The tiny polished resin statue rests on a contact-shadow disc.
+  const shadowMat=new THREE.MeshBasicMaterial({color:0x102c3e,transparent:true,opacity:.18,depthWrite:false});
+  const disc=mesh(cached('pawn-contact',()=>new THREE.CircleGeometry(.26,20)),shadowMat,0,-.03,0,w);
+  disc.rotation.x=-Math.PI/2;disc.castShadow=false;
   w.userData={row,col,p,index};return w;
  }
 
  const current={state:null};
+ const victoryPieces=new THREE.Group();scene.add(victoryPieces);
+ const flakes=[];let celebration=false,cameraTransition=null;
+ function clearVictory(){while(victoryPieces.children.length){victoryPieces.remove(victoryPieces.children[0]);}flakes.length=0;celebration=false;cameraTransition=null;}
+ function makeVictory(g){
+  if(celebration)return;celebration=true;
+  const winner=g.workers[g.winner]?.[0];
+  const wp=winner?tileAt(winner.row,winner.col):{x:0,z:0};
+  const start=performance.now();
+  cameraTransition={start,from:camera.position.clone(),to:new THREE.Vector3(7.4,9.4,9.7)};
+  const goldMat=new THREE.MeshBasicMaterial({color:0xffe3a3,transparent:true,opacity:.95,side:THREE.DoubleSide});
+  const blueMat=new THREE.MeshBasicMaterial({color:0x83e5ef,transparent:true,opacity:.9,side:THREE.DoubleSide});
+  const geo=cached('victory-flake',()=>new THREE.PlaneGeometry(.095,.16));
+  for(let i=0;i<(mobile?24:46);i++){
+   const n=i*.61803398875,angle=n*6.283185307;
+   const particle=mesh(geo,i%3?goldMat:blueMat,wp.x+Math.cos(angle)*(1+(i%5)*.27),2+(i%7)*.19,wp.z+Math.sin(angle)*(1+(i%4)*.26),victoryPieces);
+   particle.castShadow=false;particle.receiveShadow=false;
+   const velocity=.18+(i%8)*.035;
+   flakes.push({obj:particle,startY:particle.position.y,vx:Math.sin(angle)*.09,vz:Math.cos(angle)*.07,velocity,phase:angle});
+  }
+ }
+
  const towers=new Map(),figures=new Map();
  function samePos(a,b){return !!a&&!!b&&a.row===b.row&&a.col===b.col;}
  function update(g,targets=[],selected=null,buildMode=false){
   const previous=current.state;
   const changed=!previous||previous.revision!==g.revision;
+  if(g.phase==='ended'&&g.winner!==null){if(!celebration)makeVictory(g);}else if(celebration)clearVictory();
   if(changed){
    for(let row=0;row<5;row++)for(let col=0;col<5;col++){
     const key=row+','+col,height=g.board[row][col],old=previous?.board[row]?.[col]??0;
@@ -278,20 +307,27 @@ export function createBoard3D(container,onCell){
  let down=null;
  renderer.domElement.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY};});
  renderer.domElement.addEventListener('pointerup',clicked);
- const resize=new ResizeObserver(()=>{const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);camera.position.set(8.2*(w/h<.90?1.31:1),10.4*(w/h<.90?1.31:1),11.3*(w/h<.90?1.31:1));orbit.update();});
+ const resize=new ResizeObserver(()=>{const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);premium.resize(w,h);camera.position.set(8.2*(w/h<.90?1.31:1),10.4*(w/h<.90?1.31:1),11.3*(w/h<.90?1.31:1));orbit.update();});
  resize.observe(container);
  function setView(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight),f=w/h<.90?1.31:1;camera.position.set(8.2*f,10.4*f,11.3*f);orbit.target.set(0,.5,0);orbit.update();}
  let active=true;
  function loop(time){
-  if(!active)return;requestAnimationFrame(loop);orbit.update();seaMaterial.uniforms.time.value=time*.001;
+  if(!active)return;requestAnimationFrame(loop);orbit.update();seaMaterial.uniforms.time.value=time*.001;premium.update(time);
   for(let i=tweens.length-1;i>=0;i--){const tw=tweens[i],t=Math.min(1,(time-tw.start)/tw.duration),e=1-Math.pow(1-t,3);
    if(!tw.obj.parent){tweens.splice(i,1);continue;}
    if(tw.type==='move'){tw.obj.position.x=tw.x+(tw.toX-tw.x)*e;tw.obj.position.z=tw.z+(tw.toZ-tw.z)*e;tw.obj.position.y=tw.y+(tw.toY-tw.y)*e+Math.sin(Math.PI*t)*.24;}
    else if(tw.type==='rise')tw.obj.scale.y=.81+.19*e;else tw.obj.scale.setScalar(.12+.88*e);
    if(t===1)tweens.splice(i,1);
   }
-  renderer.render(scene,camera);
+  if(celebration){
+   for(const f of flakes){const elapsed=(time-(cameraTransition?.start??time))*.001;
+    f.obj.position.y=1.6+(f.startY-1.6+elapsed*.10+Math.sin(elapsed*.72+f.phase)*.24)%2.6;
+    f.obj.position.x+=f.vx*.014;f.obj.position.z+=f.vz*.014;
+    f.obj.rotation.x+=.015;f.obj.rotation.y+=.02;}
+   if(cameraTransition&&time-cameraTransition.start<1350){const t=Math.min(1,(time-cameraTransition.start)/1350);const e=t*t*(3-2*t);camera.position.lerpVectors(cameraTransition.from,cameraTransition.to,e);}
+  }
+  premium.render();
  }
  requestAnimationFrame(loop);
- return {update,resetCamera:setView,destroy(){active=false;resize.disconnect();orbit.dispose();for(const tx of textures)tx.dispose();seaMaterial.dispose();seaGeometry.dispose();for(const geo of cache.values())geo.dispose();renderer.dispose();renderer.domElement.remove();}};
+ return {update,resetCamera:setView,setQuality:mode=>premium.setQuality(mode),setLighting:mode=>premium.setLighting(mode),get quality(){return premium.quality;},destroy(){active=false;resize.disconnect();orbit.dispose();premium.dispose();for(const tx of textures)tx.dispose();seaMaterial.dispose();seaGeometry.dispose();for(const geo of cache.values())geo.dispose();scene.traverse(obj=>{if(obj.isMesh&&obj.geometry&&!Array.from(cache.values()).includes(obj.geometry)&&obj.geometry!==seaGeometry)obj.geometry.dispose();});renderer.dispose();renderer.domElement.remove();}};
 }
