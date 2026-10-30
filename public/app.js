@@ -17,6 +17,28 @@ const POWER_GUIDE={
  pan:{icon:'↘',kind:'Tự động · điều kiện thắng đặc biệt',how:'Ngoài cách leo từ tầng 2 lên 3, Pan thắng ngay khi di chuyển xuống ít nhất 2 tầng, ví dụ 2 → 0.',tip:'Di chuyển xuống từ tầng 2 → 0 sẽ thắng ngay, không cần bật kỹ năng.'},
  prometheus:{icon:'⚡',kind:'Chủ động · xây trước khi đi',how:'Ở bước di chuyển, chọn quân, bấm “⚡ Xây trước”, chạm ô sáng để xây, rồi di chuyển đúng quân đó. Sau khi xây trước, không được di chuyển lên tầng.',tip:'Chọn quân → “⚡ Xây trước” → chạm ô xây → di chuyển quân.'}
 };
+Object.assign(POWER_GUIDE,{
+ aphrodite:{icon:'♥',kind:'Tự động · hạn chế di chuyển',how:'Nếu đối thủ bắt đầu lượt cạnh quân Aphrodite, họ phải kết thúc nước đi cuối cạnh quân Aphrodite.',tip:'Đứng cạnh quân đối thủ để buộc họ không thể bỏ đi xa.'},
+ ares:{icon:'⚒',kind:'Cuối lượt · phá khối',how:'Sau khi di chuyển và xây, chạm khối sáng cạnh quân không di chuyển để phá, hoặc bấm Bỏ qua.',tip:'Cuối lượt: phá một khối cạnh quân không di chuyển.'},
+ bia:{icon:'⚔',kind:'Tự động · hạ quân',how:'Đặt quân trước. Di chuyển tới ô ngay trước quân đối thủ theo cùng hướng để loại quân đối thủ đứng phía sau.',tip:'Tiến quân vào vị trí trước đối thủ để loại quân phía sau.'},
+ chaos:{icon:'✧',kind:'Tự động · đổi năng lực',how:'Nhận ngẫu nhiên một thần cơ bản chưa ai sở hữu; sau mỗi lượt xây mái vòm, kỹ năng đổi sang thần khác.',tip:'Theo dõi năng lực Chaos đang sở hữu bên cạnh tên thần.'},
+ charon:{icon:'⇄',kind:'Trước khi đi · kéo quân',how:'Chọn quân Charon, chạm quân đối thủ sáng để kéo qua phía đối diện, sau đó đi và xây bình thường.',tip:'Chạm quân đối thủ được đánh dấu để kéo, rồi di chuyển.'},
+ chronus:{icon:'⌛',kind:'Tự động · thắng đặc biệt',how:'Ngay khi bàn xuất hiện 5 tòa tháp hoàn chỉnh có mái vòm, Chronus thắng.',tip:'Hướng tới 5 tháp hoàn chỉnh để thắng.'},
+ circe:{icon:'☽',kind:'Tự động · mượn năng lực',how:'Nếu hai quân đối thủ không đứng cạnh nhau đầu lượt, Circe dùng năng lực thần đối thủ và vô hiệu hóa năng lực của họ tới lượt Circe tiếp theo.',tip:'Chia tách quân đối thủ để mượn kỹ năng của họ.'},
+ dionysus:{icon:'♧',kind:'Thêm lượt · điều khiển quân',how:'Khi hoàn tất một tháp bằng mái vòm, chọn Điều khiển để đi và xây bằng quân đối thủ, hoặc Bỏ qua; không thể thắng trong lượt phụ.',tip:'Xây mái vòm hoàn chỉnh để nhận lượt điều khiển quân đối thủ.'},
+ eros:{icon:'♡',kind:'Tự động · thắng đặc biệt',how:'Đặt hai quân ở hai rìa đối diện. Di chuyển để hai quân đứng cạnh nhau trên tầng 1 (trận 3 người: cùng cao độ) thì thắng.',tip:'Di chuyển hai quân sát nhau trên tầng yêu cầu để thắng.'},
+ hera:{icon:'♛',kind:'Tự động · chặn thắng viền',how:'Không đối thủ nào có thể thắng khi di chuyển tới ô rìa ngoài bàn.',tip:'Đối thủ không thể chiến thắng ở viền bàn.'},
+ hestia:{icon:'▦',kind:'Xây thêm · ô trong',how:'Sau lần xây đầu, chọn ô trong lòng bàn để xây thêm hoặc bấm Bỏ qua.',tip:'Xây thêm một lần, chỉ tại ô không thuộc viền bàn.'},
+ hypnus:{icon:'☁',kind:'Tự động · khóa quân',how:'Quân đối thủ cao hơn tất cả quân khác của họ không thể di chuyển trong lượt ấy.',tip:'Quân cao nhất duy nhất của đối thủ bị khóa.'},
+ limus:{icon:'⊘',kind:'Tự động · cấm xây gần',how:'Đối thủ không được xây sát quân Limus, trừ xây mái vòm hoàn chỉnh.',tip:'Cấm xây sát quân của bạn ngoại trừ mái vòm tầng 3.'},
+ medusa:{icon:'☿',kind:'Tự động · hóa đá',how:'Cuối lượt, quân đối thủ đứng cạnh quân Medusa nhưng thấp hơn sẽ bị loại và thay bằng một khối công trình.',tip:'Đứng cao hơn sát đối thủ để hóa đá cuối lượt.'},
+ morpheus:{icon:'◈',kind:'Dự trữ · xây nhiều lần',how:'Đầu lượt nhận một khối xây dự trữ. Sau khi đi, dùng số khối tích lũy để xây nhiều lần hoặc Bỏ qua.',tip:'Tích khối, di chuyển rồi xây liên tiếp từ kho dự trữ.'},
+ persephone:{icon:'🌱',kind:'Tự động · ép leo tầng',how:'Nếu đối thủ có nước đi hợp lệ lên tầng cao hơn, đối thủ bắt buộc phải leo tầng.',tip:'Ép đối thủ leo tầng nếu có thể.'},
+ poseidon:{icon:'♆',kind:'Cuối lượt · xây tới 3 lần',how:'Nếu quân không di chuyển đứng ở tầng 0, sau lượt bình thường có thể xây thêm tối đa ba lần bằng quân đó hoặc Bỏ qua.',tip:'Giữ một quân ở tầng 0 để xây thêm ba lần.'},
+ selene:{icon:'☾',kind:'Chủ động · mái vòm',how:'Sau khi đi, bấm Đặt mái vòm rồi chọn ô sáng bên cạnh quân nữ (quân thứ hai), dù quân nam vừa di chuyển.',tip:'Dùng mái vòm từ quân nữ (quân thứ hai).'},
+ triton:{icon:'≈',kind:'Chủ động · đi tiếp',how:'Khi quân vào ô viền bàn, có thể di chuyển tiếp hoặc bấm Bỏ qua để chuyển sang xây.',tip:'Đi tới ô viền, chọn đi tiếp hoặc Bỏ qua.'},
+ zeus:{icon:'⚡',kind:'Chủ động · xây dưới chân',how:'Sau khi di chuyển, chạm chính ô quân đang đứng để xây một khối ngay dưới chân nếu chưa ở tầng 3.',tip:'Bước xây: chạm ô quân đang đứng được đánh dấu.'}
+});
 const escHtml=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let powerFocus=null;
 function seatGod(v,seat){return v.capacity===4?v.seatGods?.[seat]??null:v.game.gods?.[seat]??null;}
