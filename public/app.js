@@ -124,8 +124,8 @@ function renderBoard(){
 }
 function renderGodPick(g){
  const active=S.view?.ready&&isTurn()&&g.phase==='godpick';
- $('godOverlay').classList.toggle('hidden',g.phase!=='godpick');
- if(g.phase!=='godpick')return;
+ $('godOverlay').classList.toggle('hidden',g.phase!=='godpick'||!S.view?.ready);
+ if(g.phase!=='godpick'||!S.view?.ready)return;
  $('godPickTitle').textContent=active?'Chọn vị thần của bạn':!S.view.ready?'Đợi đối thủ tham gia':'Đối thủ đang chọn thần';
  $('godPickHint').textContent=g.gods[0]?'Đã chọn '+S.view.gods?.[g.gods[0]]?.name+' · Đang chờ lượt còn lại.':'Mỗi vị thần chỉ có một người sử dụng.';
  const choices=S.view.gods||{};
