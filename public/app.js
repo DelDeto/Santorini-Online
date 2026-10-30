@@ -170,8 +170,8 @@ function render(){
  $('god2').classList.toggle('hidden',v.capacity!==3);
  if(v.capacity===3)$('god2').textContent=g.gods?.[2]?v.gods[g.gods[2]]?.name:'Chưa chọn';
  if(v.ruleset==='god'){
-  $('god0').textContent=(v.capacity===4?v.seatGods?.[0]:g.gods?.[0])?v.gods[v.capacity===4?v.seatGods[0]:g.gods[0]].name:'Chưa chọn';
-  $('god1').textContent=(v.capacity===4?v.seatGods?.[1]:g.gods?.[1])?v.gods[v.capacity===4?v.seatGods[1]:g.gods[1]].name:'Chưa chọn';
+  $('god0').textContent=v.capacity===4?[0,2].map(i=>(i+1)+': '+(v.gods[v.seatGods?.[i]]?.name||'—')).join(' · '):(v.gods[g.gods?.[0]]?.name||'Chưa chọn');
+  $('god1').textContent=v.capacity===4?[1,3].map(i=>(i+1)+': '+(v.gods[v.seatGods?.[i]]?.name||'—')).join(' · '):(v.gods[g.gods?.[1]]?.name||'Chưa chọn');
   const activeGod=v.capacity===4?v.seatGods?.[v.activeSeat]:g.gods?.[g.turn];
   $('godEffect').textContent=activeGod?v.gods[activeGod]?.description:'Chọn thần để bắt đầu.';
  }
