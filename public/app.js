@@ -1,15 +1,16 @@
 const $=id=>document.getElementById(id);
 const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const S={room:null,seat:-1,view:null,ws:null,selected:null,sound:localStorage.getItem('santorini-sound')!=='false',tilt:localStorage.getItem('santorini-tilt')==='true',active:false,attempt:0,epoch:0};
+const S={room:null,seat:-1,view:null,ws:null,selected:null,sound:localStorage.getItem('santorini-sound')!=='false',tilt:localStorage.getItem('santorini-tilt')==='true',active:false,attempt:0,epoch:0,mode:'online',difficulty:'normal',animationInfo:null};
 let toastTimer,audio;
 function toast(s){$('toast').textContent=s;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2700);}
 function beep(f=560){if(!S.sound)return;try{audio??=new(window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),v=audio.createGain();o.type='sine';o.frequency.value=f;v.gain.setValueAtTime(.045,audio.currentTime);v.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.14);o.connect(v).connect(audio.destination);o.start();o.stop(audio.currentTime+.14);}catch{}}
 function roomCode(){const a=crypto.getRandomValues(new Uint32Array(8));return Array.from(a,x=>alphabet[x%alphabet.length]).join('');}
 function token(room){const key='santorini-seat:'+room;let t=localStorage.getItem(key);if(!t){t=Array.from(crypto.getRandomValues(new Uint8Array(24)),v=>v.toString(16).padStart(2,'0')).join('');localStorage.setItem(key,t);}return t;}
-function enter(room){
+function enter(room,mode='online'){
+  S.mode=mode;S.difficulty=$('difficultySelect').value;S.animationInfo=null;
   S.active=true;S.room=room;S.view=null;S.seat=-1;S.selected=null;S.attempt=0;S.epoch++;
   $('landing').classList.add('hidden');$('game').classList.remove('hidden');$('exitBtn').classList.remove('hidden');$('roomCode').textContent=room;
-  history.replaceState({},'',location.pathname+'?room='+encodeURIComponent(room));
+  history.replaceState({},'',location.pathname+'?room='+encodeURIComponent(room)+(S.mode==='bot'?'&mode=bot':''));
   connect(S.epoch);render();
 }
 function connect(epoch){
@@ -17,7 +18,7 @@ function connect(epoch){
   const name=($('nameInput').value.trim()||localStorage.getItem('santorini-name')||'Người chơi').slice(0,24);
   localStorage.setItem('santorini-name',name);
   const url=new URL((location.protocol==='https:'?'wss:':'ws:')+'//'+location.host+'/ws');
-  url.searchParams.set('room',S.room);url.searchParams.set('token',token(S.room));url.searchParams.set('name',name);
+  url.searchParams.set('room',S.room);url.searchParams.set('token',token(S.room));url.searchParams.set('name',name);if(S.mode==='bot'){url.searchParams.set('mode','bot');url.searchParams.set('difficulty',S.difficulty);}
   const ws=new WebSocket(url);S.ws=ws;
   $('connection').textContent='Đang kết nối…';$('liveDot').classList.add('off');
   ws.onopen=()=>{if(epoch!==S.epoch)return;S.attempt=0;render();};
@@ -28,6 +29,8 @@ function connect(epoch){
     if(m.type==='state'){
       const old=S.view?.game;
       S.view=m.view;
+      S.mode=m.view.mode||S.mode;
+      S.animationInfo=old&&old.revision!==m.view.game.revision?{previous:old}:null;
       if(old&&old.revision!==m.view.game.revision){
         if(old.turn!==m.view.game.turn||old.phase!==m.view.game.phase)S.selected=null;
         beep(m.view.game.phase==='ended'?850:510);
@@ -76,10 +79,13 @@ function drawBoard(g,enabled){
     let owner=-1,wi=-1;
     for(let p=0;p<2;p++)for(let i=0;i<g.workers[p].length;i++)
       if(g.workers[p][i].row===r&&g.workers[p][i].col===c){owner=p;wi=i;}
+    const old=S.animationInfo?.previous;
+    const built=old && old.board[r][c]!==level;
+    const workerArrived=owner!==-1 && old && !(old.workers[owner]?.[wi]?.row===r && old.workers[owner]?.[wi]?.col===c);
     const placeable=enabled&&g.phase==='place'&&owner===-1;
     const select=enabled&&g.phase==='move'&&owner===S.seat&&S.selected===wi;
     const interact=placeable||valid.includes(k)||(enabled&&g.phase==='move'&&owner===S.seat);
-    html+='<button type="button" class="tile '+(owner!==-1?'occupied ':'')+(placeable?'placeable ':'')+(valid.includes(k)?'legal ':'')+(select?'selected ':'')+(interact?'selectable':'')+'" data-row="'+r+'" data-col="'+c+'" aria-label="Hàng '+(r+1)+', cột '+(c+1)+', tầng '+(level===4?'vòm':level)+'" '+(!interact?'tabindex="-1"':'')+'>';
+    html+='<button type="button" class="tile '+(built?'new-build ':'')+(workerArrived?'new-arrival ':'')+(owner!==-1?'occupied ':'')+(placeable?'placeable ':'')+(valid.includes(k)?'legal ':'')+(select?'selected ':'')+(interact?'selectable':'')+'" data-row="'+r+'" data-col="'+c+'" aria-label="Hàng '+(r+1)+', cột '+(c+1)+', tầng '+(level===4?'vòm':level)+'" '+(!interact?'tabindex="-1"':'')+'>';
     if(level){html+='<span class="building">';for(let n=1;n<=Math.min(3,level);n++)html+='<span class="block"></span>';if(level===4)html+='<span class="dome"></span>';html+='</span><span class="level-pill">'+(level===4?'◆':level)+'</span>';}
     if(owner!==-1)html+='<span class="worker p'+owner+'"><span class="worker-head"></span><span class="worker-body"></span><span class="worker-base"></span></span>';
     html+='</button>';
@@ -90,29 +96,36 @@ function render(){
   const v=S.view,connected=S.ws?.readyState===WebSocket.OPEN;
   $('connection').textContent=connected?'● Trực tuyến':'○ Đang kết nối…';
   $('liveDot').classList.toggle('off',!connected);
-  $('viewBtn').textContent='Góc nhìn 3D: '+(S.tilt?'Bật':'Tắt');
+  $('viewBtn').textContent='Góc nhìn: '+(S.tilt?'Phối cảnh':'2.5D');
   $('soundBtn').textContent='Âm thanh: '+(S.sound?'Bật':'Tắt');
   document.querySelector('.island').classList.toggle('tilted',S.tilt);
   $('seatText').textContent=S.seat===-1?'Chế độ theo dõi':'Bạn ở ghế '+(S.seat+1);
   if(!v){$('phaseLabel').textContent='Đang vào phòng…';$('hint').textContent='Đồng bộ dữ liệu bàn chơi';return;}
   $('name0').textContent=v.players[0].name;$('name1').textContent=v.players[1].name;
+  const solo=v.mode==='bot';$('gameMode').textContent=solo?'SOLO DEMO':'PHÒNG';$('roomCode').textContent=solo?'VS BOT':S.room;
+  $('copyBtn').classList.toggle('hidden',solo);
+  $('player1').classList.toggle('bot-player',solo);
   const g=v.game,acting=v.ready&&connected&&g.turn===S.seat&&g.phase!=='ended';
   $('player0').classList.toggle('active',g.turn===0&&g.phase!=='ended');
   $('player1').classList.toggle('active',g.turn===1&&g.phase!=='ended');
   if(!v.ready){$('phaseLabel').textContent='Đang chờ người thứ hai';$('hint').textContent='Sao chép link phòng và gửi cho bạn bè.';}
   else if(g.phase==='place'){$('phaseLabel').textContent=acting?'Lượt của bạn · Đặt quân':'Người chơi '+(g.turn+1)+' đang đặt quân';$('hint').textContent=acting?'Chạm ô trống để đặt quân.':g.lastAction;}
-  else if(g.phase==='move'){$('phaseLabel').textContent=acting?'Lượt của bạn · Di chuyển':'Người chơi '+(g.turn+1)+' đang di chuyển';$('hint').textContent=acting?'Chọn quân, sau đó chọn ô viền sáng.':g.lastAction;}
-  else if(g.phase==='build'){$('phaseLabel').textContent=acting?'Lượt của bạn · Xây dựng':'Người chơi '+(g.turn+1)+' đang xây dựng';$('hint').textContent=acting?'Chạm ô viền sáng để xây.':g.lastAction;}
+  else if(g.phase==='move'){$('phaseLabel').textContent=acting?'Lượt của bạn · Di chuyển':(solo&&g.turn===1?'BOT đang tính nước đi…':'Người chơi '+(g.turn+1)+' đang di chuyển');$('hint').textContent=acting?'Chọn quân, sau đó chọn ô viền sáng.':g.lastAction;}
+  else if(g.phase==='build'){$('phaseLabel').textContent=acting?'Lượt của bạn · Xây dựng':(solo&&g.turn===1?'BOT đang xây dựng…':'Người chơi '+(g.turn+1)+' đang xây dựng');$('hint').textContent=acting?'Chạm ô viền sáng để xây.':g.lastAction;}
   else{$('phaseLabel').textContent='Ván đấu kết thúc';$('hint').textContent=g.lastAction;}
+  const labels={place:'ĐẶT QUÂN',move:'DI CHUYỂN',build:'XÂY DỰNG',ended:'KẾT THÚC'};
+  $('phaseChip').textContent=labels[g.phase]||'CHƠI';
   $('restartBtn').classList.toggle('hidden',g.phase!=='ended'||S.seat===-1);
   $('winOverlay').classList.toggle('hidden',g.phase!=='ended');
   $('rematchBtn').classList.toggle('hidden',S.seat===-1);
   if(g.phase==='ended'){$('winTitle').textContent=g.winner===S.seat?'Bạn chiến thắng!':'Người chơi '+(g.winner+1)+' chiến thắng!';$('winText').textContent=g.lastAction;}
   if(!acting||g.phase!=='move')S.selected=null;
   drawBoard(g,acting);
+  S.animationInfo=null;
 }
 $('board').addEventListener('click',e=>{const tile=e.target.closest('.tile');if(tile)tileClick(Number(tile.dataset.row),Number(tile.dataset.col));});
-$('createBtn').addEventListener('click',()=>enter(roomCode()));
+$('createBtn').addEventListener('click',()=>enter(roomCode(),'online'));
+$('demoBtn').addEventListener('click',()=>enter(roomCode(),'bot'));
 $('joinBtn').addEventListener('click',()=>{const room=$('codeInput').value.trim().toUpperCase();if(!/^[A-Z2-9]{6,10}$/.test(room)){toast('Mã phòng cần 6–10 ký tự, không gồm 0, 1, I, O.');return;}enter(room);});
 $('codeInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('joinBtn').click();});
 $('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('createBtn').click();});
@@ -124,4 +137,4 @@ $('restartBtn').addEventListener('click',()=>send({type:'restart'}));
 $('rematchBtn').addEventListener('click',()=>send({type:'restart'}));
 $('nameInput').value=localStorage.getItem('santorini-name')||'';
 const linkRoom=new URLSearchParams(location.search).get('room');
-if(linkRoom){$('codeInput').value=linkRoom.toUpperCase();if(localStorage.getItem('santorini-name'))enter(linkRoom.toUpperCase());}
+if(linkRoom){$('codeInput').value=linkRoom.toUpperCase();if(localStorage.getItem('santorini-name'))enter(linkRoom.toUpperCase(),new URLSearchParams(location.search).get('mode')==='bot'?'bot':'online');}
