@@ -401,15 +401,43 @@ export function applyAction(g,p,a){
    g.lastAction='Người chơi '+(p+1)+' di chuyển và chuẩn bị xây.';
   }
  }else if(a.type==='build'){
-  if(a.dome)g.board[a.row][a.col]=4;else g.board[a.row][a.col]++;
-  g.lastAction=(a.dome?'Atlas đặt mái vòm':'Người chơi '+(p+1)+' xây tầng')+' '+(a.dome?'':g.board[a.row][a.col])+'.';
-  if(g.phase==='build'&&['demeter','hephaestus'].includes(power)){
+  const phase=g.phase,advanced=g.advanced;
+  if(a.under){
+   g.board[a.row][a.col]++;
+   g.lastAction='Zeus xây một khối ngay dưới chân quân đang đứng.';
+  }else if(a.dome){
+   g.board[a.row][a.col]=4;
+   g.ctx.domeBuilt=true;
+   g.lastAction='Một mái vòm được hoàn thành.';
+  }else{
+   g.board[a.row][a.col]++;
+   if(g.board[a.row][a.col]===4)g.ctx.domeBuilt=true;
+   g.lastAction='Người chơi '+(p+1)+' xây tầng '+g.board[a.row][a.col]+'.';
+  }
+  if(winnerChronus(g)){
+   // Chronus may win even on another player's turn.
+  }else if(phase==='poseidonBuild'){
+   g.ctx.bonusRemaining--;
+   if(g.ctx.bonusRemaining<=0||!legalActions(g,p).some(x=>x.type==='build')){g.ctx.postDone=true;endTurn(g,p,true);}
+   else g.lastAction='Poseidon: có thể tiếp tục xây thêm hoặc Bỏ qua.';
+  }else if(phase==='morpheusBuild'){
+   advanced.morpheus[p]=Math.max(0,(advanced.morpheus[p]||0)-1);
+   if(!legalActions(g,p).some(x=>x.type==='build'))endTurn(g,p);
+   else g.lastAction='Morpheus: xây thêm từ kho dự trữ hoặc Bỏ qua.';
+  }else if(phase==='dionysusBuild'){
+   g.ctx.postDone=true;endTurn(g,p,true);
+  }else if(phase==='build'&&['demeter','hephaestus','hestia'].includes(power)){
    g.phase='extraBuild';g.ctx={...g.ctx,firstBuild:{row:a.row,col:a.col}};
    if(!legalActions(g,p).some(x=>x.type==='build'))endTurn(g,p);
   }else endTurn(g,p);
  }else if(a.type==='skip'){
-  if(g.phase==='extraMove'){g.phase='build';g.lastAction='Artemis bỏ qua lần di chuyển thứ hai.';}
-  else if(g.phase==='extraBuild')endTurn(g,p);
+  if(g.phase==='extraMove'||g.phase==='tritonMove'){
+   g.phase=power==='morpheus'?'morpheusBuild':'build';
+   g.lastAction='Bỏ qua bước di chuyển thêm.';
+  }else if(g.phase==='extraBuild'||g.phase==='morpheusBuild')endTurn(g,p);
+  else if(g.phase==='poseidonBuild'||g.phase==='aresRemove'||g.phase==='dionysusChoice'){
+   g.ctx.postDone=true;endTurn(g,p,true);
+  }
  }
  g.revision++;
  return g;
