@@ -1,4 +1,4 @@
-import { applyAction, legalBuilds, legalMoves } from './game.js';
+import { applyAction, legalBuilds, legalMoves, legalActions, GODS } from './game.js';
 
 const copy = g => structuredClone(g);
 const pick = items => items[Math.floor(Math.random() * items.length)];
@@ -89,9 +89,61 @@ function chooseBuild(g,difficulty){
   choices.sort((a,b)=>b.score-a.score);
   return {type:'build',...choices[0].dest};
 }
+function godStrategy(game,difficulty){
+ const acts=legalActions(game,1);
+ if(!acts.length)return null;
+ if(game.phase==='godpick'){
+  // In solo matches, player 0 picks first; bot chooses from the remaining gods.
+  const priorities=['pan','athena','apollo','artemis','minotaur','demeter','atlas','hephaestus','prometheus','hermes'];
+  return difficulty==='easy'?pick(acts):acts.slice().sort((a,b)=>priorities.indexOf(a.god)-priorities.indexOf(b.god))[0];
+ }
+ if(game.phase==='place')return choosePlace(game,difficulty);
+ if(game.phase==='hermesMove'){
+  const end=acts.filter(a=>a.type==='endMove');
+  if((game.ctx?.hermesSteps??0)>=2&&end.length)return pick(end);
+ }
+ if(difficulty==='easy')return pick(acts);
+ const score=action=>{
+  const g=structuredClone(game);
+  try{applyAction(g,1,action);}catch{return -Infinity;}
+  if(g.winner===1)return 1e8;
+  if(g.winner===0)return -1e8;
+  const own=g.workers[1],other=g.workers[0];
+  let value=0;
+  const height=w=>g.board[w.row][w.col];
+  for(const w of own){
+   value+=height(w)*14+center(w)*1.4;
+   for(const e of other)if(dist(w,e)<=1)value+=2;
+  }
+  for(const w of other)value-=height(w)*12+center(w)*.65;
+  if(action.type==='build'){
+   const h=g.board[action.row][action.col];
+   const nearOwn=own.some(w=>dist(w,action)<=1),nearEnemy=other.some(w=>dist(w,action)<=1);
+   if(h===3){value+=(nearOwn?22:0)-(nearEnemy?35:0);}
+   else if(h===4)value+=nearEnemy?12:0;
+  }
+  if(action.type==='skip')value-=2;
+  if(action.type==='endMove')value+=5;
+  if(action.type==='prebuild')value+=3;
+  if(g.turn===0&&g.phase==='move'){
+   const opponent=legalActions(g,0);
+   const immediate=opponent.filter(a=>a.type==='move'&&a.wins).length;
+   value-=immediate*(difficulty==='hard'?2200:280);
+  }
+  if(g.turn===1&&g.phase==='move'){
+   const immediate=legalActions(g,1).filter(a=>a.type==='move'&&a.wins).length;
+   value+=immediate*140;
+  }
+  return value;
+ };
+ return acts.map(a=>({a,score:score(a)+Math.random()*(difficulty==='hard'?.9:7)}))
+  .sort((a,b)=>b.score-a.score)[0]?.a||acts[0];
+}
 /** Server-side bot. Never trust the browser to produce a BOT action. */
+
 export function chooseBotAction(game,difficulty='normal'){
   if(game.turn!==1||game.winner!==null)return null;
+  if(game.ruleset==='god')return godStrategy(game,difficulty);
   if(game.phase==='place')return choosePlace(game,difficulty);
   if(game.phase==='move')return chooseMove(game,difficulty);
   if(game.phase==='build')return chooseBuild(game,difficulty);
