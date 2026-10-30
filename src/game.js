@@ -41,6 +41,7 @@ const opponentsOf=(g,p)=>g.workers.map((_,i)=>i).filter(i=>i!==p&&!g.eliminated?
 const hasEnemyGod=(g,p,id)=>opponentsOf(g,p).some(i=>g.gods[i]===id);
 const adjacentGodWorkers=(g,p,id,at)=>opponentsOf(g,p).some(i=>g.gods[i]===id&&g.workers[i].some(w=>near(w,at)));
 function activePower(g,p){
+ if(g.modeId==='fleece')return g.ctx?.fleeceActive===p?g.fleeceGod:null;
  if(g.advanced?.circe?.target===p)return null;
  if(g.advanced?.circe?.owner===p)return g.advanced.circe.power;
  if(g.gods[p]==='chaos')return g.advanced?.chaos?.[p]?.current??null;
@@ -57,9 +58,9 @@ export const validGodFor=(id,players,selected=[])=>{
  if(selected.some(other=>other===id||info.banned?.includes(other)||GODS[other]?.banned?.includes(id)))return false;
  return true;
 };
-export function newGame(ruleset='classic',players=2){
+export function newGame(ruleset='classic',players=2,modeId=null){
  const count=players===3?3:2;
- return {capacity:players,board:Array.from({length:5},()=>Array(5).fill(0)),workers:Array.from({length:count},()=>[]),phase:ruleset==='god'?'godpick':'place',ruleset:ruleset==='god'?'god':'classic',gods:Array(count).fill(null),turn:0,selected:null,winner:null,eliminated:Array(count).fill(false),revision:0,lastAction:'Bắt đầu trận đấu.',ctx:{},athenaBlocked:null,advanced:{chaos:{},morpheus:{},circe:null,bonus:null,erasures:[]}};
+ return {modeId:modeId||(players===3?'trio':players===4?'teams':ruleset==='god'?'gods':'classic'),fleeceGod:null,ram:null,agoraTurns:0,capacity:players,board:Array.from({length:5},()=>Array(5).fill(0)),workers:Array.from({length:count},()=>[]),phase:modeId==='fleece'?'fleecePick':ruleset==='god'?'godpick':'place',ruleset:ruleset==='god'?'god':'classic',gods:Array(count).fill(null),turn:0,selected:null,winner:null,eliminated:Array(count).fill(false),revision:0,lastAction:'Bắt đầu trận đấu.',ctx:{},athenaBlocked:null,advanced:{chaos:{},morpheus:{},circe:null,bonus:null,erasures:[]}};
 }
 const cell=(r,c)=>Number.isInteger(r)&&Number.isInteger(c)&&r>=0&&r<5&&c>=0&&c<5;
 const near=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col))===1;
@@ -154,6 +155,8 @@ function legalPrebuilds(g,p,i){
 }
 export function legalActions(g,p=g.turn){
  if(g.winner!==null||p!==g.turn)return [];
+ if(g.phase==='fleecePick')return SIMPLE_GODS.filter(id=>validGodFor(id,2)).map(god=>({type:'selectGod',god}));
+ if(g.phase==='ramPlace')return Array.from({length:5},(_,row)=>Array.from({length:5},(_,col)=>free(g,row,col)?{type:'placeRam',row,col}:null)).flat().filter(Boolean);
  if(g.phase==='godpick')return Object.keys(GODS).filter(id=>validGodFor(id,g.capacity||g.workers.length,g.gods.filter(Boolean))).map(id=>({type:'selectGod',god:id}));
  if(g.phase==='place'){const out=[];
  for(let row=0;row<5;row++)for(let col=0;col<5;col++)if(free(g,row,col)){
@@ -253,7 +256,8 @@ function refreshChaos(g){
  }
 }
 export function beginAdvancedTurn(g,p){
- g.ctx={turnStart:g.workers[p].map(w=>({...w}))};
+ const fleeceActive=g.modeId==='fleece'&&g.ram&&g.workers[p].some(w=>near(w,g.ram))?p:null;
+ g.ctx={turnStart:g.workers[p].map(w=>({...w})),fleeceActive};
  setupChaos(g);
  if(g.advanced?.circe?.owner===p)g.advanced.circe=null;
  if(g.gods[p]==='circe'&&g.workers.length===2){
@@ -318,19 +322,30 @@ function endTurn(g,p,force=false){
   if(petrified.size)g.lastAction='Medusa hóa đá '+petrified.size+' quân đối thủ!';
  }
  refreshChaos(g);
+ if(g.modeId==='agora'){
+  g.agoraTurns=(g.agoraTurns||0)+1;
+  if(g.agoraTurns%2===0&&g.gods.length===2&&g.gods.every(Boolean)){
+   [g.gods[0],g.gods[1]]=[g.gods[1],g.gods[0]];
+   g.advanced.circe=null;
+   g.lastAction='Agora: hai vị thần đổi chủ sau mỗi vòng!';
+  }
+ }
  if(winnerChronus(g))return;
  if(g.workers.length===2&&g.athenaBlocked===p)g.athenaBlocked=null;
  g.ctx={};g.phase='move';g.selected=null;
  advance(g,p);
 }
 export function applyAction(g,p,a){
- if(!a||typeof a!=='object'||!['place','move','build','skip','selectGod','prebuild','endMove','ferry','commandeer','removeBlock'].includes(a.type))throw Error('Hành động không hợp lệ.');
+ if(!a||typeof a!=='object'||!['place','placeRam','move','build','skip','selectGod','prebuild','endMove','ferry','commandeer','removeBlock'].includes(a.type))throw Error('Hành động không hợp lệ.');
  if(g.winner!==null)throw Error('Ván đã kết thúc.');
  if(!Number.isInteger(p)||p<0||p>=g.workers.length||p!==g.turn)throw Error('Chưa đến lượt của bạn.');
  const allowed=legalActions(g,p).find(x=>matches(x,a));
  if(!allowed)throw Error('Nước đi hoặc kỹ năng không hợp lệ.');
  const power=god(g,p);
- if(a.type==='selectGod'){
+ if(a.type==='selectGod'&&g.phase==='fleecePick'){
+  g.fleeceGod=a.god;g.phase='place';g.turn=0;g.ctx={startSeat:0};
+  g.lastAction='Golden Fleece: đã chọn '+GODS[a.god].name+' làm năng lực chung.';
+ }else if(a.type==='selectGod'){
   g.gods[p]=a.god;g.lastAction='Người chơi '+(p+1)+' chọn '+GODS[a.god].name+'.';
   if(p<g.gods.length-1)g.turn=p+1;
   else{
@@ -344,8 +359,13 @@ export function applyAction(g,p,a){
    const start=g.ctx?.startSeat??0;
    const next=(p+1)%g.workers.length;
    if(next!==start)g.turn=next;
-   else{g.turn=start;g.phase='move';if(g.capacity!==4)beginAdvancedTurn(g,start);g.lastAction='Đã đặt đủ quân. Bắt đầu chơi.';}
+   else if(g.modeId==='fleece'){
+    g.turn=start;g.phase='ramPlace';g.lastAction='Người đặt quân đầu tiên hãy đặt tượng Cừu Vàng lên một ô trống.';
+   }else{g.turn=start;g.phase='move';if(g.capacity!==4)beginAdvancedTurn(g,start);g.lastAction='Đã đặt đủ quân. Bắt đầu chơi.';}
   }
+ }else if(a.type==='placeRam'){
+  g.ram={row:a.row,col:a.col};g.turn=1;g.phase='move';beginAdvancedTurn(g,1);
+  g.lastAction='Cừu Vàng đã xuất hiện. Quân cạnh tượng nhận năng lực '+GODS[g.fleeceGod].name+' trong lượt.';
  }else if(a.type==='ferry'){
   const from=g.workers[p][a.worker],victim=pawnAt(g,a.row,a.col);
   const landing={row:from.row+(from.row-a.row),col:from.col+(from.col-a.col)};
@@ -453,4 +473,4 @@ export function applyAction(g,p,a){
  g.revision++;
  return g;
 }
-export function resetGame(g){const next=newGame(g.ruleset,g.capacity||g.workers.length);return {...next,revision:g.revision+1,lastAction:'Ván mới. Chọn thần hoặc đặt quân để bắt đầu.'};}
+export function resetGame(g){const next=newGame(g.ruleset,g.capacity||g.workers.length,g.modeId);return {...next,revision:g.revision+1,lastAction:'Ván mới. Chọn thần hoặc đặt quân để bắt đầu.'};}
