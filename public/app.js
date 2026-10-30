@@ -212,6 +212,7 @@ function availableTiles(){
  const v=S.view;if(!v||!isTurn())return [];
  const g=v.game,phase=g.phase;
  if(phase==='place')return getActions('place');
+ if(phase==='ramPlace')return getActions('placeRam');
  if(['move','extraMove','hermesMove','tritonMove','dionysusMove'].includes(phase)){
   if(S.selected===null)return [];
   return getActions(S.powerMode==='prebuild'?'prebuild':'move',S.selected).concat(S.powerMode==='move'?getActions('ferry',S.selected):[]);
@@ -226,6 +227,7 @@ function tileClick(row,col){
  const v=S.view;if(!isTurn()||!v)return;
  const g=v.game,phase=g.phase;
  if(phase==='place'){const a=getActions('place').find(a=>a.row===row&&a.col===col);if(a)send({type:'place',row,col});return;}
+ if(phase==='ramPlace'){const a=getActions('placeRam').find(a=>a.row===row&&a.col===col);if(a)send({type:'placeRam',row,col});return;}
  if(['move','extraMove','hermesMove'].includes(phase)){
   const actor=phase==='dionysusMove'?g.ctx?.dionysusTarget:myTeam();
   const worker=g.workers[actor]?.findIndex(w=>w.row===row&&w.col===col);
@@ -259,6 +261,7 @@ function drawFallback(){
   html+='<button class="tile '+(active?'legal ':'')+(choose&&wi===S.selected?'selected ':'')+'" data-row="'+row+'" data-col="'+col+'" aria-label="Ô '+(row+1)+'-'+(col+1)+' tầng '+level+'">';
   if(level){html+='<span class="building">';for(let n=0;n<Math.min(3,level);n++)html+='<span class="block"></span>';if(level===4)html+='<span class="dome"></span>';html+='</span><span class="level-pill">'+(level===4?'◆':level)+'</span>';}
   if(owner>=0)html+='<span class="worker p'+owner+'"><span class="worker-head"></span><span class="worker-body"></span><span class="worker-base"></span></span>';
+  if(g.ram?.row===row&&g.ram?.col===col)html+='<span class="ram-token" title="Cừu Vàng">🐏</span>';
   html+='</button>';
  }
  $('board').innerHTML=html;
@@ -266,14 +269,18 @@ function drawFallback(){
 function renderBoard(){
  const v=S.view;if(!v)return;
  drawFallback();
+ const ram=v.game.ram;
+ $('ramMarker2d').classList.toggle('hidden',!ram);
+ if(ram)$('ramMarker2d').textContent='🐏 Cừu Vàng · ô '+(ram.row+1)+'–'+(ram.col+1);
  if(S.three)S.three.update(v.game,availableTiles(),S.selected===null||S.seat===-1?null:{p:v.game.phase==='dionysusMove'?v.game.ctx?.dionysusTarget:myTeam(),i:S.selected},['build','extraBuild','morpheusBuild','poseidonBuild','dionysusBuild','aresRemove'].includes(v.game.phase)||S.powerMode==='prebuild');
 }
 function renderGodPick(g){
- const active=S.view?.ready&&isTurn()&&g.phase==='godpick';
- $('godOverlay').classList.toggle('hidden',g.phase!=='godpick'||!S.view?.ready);
- if(g.phase!=='godpick'||!S.view?.ready)return;
- $('godPickTitle').textContent=active?'Chọn vị thần của bạn':!S.view.ready?'Đợi đối thủ tham gia':'Đối thủ đang chọn thần';
- $('godPickHint').textContent='Mỗi ghế được chọn một vị thần riêng trước khi đặt quân.';
+ const picking=['godpick','fleecePick'].includes(g.phase);
+ const active=S.view?.ready&&isTurn()&&picking;
+ $('godOverlay').classList.toggle('hidden',!picking||!S.view?.ready);
+ if(!picking||!S.view?.ready)return;
+ $('godPickTitle').textContent=g.phase==='fleecePick'?'Chọn năng lực chung cho Cừu Vàng':active?'Chọn vị thần của bạn':'Đối thủ đang chọn thần';
+ $('godPickHint').textContent=g.phase==='fleecePick'?'Chọn một thần cơ bản. Ai đứng cạnh Cừu Vàng vào đầu lượt sẽ nhận năng lực thần ấy.':'Mỗi ghế chọn một vị thần riêng trước khi đặt quân.';
  const choices=S.view.gods||{},available=new Set(getActions('selectGod').map(x=>x.god)),group=$('godGroup').value;
  $('godCards').innerHTML=Object.entries(choices).filter(([id,info])=>group==='all'||(group==='advanced')===!!info.players).map(([id,info])=>{
   const picked=(S.view.capacity===4?S.view.seatGods:g.gods).includes(id),eligible=available.has(id),disabled=!active||picked||!eligible;
@@ -291,6 +298,7 @@ function render(){
  if(!v){$('phaseLabel').textContent='Đang tải bàn chơi…';$('hint').textContent='Kết nối máy chủ';return;}
  const g=v.game,solo=v.mode==='bot',turn=isTurn();
  $('gameMode').textContent=solo?(v.capacity===3?'SOLO · 2 BOT':v.capacity===4?'SOLO · 3 BOT':'SOLO DEMO'):v.capacity===4?'ĐẤU ĐỘI 2V2':v.capacity===3?'3 NGƯỜI · ĐỘC LẬP':v.ruleset==='god'?'GOD POWERS':'PHÒNG';
+ $('modeLive').textContent=MODE_UI[v.modeId]?.title||MODE_UI[S.variant]?.title||'♟ CLASSIC';
  $('roomCode').textContent=solo?'VS BOT':S.room;
  $('copyBtn').classList.toggle('hidden',solo);
  const teamNames=t=>v.players.filter(p=>p.team===t).map(p=>p.name).join(' + ');
@@ -315,10 +323,10 @@ function render(){
   $('godEffect').textContent=activeGod?v.gods[activeGod]?.description:'Chọn thần để bắt đầu.';
   renderPowers();
  }
- const phases={godpick:'CHỌN THẦN',place:'ĐẶT QUÂN',move:'DI CHUYỂN',extraMove:'DI CHUYỂN 2',hermesMove:'HERMES',tritonMove:'TRITON',dionysusMove:'DIONYSUS',dionysusBuild:'XÂY QUÂN ĐỐI THỦ',dionysusChoice:'CHỌN ĐỐI THỦ',aresRemove:'ARES',poseidonBuild:'POSEIDON',morpheusBuild:'MORPHEUS',build:'XÂY DỰNG',extraBuild:'XÂY THÊM',ended:'KẾT THÚC'};
+ const phases={fleecePick:'CHỌN THẦN CHUNG',ramPlace:'ĐẶT CỪU VÀNG',godpick:'CHỌN THẦN',place:'ĐẶT QUÂN',move:'DI CHUYỂN',extraMove:'DI CHUYỂN 2',hermesMove:'HERMES',tritonMove:'TRITON',dionysusMove:'DIONYSUS',dionysusBuild:'XÂY QUÂN ĐỐI THỦ',dionysusChoice:'CHỌN ĐỐI THỦ',aresRemove:'ARES',poseidonBuild:'POSEIDON',morpheusBuild:'MORPHEUS',build:'XÂY DỰNG',extraBuild:'XÂY THÊM',ended:'KẾT THÚC'};
  $('phaseChip').textContent=phases[g.phase]||'CHƠI';
  const turnName=solo&&g.turn===1?'BOT':v.players[v.activeSeat]?.name||'Đối thủ';
- const messages={godpick:'Chọn vị thần cho trận đấu',place:'Đặt hai quân lên bàn cờ',move:'Chọn quân rồi chạm ô sáng để đi',extraMove:'Artemis: đi thêm hoặc bỏ qua',hermesMove:'Hermes: tiếp tục đi ngang hoặc chọn quân để xây',tritonMove:'Triton: đi tiếp hoặc Bỏ qua',dionysusMove:'Chọn quân đối thủ để di chuyển',dionysusBuild:'Xây bằng quân đối thủ',dionysusChoice:'Chọn đội đối thủ để điều khiển',aresRemove:'Ares: phá khối hoặc Bỏ qua',poseidonBuild:'Poseidon: xây thêm hoặc Bỏ qua',morpheusBuild:'Morpheus: xây từ kho dự trữ hoặc Bỏ qua',build:'Chạm ô sáng để xây',extraBuild:'Có thể xây thêm hoặc bỏ qua',ended:'Trận đấu kết thúc'};
+ const messages={fleecePick:'Chọn thần dùng chung cho Cừu Vàng',ramPlace:'Chạm ô trống để đặt Cừu Vàng',godpick:'Chọn vị thần cho trận đấu',place:'Đặt hai quân lên bàn cờ',move:'Chọn quân rồi chạm ô sáng để đi',extraMove:'Artemis: đi thêm hoặc bỏ qua',hermesMove:'Hermes: tiếp tục đi ngang hoặc chọn quân để xây',tritonMove:'Triton: đi tiếp hoặc Bỏ qua',dionysusMove:'Chọn quân đối thủ để di chuyển',dionysusBuild:'Xây bằng quân đối thủ',dionysusChoice:'Chọn đội đối thủ để điều khiển',aresRemove:'Ares: phá khối hoặc Bỏ qua',poseidonBuild:'Poseidon: xây thêm hoặc Bỏ qua',morpheusBuild:'Morpheus: xây từ kho dự trữ hoặc Bỏ qua',build:'Chạm ô sáng để xây',extraBuild:'Có thể xây thêm hoặc bỏ qua',ended:'Trận đấu kết thúc'};
  $('phaseLabel').textContent=!v.ready?'Đợi đủ '+(v.capacity||2)+' người':g.phase==='ended'?'Đã kết thúc':turn?messages[g.phase]:(turnName+' đang thực hiện lượt');
  $('hint').textContent=!v.ready?'Sao chép link mời bạn bè tham gia.':turn?(g.phase==='move'&&g.ctx?.prometheusUsed?'Prometheus đã xây trước: không được di chuyển lên tầng.':messages[g.phase]):g.lastAction;
  renderGodPick(g);
