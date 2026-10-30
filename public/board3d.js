@@ -174,6 +174,19 @@ export function createBoard3D(container,onCell){
    cube(.06,.25,.027,blue,-.165,y+.23,.49,g);
    cube(.06,.25,.027,blue,.165,y+.23,.49,g);
    cube(.26,.040,.085,white,0,y+.084,.50,g);
+   // Sculpted limestone portal, lintel and central keystone.
+   cube(.29,.04,.068,white,0,y+.408,.499,g);
+   const keystone=cube(.065,.085,.046,sand,0,y+.411,.506,g);
+   keystone.rotation.z=.02;
+   if(level===0){
+    cube(.39,.038,.20,edge,0,y+.035,.520,g);
+    cube(.32,.034,.15,stone,0,y+.066,.552,g);
+   }else{
+    // Upper balcony, rails and turned stone balusters stay within the tile.
+    cube(.39,.030,.115,edge,0,y+.098,.517,g);
+    for(const xx of [-.14,0,.14])mesh(cached('baluster',()=>new THREE.CylinderGeometry(.022,.032,.115,9)),white,xx,y+.174,.544,g);
+    cube(.4,.027,.046,white,0,y+.237,.54,g);
+   }
    // Blue-glazed side window, carved ledges and small rooftop urns.
    cube(.018,.166,.19,windowMat,.472,y+.30,-.055,g);
    cube(.024,.023,.22,white,.484,y+.204,-.055,g);
@@ -191,6 +204,11 @@ export function createBoard3D(container,onCell){
    mesh(cached('dome-base',()=>new THREE.CylinderGeometry(.411,.422,.08,28)),darkBlue,0,y+.015,0,g);
    const cap=mesh(cached('topring',()=>new THREE.TorusGeometry(.33,.013,6,28)),bronze,0,y+.14,0,g);cap.rotation.x=Math.PI/2;
    mesh(cached('finial',()=>new THREE.SphereGeometry(.055,12,8)),white,0,y+.40,0,g);
+   const ribGeometry=cached('dome-rib',()=>{const points=[];for(let k=0;k<=12;k++){const t=k/12*Math.PI/2;points.push(new THREE.Vector3(.405*Math.cos(t),.34*Math.sin(t),0));}
+    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),18,.011,5,false);});
+   for(let rib=0;rib<4;rib++){
+    const line=mesh(ribGeometry,bronze,0,y+.01,0,g);line.rotation.y=rib*Math.PI/2;line.castShadow=false;
+   }
   }
   return g;
  }
@@ -233,7 +251,13 @@ export function createBoard3D(container,onCell){
   }
   const sash=mesh(cached('sash',()=>new THREE.TorusGeometry(.16,.022,7,26)),acc,0,.46,0,w);sash.rotation.x=Math.PI/2;
   mesh(cached('brooch',()=>new THREE.SphereGeometry(.038,10,8)),bronze,0,.56,.17,w);
-  if(index===1)mesh(cached('helmet',()=>new THREE.ConeGeometry(.09,.16,11)),bronze,0,1.025,0,w);
+  if(index===1){
+   mesh(cached('helmet',()=>new THREE.ConeGeometry(.09,.16,11)),bronze,0,1.025,0,w);
+   // Ceremonial staff distinguishes one worker without masking the grid square.
+   const staff=mesh(cached('staff',()=>new THREE.CylinderGeometry(.015,.018,.67,10)),bronze,.253,.43,.10,w);
+   staff.rotation.z=.08;
+   mesh(cached('staff-finial',()=>new THREE.SphereGeometry(.045,10,8)),white,.226,.77,.10,w);
+  }
   else {const cape=cube(.23,.33,.057,acc,0,.38,-.15,w);cape.rotation.x=-.10;}
   // The tiny polished resin statue rests on a contact-shadow disc.
   const shadowMat=new THREE.MeshBasicMaterial({color:0x102c3e,transparent:true,opacity:.18,depthWrite:false});
