@@ -212,13 +212,11 @@ function strategic(g,p,choices,difficulty,context={}){
   rootWidth:17,branchWidth:3,buildWidth:5,extraWidth:3,
   maxDepth:5,maxNodes:230,replyWidth:0,replyBuildWidth:0,noise:1.1
  };
- if(g.phase==='hermesMove'&&(g.ctx?.hermesSteps||0)>=3){
-  const ends=choices.filter(a=>a.type==='endMove');
-  if(ends.length)return strategic(g,p,ends,difficulty,context);
- }
- const immediate=choices.filter(a=>a.type==='move'&&a.wins);
+ const candidates=g.phase==='hermesMove'&&(g.ctx?.hermesSteps||0)>=3
+  ?(choices.filter(a=>a.type==='endMove').length?choices.filter(a=>a.type==='endMove'):choices):choices;
+ const immediate=candidates.filter(a=>a.type==='move'&&a.wins);
  if(immediate.length)return immediate[0];
- const root=rankByFast(g,p,choices,config.rootWidth);
+ const root=rankByFast(g,p,candidates,config.rootWidth);
  if(!root.length)return choices[0];
  const budget={nodes:0};
  const results=[];
