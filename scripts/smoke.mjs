@@ -282,8 +282,10 @@ try{
   fleeceBot.ws.send(JSON.stringify({type:'place',row:0,col:1}));
   const botRam=await fleeceBot.until(v=>v.game.phase==='ramPlace'&&v.game.workers[1].length===2,20000);
   assert.equal(botRam.activeSeat,0);
-  fleeceBot.ws.send(JSON.stringify({type:'placeRam',row:2,col:2}));
-  const botPlaying=await fleeceBot.until(v=>v.game.ram?.row===2&&v.game.turn===1&&v.game.phase==='move');
+  const ramChoice=botRam.legalActions.find(a=>a.type==='placeRam'&&a.row===2&&a.col===2)||botRam.legalActions.find(a=>a.type==='placeRam');
+  assert.ok(ramChoice);
+  fleeceBot.ws.send(JSON.stringify({type:'placeRam',row:ramChoice.row,col:ramChoice.col}));
+  const botPlaying=await fleeceBot.until(v=>v.game.ram?.row===ramChoice.row&&v.game.ram?.col===ramChoice.col&&v.game.turn===1&&v.game.phase==='move');
   const botPlayed=await fleeceBot.until(v=>v.game.revision>botPlaying.game.revision,20000);
   assert.ok(botPlayed.history.some(x=>x.seat===1));
   console.log('PASS: V1.4 Golden Fleece human/BOT and online Agora turn rotation.');
