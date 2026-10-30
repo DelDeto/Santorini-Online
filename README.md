@@ -139,3 +139,18 @@ Kiểm thử: `npm test` và `npm run smoke`, bao gồm thử God Power BOT, 3 n
 **Giới hạn cần phân biệt với đầy đủ sách luật:** Ứng dụng hiện hỗ trợ 10 God Powers cơ bản trong bộ gốc, không phải toàn bộ 30 God Powers mở rộng của Roxley 2017. Màn chọn thần hiện cho phép từng ghế chọn trực tiếp từ 10 thẻ còn trống, **chưa mô phỏng thủ tục Challenger mời đúng N lá và chọn người bắt đầu**. Người bắt đầu đang cố định ở ghế 1. Do đó các luật *di chuyển, xây dựng, thắng/thua và cách chơi 3–4 người* được cập nhật theo luật Roxley, còn *quy trình setup lựa chọn thần và lượt đầu* là bản rút gọn.
 
 Nguồn đối chiếu: https://files.roxley.com/Santorini-Rulebook-Web-2016.08.14.pdf (trang 1, 2, 6).
+
+
+## V1.0 — Multiplayer BOT 3/4 người
+
+- **Solo 2 người:** 1 người + 1 BOT (Classic/God Powers), giữ nguyên.
+- **Solo 3 người:** 1 người + 2 BOT; ba người chơi độc lập, mỗi người 2 quân và 1 thần khác nhau. BOT tự chọn thần, đặt quân, đi và xây.
+- **Solo 4 người:** 1 người + 3 BOT; 2 đội 2v2, mỗi ghế có God Power riêng. Người thật và BOT cùng đội dùng chung 2 quân theo lượt.
+- **Phòng kết hợp:** Chủ phòng 3 hoặc 4 người có thể bấm **+ Thêm BOT** lúc chưa bắt đầu để tự điền các ghế còn trống (ví dụ 2 người thật + 1 BOT hoặc 2 người thật + 2 BOT).
+- BOT được xử lý **phía server Durable Object**, có nhịp hành động để dễ theo dõi, tiếp tục tự động sau khi trình duyệt người chơi kết nối lại.
+- BOT ở mọi ghế chỉ sử dụng các hành động hợp lệ, bao gồm chọn thần riêng, Artemis, Pan, Demeter, Atlas, Prometheus, Hermes và các bước xây phụ. Mức Dễ chọn ngẫu nhiên, Vừa/Khó dùng chiến thuật heuristic nhận biết tầng, trung tâm và mối đe dọa chiến thắng.
+- Để thử: mở trang chính → phần **Đấu BOT · 2–4 người** → chọn `1 + 2 BOT` hoặc `1 + 3 BOT`, độ khó và **Đấu BOT**.
+- Chế độ God Powers bắt buộc khi có hơn hai người; bộ 10 thần và các hạn chế setup Challenger được ghi rõ trong V0.9.
+- Kiểm thử: `npm test && npm run smoke` bao gồm cả websocket phòng BOT 3/4, luồng God Powers và chuyển lượt liên tục.
+
+Các BOT là đối thủ theo thuật toán heuristic, không phải mô hình AI học sâu; chưa bảo đảm độ mạnh ngang người chơi giàu kinh nghiệm. Không có phí API hay dịch vụ AI bên ngoài.
