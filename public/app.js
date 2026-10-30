@@ -74,7 +74,7 @@ function send(a){if(S.ws?.readyState!==WebSocket.OPEN)return message('Mất kế
 function actions(){return S.view?.legalActions||[];}
 function getActions(type,worker){return actions().filter(a=>a.type===type&&(worker===undefined||a.worker===worker));}
 function isTurn(){return S.view?.ready&&S.ws?.readyState===WebSocket.OPEN&&S.seat===S.view.activeSeat&&S.view.game.phase!=='ended';}
-function myTeam(){return S.seat<0?-1:S.seat%2;}
+function myTeam(){return S.seat<0?-1:S.capacity===3?S.seat:S.seat%2;}
 function availableTiles(){
  const v=S.view;if(!v||!isTurn())return [];
  const g=v.game,phase=g.phase;
@@ -127,17 +127,17 @@ function drawFallback(){
 function renderBoard(){
  const v=S.view;if(!v)return;
  drawFallback();
- if(S.three)S.three.update(v.game,availableTiles(),S.selected===null||S.seat===-1?null:{p:S.seat,i:S.selected},['build','extraBuild'].includes(v.game.phase)||S.powerMode==='prebuild');
+ if(S.three)S.three.update(v.game,availableTiles(),S.selected===null||S.seat===-1?null:{p:myTeam(),i:S.selected},['build','extraBuild'].includes(v.game.phase)||S.powerMode==='prebuild');
 }
 function renderGodPick(g){
  const active=S.view?.ready&&isTurn()&&g.phase==='godpick';
  $('godOverlay').classList.toggle('hidden',g.phase!=='godpick'||!S.view?.ready);
  if(g.phase!=='godpick'||!S.view?.ready)return;
  $('godPickTitle').textContent=active?'Chọn vị thần của bạn':!S.view.ready?'Đợi đối thủ tham gia':'Đối thủ đang chọn thần';
- $('godPickHint').textContent=g.gods[0]?'Đã chọn '+S.view.gods?.[g.gods[0]]?.name+' · Đang chờ lượt còn lại.':'Mỗi vị thần chỉ có một người sử dụng.';
+ $('godPickHint').textContent='Mỗi ghế được chọn một vị thần riêng trước khi đặt quân.';
  const choices=S.view.gods||{};
  $('godCards').innerHTML=Object.entries(choices).map(([id,info])=>{
-  const picked=g.gods.includes(id),disabled=!active||picked;
+  const picked=(S.view.capacity===4?S.view.seatGods:g.gods).includes(id),disabled=!active||picked;
   return '<button class="god-card '+(picked?'picked ':'')+'" data-god="'+id+'" '+(disabled?'disabled':'')+'><span class="god-symbol">✦</span><strong>'+info.name+'</strong><small>'+info.description+'</small>'+(picked?'<span class="taken">ĐÃ CHỌN</span>':'')+'</button>';
  }).join('');
 }
@@ -148,26 +148,29 @@ function render(){
  $('soundBtn').textContent='Âm thanh: '+(S.sound?'Bật':'Tắt');
  $('lightingBtn').textContent=S.lighting==='golden'?'🌅 Hoàng hôn':'☀ Ban ngày';
  $('qualityBtn').textContent=S.quality==='hd'?'✦ HD':S.quality==='eco'?'⚡ Eco':'✧ Auto';
- $('seatText').textContent=S.seat===-1?'Khán giả · Chỉ theo dõi':S.mode==='bot'?'Solo · Bạn ở ghế 1':'Bạn ở ghế '+(S.seat+1)+(S.capacity>2?' · Đội '+(myTeam()+1):'');
+ $('seatText').textContent=S.seat===-1?'Khán giả · Chỉ theo dõi':S.mode==='bot'?'Solo · Bạn ở ghế 1':'Bạn ở ghế '+(S.seat+1)+(S.capacity===4?' · Đội '+(myTeam()+1):'');
  if(!v){$('phaseLabel').textContent='Đang tải bàn chơi…';$('hint').textContent='Kết nối máy chủ';return;}
  const g=v.game,solo=v.mode==='bot',turn=isTurn();
- $('gameMode').textContent=solo?'SOLO DEMO':v.capacity===4?'ĐẤU ĐỘI 2V2':v.capacity===3?'ĐẤU ĐỘI 2V1':v.ruleset==='god'?'GOD POWERS':'PHÒNG';
+ $('gameMode').textContent=solo?'SOLO DEMO':v.capacity===4?'ĐẤU ĐỘI 2V2':v.capacity===3?'3 NGƯỜI · ĐỘC LẬP':v.ruleset==='god'?'GOD POWERS':'PHÒNG';
  $('roomCode').textContent=solo?'VS BOT':S.room;
  $('copyBtn').classList.toggle('hidden',solo);
  const teamNames=t=>v.players.filter(p=>p.team===t).map(p=>p.name).join(' + ');
  $('name0').textContent=teamNames(0);$('name1').textContent=teamNames(1);
- $('teamLabel0').textContent=v.capacity>2?'ĐỘI 01':'NGƯỜI CHƠI 01';
- $('teamLabel1').textContent=v.capacity>2?'ĐỘI 02':'NGƯỜI CHƠI 02';
- $('scoreChip').textContent='🏆 '+(v.stats?.wins?.[0]||0)+' – '+(v.stats?.wins?.[1]||0);
+ $('player2').classList.toggle('hidden',v.capacity!==3);
+ if(v.capacity===3)$('name2').textContent=teamNames(2);
+ for(let i=0;i<3;i++)$('player'+i).classList.toggle('eliminated',!!g.eliminated?.[i]);
+ $('teamLabel0').textContent=v.capacity===4?'ĐỘI 01':'NGƯỜI CHƠI 01';
+ $('teamLabel1').textContent=v.capacity===4?'ĐỘI 02':'NGƯỜI CHƠI 02';
+ $('scoreChip').textContent='🏆 '+(v.stats?.wins||[]).map(n=>n||0).join(' – ');
  $('watcherChip').textContent='👁 '+(v.spectators||0);
  if(!$('historyOverlay').classList.contains('hidden'))renderHistory();
- for(let i=0;i<2;i++)$('player'+i).classList.toggle('active',g.turn===i&&g.phase!=='ended');
+ for(let i=0;i<3;i++)$('player'+i).classList.toggle('active',(v.capacity===4?v.activeSeat%2===i:g.turn===i)&&g.phase!=='ended');
  $('player1').classList.toggle('bot-player',solo);
  $('godInfo').classList.toggle('hidden',v.ruleset!=='god');
  if(v.ruleset==='god'){
-  $('god0').textContent=g.gods?.[0]?v.gods[g.gods[0]].name:'Chưa chọn';
-  $('god1').textContent=g.gods?.[1]?v.gods[g.gods[1]].name:'Chưa chọn';
-  const activeGod=g.gods?.[g.turn];
+  $('god0').textContent=(v.capacity===4?v.seatGods?.[0]:g.gods?.[0])?v.gods[v.capacity===4?v.seatGods[0]:g.gods[0]].name:'Chưa chọn';
+  $('god1').textContent=(v.capacity===4?v.seatGods?.[1]:g.gods?.[1])?v.gods[v.capacity===4?v.seatGods[1]:g.gods[1]].name:'Chưa chọn';
+  const activeGod=v.capacity===4?v.seatGods?.[v.activeSeat]:g.gods?.[g.turn];
   $('godEffect').textContent=activeGod?v.gods[activeGod]?.description:'Chọn thần để bắt đầu.';
  }
  const phases={godpick:'CHỌN THẦN',place:'ĐẶT QUÂN',move:'DI CHUYỂN',extraMove:'DI CHUYỂN 2',hermesMove:'HERMES',build:'XÂY DỰNG',extraBuild:'XÂY THÊM',ended:'KẾT THÚC'};
@@ -199,15 +202,15 @@ function render(){
  $('winOverlay').classList.toggle('hidden',g.phase!=='ended');
  $('rematchBtn').classList.toggle('hidden',S.seat<0);
  if(g.phase==='ended'){
-  $('winTitle').textContent=g.winner===myTeam()?'Đội bạn chiến thắng!':solo?'BOT chiến thắng!':'Đội '+(g.winner+1)+' chiến thắng!';
+  $('winTitle').textContent=g.winner===myTeam()?(v.capacity===3?'Bạn chiến thắng!':'Đội bạn chiến thắng!'):solo?'BOT chiến thắng!':(v.capacity===3?'Người chơi ':'Đội ')+(g.winner+1)+' chiến thắng!';
   $('winText').textContent=g.lastAction;
  }
  renderBoard();
 }
 $('board').addEventListener('click',e=>{const b=e.target.closest('.tile');if(b)tileClick(+b.dataset.row,+b.dataset.col);});
 $('godCards').addEventListener('click',e=>{const b=e.target.closest('button[data-god]');if(b&&!b.disabled)send({type:'selectGod',god:b.dataset.god});});
-$('createBtn').onclick=()=>{const n=Number($('teamSize').value),rule=n>2?'classic':document.querySelector('input[name="ruleset"]:checked')?.value==='god'?'god':'classic';enter(roomCode(),'online',rule,n);};
-$('teamSize').onchange=()=>{if(+$('teamSize').value>2){const classic=document.querySelector('input[name="ruleset"][value="classic"]');classic.checked=true;message('Phòng 3–4 người dùng luật Classic chia đội.');}};
+$('createBtn').onclick=()=>{const n=Number($('teamSize').value),rule=n>2?'god':document.querySelector('input[name="ruleset"]:checked')?.value==='god'?'god':'classic';enter(roomCode(),'online',rule,n);};
+$('teamSize').onchange=()=>{if(+$('teamSize').value>2){const gods=document.querySelector('input[name="ruleset"][value="god"]');gods.checked=true;message('Luật Roxley: phòng 3–4 người bắt buộc dùng God Powers.');}};
 $('demoBtn').onclick=()=>enter(roomCode(),'bot',document.querySelector('input[name="ruleset"]:checked')?.value==='god'?'god':'classic');
 $('joinBtn').onclick=()=>{const room=$('codeInput').value.trim().toUpperCase();if(!/^[A-Z2-9]{6,10}$/.test(room))return message('Mã phòng không hợp lệ.');enter(room,'online','classic');};
 $('watchBtn').onclick=()=>{const room=$('codeInput').value.trim().toUpperCase();if(!/^[A-Z2-9]{6,10}$/.test(room))return message('Mã phòng không hợp lệ.');enter(room,'online','classic',2,true);};
