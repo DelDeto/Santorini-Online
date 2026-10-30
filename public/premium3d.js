@@ -93,6 +93,16 @@ export function createPremiumEnvironment({scene,camera,renderer,container,sun,se
   bloom?.dispose();outputPass?.dispose?.();
   composer.dispose();composer=null;bloom=null;outputPass=null;renderPass=null;
  }
+ function setLighting(mode){
+  const golden=mode==='golden';
+  skyMaterial.uniforms.uWarmth.value=golden?.93:.22;
+  sun.color.set(golden?0xffce9a:0xffead0);
+  sun.intensity=golden?3.35:3.1;
+  sun.position.set(golden?-10:-7,golden?8:14,golden?11:9);
+  scene.fog.color.set(golden?0xe1b49b:0x83cbd9);
+  renderer.toneMappingExposure=golden?1.29:1.37;
+  return golden?'golden':'noon';
+ }
  function setQuality(mode){
   requested=['auto','eco','hd'].includes(mode)?mode:'auto';
   activeQuality=qualityFor(requested);
@@ -119,5 +129,5 @@ export function createPremiumEnvironment({scene,camera,renderer,container,sun,se
   for(const item of owned)item.dispose();
  }
  setQuality('auto');
- return {update,render,resize,setQuality,dispose,get quality(){return activeQuality;}};
+ return {update,render,resize,setQuality,setLighting,dispose,get quality(){return activeQuality;}};
 }
