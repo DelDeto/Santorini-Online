@@ -353,9 +353,17 @@ export function createBoard3D(container,onCell){
  const resize=new ResizeObserver(()=>{const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);premium.resize(w,h);camera.position.set(8.2*(w/h<.90?1.31:1),10.4*(w/h<.90?1.31:1),11.3*(w/h<.90?1.31:1));orbit.update();});
  resize.observe(container);
  function setView(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight),f=w/h<.90?1.31:1;camera.position.set(8.2*f,10.4*f,11.3*f);orbit.target.set(0,.5,0);orbit.update();}
- let active=true;
+ let active=true,lastFrame=0;
+ const prefersReducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
  function loop(time){
-  if(!active)return;requestAnimationFrame(loop);orbit.update();seaMaterial.uniforms.time.value=time*.001;premium.update(time);
+  if(!active)return;
+  requestAnimationFrame(loop);
+  if(document.hidden)return;
+  const inAction=tweens.length>0||celebration;
+  const targetInterval=prefersReducedMotion?60:mobile?(inAction?28:42):(inAction?16:29);
+  if(time-lastFrame<targetInterval)return;
+  lastFrame=time;
+  orbit.update();seaMaterial.uniforms.time.value=prefersReducedMotion?0:time*.001;premium.update(time);
   for(let i=tweens.length-1;i>=0;i--){const tw=tweens[i],t=Math.min(1,(time-tw.start)/tw.duration),e=1-Math.pow(1-t,3);
    if(!tw.obj.parent){tweens.splice(i,1);continue;}
    if(tw.type==='move'){tw.obj.position.x=tw.x+(tw.toX-tw.x)*e;tw.obj.position.z=tw.z+(tw.toZ-tw.z)*e;tw.obj.position.y=tw.y+(tw.toY-tw.y)*e+Math.sin(Math.PI*t)*.24;}
