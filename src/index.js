@@ -7,10 +7,26 @@ const botToken=seat=>`${BOT_TOKEN}:${seat}`;
 const isBot=p=>p?.token===BOT_TOKEN||String(p?.token||'').startsWith(BOT_TOKEN+':');
 const makeBot=(seat,difficulty)=>({name:'BOT '+seat+' · '+({easy:'Tập sự',normal:'Chiến thuật',hard:'Bậc thầy'}[difficulty]||'Chiến thuật'),token:botToken(seat)});
 const LEVELS=['easy','normal','hard'];
+const GAME_MODES={
+ classic:{capacity:2,ruleset:'classic',label:'Classic · Không thần'},
+ duel:{capacity:2,ruleset:'god',label:'God Powers · Đấu đôi'},
+ trio:{capacity:3,ruleset:'god',label:'3 người · Đấu tự do'},
+ teams:{capacity:4,ruleset:'god',label:'4 người · Đấu đội'},
+ agora:{capacity:2,ruleset:'god',label:'Agora · Xoay thần'},
+ fleece:{capacity:2,ruleset:'god',label:'Golden Fleece · Cừu vàng'}
+};
+function resolveMode(u){
+ const wanted=u.searchParams.get('variant');
+ if(Object.hasOwn(GAME_MODES,wanted))return wanted;
+ const players=Number(u.searchParams.get('players'))||2;
+ if(players===3)return 'trio';
+ if(players===4)return 'teams';
+ return u.searchParams.get('ruleset')==='god'?'duel':'classic';
+}
 const cleanName=value=>String(value??'Người chơi').trim().slice(0,24).replace(/[<>]/g,'')||'Người chơi';
 const team=seat=>seat%2;
 const makeStats=(n=2)=>({wins:Array(n===3?3:2).fill(0),matches:0});
-function freshRoom(){return {game:newGame(),players:[null,null],mode:null,difficulty:'normal',ruleset:'classic',capacity:2,activeSeat:0,nextTeam0:0,seatGods:null,draftIndex:0,athenaAura:null,history:[],stats:makeStats()};}
+function freshRoom(){return {game:newGame(),players:[null,null],mode:null,modeId:'classic',difficulty:'normal',ruleset:'classic',capacity:2,activeSeat:0,nextTeam0:0,seatGods:null,draftIndex:0,athenaAura:null,history:[],stats:makeStats()};}
 function capacity(r){return [2,3,4].includes(r.capacity)?r.capacity:2;}
 function ready(r){return r.players.length===capacity(r)&&r.players.every((p,i)=>!!p||(capacity(r)===3&&!['godpick','place'].includes(r.game.phase)&&r.game.eliminated?.[i]));}
 function seatForTurn(r){
@@ -29,7 +45,7 @@ function view(r,spectators=0){
  const n=capacity(r);
  return {
   game:r.game,legalActions:availableActions(r),gods:GODS,seatGods:r.seatGods||null,
-  ruleset:r.game.ruleset||'classic',mode:r.mode||'online',difficulty:r.difficulty,
+  ruleset:r.game.ruleset||'classic',mode:r.mode||'online',modeId:r.modeId||r.game.modeId||'classic',modeLabel:GAME_MODES[r.modeId||r.game.modeId]?.label||'Santorini',difficulty:r.difficulty,
   capacity:n,activeSeat:seatForTurn(r),spectators,
   history:r.history||[],stats:r.stats||makeStats(n),
   players:r.players.map((p,i)=>({name:p?.name??('Ghế '+(i+1)+' · Đang chờ'),joined:!!p,seat:i,team:n===3?i:team(i),bot:isBot(p)})),
@@ -42,6 +58,7 @@ export class SantoriniRoom extends DurableObject{
   this.ready=this.ctx.blockConcurrencyWhile(async()=>{
    this.room=await this.ctx.storage.get('room')||freshRoom();
    this.room.capacity=capacity(this.room);
+   this.room.modeId??=this.room.game.modeId||(this.room.capacity===3?'trio':this.room.capacity===4?'teams':this.room.ruleset==='god'?'duel':'classic');
    this.room.history??=[];
    this.room.stats??=makeStats();
    this.room.activeSeat??=0;
@@ -51,6 +68,7 @@ export class SantoriniRoom extends DurableObject{
    this.room.athenaAura??=null;
    // Backward compatibility: rooms persisted by V1.2 did not have Advanced Gods state.
    this.room.game.capacity??=this.room.capacity;
+   this.room.game.modeId??=this.room.modeId;
    this.room.game.advanced??={chaos:{},morpheus:{},circe:null,bonus:null,erasures:[]};
    this.room.game.advanced.chaos??={};
    this.room.game.advanced.morpheus??={};
@@ -68,7 +86,7 @@ export class SantoriniRoom extends DurableObject{
   if(!ready(r)||r.game.phase==='ended'||r.game.winner!==null)return;
   const seat=seatForTurn(r);
   if(isBot(r.players[seat])){
-   const setup=['godpick','place'].includes(r.game.phase);
+   const setup=['godpick','fleecePick','ramPlace','place'].includes(r.game.phase);
    await this.ctx.storage.setAlarm(Date.now()+(setup?660:1050));
   }
  }
@@ -120,11 +138,11 @@ record(action,seat,oldWinner,oldRevision){
   const r=this.room;
   if(!r.mode){
    r.mode=u.searchParams.get('mode')==='bot'?'bot':'online';
-   r.ruleset=u.searchParams.get('ruleset')==='god'?'god':'classic';
-   r.capacity=[2,3,4].includes(Number(u.searchParams.get('players')))?Number(u.searchParams.get('players')):2;
-   // Official multi-player matches require individual God Powers.
-   if(r.capacity>2)r.ruleset='god';
-   r.game=newGame(r.ruleset,r.capacity);
+   r.modeId=resolveMode(u);
+   const spec=GAME_MODES[r.modeId];
+   r.ruleset=spec.ruleset;
+   r.capacity=spec.capacity;
+   r.game=newGame(r.ruleset,r.capacity,r.modeId);
    r.athenaAura=null;
    r.seatGods=r.capacity===4?Array(4).fill(null):null;r.draftIndex=0;
    r.players=Array(r.capacity).fill(null);
@@ -159,7 +177,7 @@ record(action,seat,oldWinner,oldRevision){
   if(action.type==='leave'){
    if(authorized){
     r.players[seat]=null;
-    if(!['godpick','place','ended'].includes(r.game.phase)&&r.game.winner===null){
+    if(!['godpick','fleecePick','ramPlace','place','ended'].includes(r.game.phase)&&r.game.winner===null){
       if(capacity(r)===3){
        r.game.eliminated[seat]=true;r.game.workers[seat]=[];r.game.gods[seat]=null;
        const alive=r.game.eliminated.map((out,i)=>out?null:i).filter(i=>i!==null);
@@ -175,8 +193,8 @@ record(action,seat,oldWinner,oldRevision){
       }
       r.game.revision++;
       r.history.push({seat,action:'leave',description:r.game.lastAction,revision:r.game.revision});
-     }else if(r.game.phase==='place'||r.game.phase==='godpick'){
-      r.game=newGame(r.ruleset,capacity(r));r.athenaAura=null;
+     }else if(['place','godpick','fleecePick','ramPlace'].includes(r.game.phase)){
+      r.game=newGame(r.ruleset,capacity(r),r.modeId);r.athenaAura=null;
       r.seatGods=capacity(r)===4?Array(4).fill(null):null;r.draftIndex=0;
       r.activeSeat=capacity(r)===4?2:0;r.history=[];
      }
@@ -188,7 +206,7 @@ record(action,seat,oldWinner,oldRevision){
   }
   // The room creator can fill unoccupied seats with bots before drafting or placement.
   if(action.type==='fillBots'){
-   if(!authorized||seat!==0||r.mode!=='online'||!['place','godpick'].includes(r.game.phase)||r.game.revision!==0){
+   if(!authorized||seat!==0||r.mode!=='online'||!['place','godpick','fleecePick'].includes(r.game.phase)||r.game.revision!==0){
     this.send(ws,{type:'error',message:'Chỉ chủ phòng được thêm BOT trước khi bắt đầu ván.'});return;
    }
    const level=LEVELS.includes(action.difficulty)?action.difficulty:'normal';
@@ -282,7 +300,7 @@ record(action,seat,oldWinner,oldRevision){
 export default{
  async fetch(request,env){
   const u=new URL(request.url);
-  if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'1.3.0'});
+  if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'1.4.0',modes:Object.keys(GAME_MODES)});
   if(u.pathname==='/ws'){
    const room=u.searchParams.get('room')||'';
    if(!/^[A-Z2-9]{6,10}$/.test(room))return new Response('Room code invalid',{status:400});
