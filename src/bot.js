@@ -1,225 +1,258 @@
-import { applyAction, legalBuilds, legalMoves, legalActions, GODS } from './game.js';
+import {applyAction,legalActions,GODS} from './game.js';
 
-const copy = g => structuredClone(g);
-const pick = items => items[Math.floor(Math.random() * items.length)];
-const dist = (a,b) => Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col));
-const center = ({row,col}) => 4-Math.abs(row-2)-Math.abs(col-2);
-function enemyWinCount(g) {
-  if (g.winner !== null || g.phase !== 'move') return 0;
-  let n=0;
-  for (let i=0;i<g.workers[g.turn].length;i++) {
-    const w=g.workers[g.turn][i];
-    for (const d of legalMoves(g,g.turn,i)) if (g.board[w.row][w.col] === 2 && g.board[d.row][d.col] === 3) n++;
-  }
-  return n;
-}
-function evaluate(g, difficulty) {
-  if(g.winner===1) return 1e6;
-  if(g.winner===0) return -1e6;
-  const own=g.workers[1], enemy=g.workers[0];
-  let score=0;
-  for (const w of own) {
-    const h=g.board[w.row][w.col];
-    score+=h*13 + center(w)*1.2;
-    const mobility=legalMoves({...g,phase:'move'},1,own.indexOf(w)).length;
-    score+=Math.min(6,mobility)*.7;
-    for(const e of enemy) if(dist(w,e)<=1)score+=1.2;
-  }
-  for(const w of enemy)score-=g.board[w.row][w.col]*9;
-  if(difficulty==='hard' && g.turn===0)score-=enemyWinCount(g)*400;
-  else if(g.turn===0)score-=enemyWinCount(g)*110;
-  return score;
-}
-function choosePlace(g, difficulty) {
-  const empty=[];
-  for(let row=0;row<5;row++)for(let col=0;col<5;col++){
-    if(!g.workers.some(a=>a.some(w=>w.row===row&&w.col===col))){
-      const pos={row,col};
-      const spread=g.workers[1].reduce((sum,w)=>sum+dist(w,pos),0);
-      const enemyClose=g.workers[0].some(w=>dist(w,pos)<=1);
-      const value=difficulty==='easy'?Math.random()*10:center(pos)*2+spread*1.3+(enemyClose?-2:0)+Math.random()*4;
-      empty.push({type:'place',row,col,value});
-    }
-  }
-  empty.sort((a,b)=>b.value-a.value);
-  return empty[0]&&{type:'place',row:empty[0].row,col:empty[0].col};
-}
-function chooseMove(g,difficulty){
-  const candidates=[];
-  for(let worker=0;worker<g.workers[1].length;worker++){
-    for(const move of legalMoves(g,1,worker)){
-      const action={type:'move',worker,...move};
-      if(difficulty==='easy'){candidates.push({action,score:Math.random()});continue;}
-      const next=copy(g);
-      applyAction(next,1,action);
-      if(next.winner===1)return action;
-      const targets=legalBuilds(next,next.workers[1][worker]);
-      let best=-Infinity;
-      for(const dest of targets){
-        const after=copy(next);
-        applyAction(after,1,{type:'build',...dest});
-        const score=evaluate(after,difficulty)
-          +(difficulty==='hard'&&after.board[dest.row][dest.col]===3?4:0);
-        best=Math.max(best,score);
-      }
-      candidates.push({action,score:best+Math.random()*(difficulty==='hard'?1.5:9)});
-    }
-  }
-  candidates.sort((a,b)=>b.score-a.score);
-  return candidates[0]?.action??null;
-}
-function chooseBuild(g,difficulty){
-  const pos=g.workers[1][g.selected];
-  const all=legalBuilds(g,pos);
-  if(!all.length) return null;
-  if(difficulty==='easy')return {type:'build',...pick(all)};
-  const choices=all.map(dest=>{
-    const next=copy(g);
-    applyAction(next,1,{type:'build',...dest});
-    const height=next.board[dest.row][dest.col];
-    const enemyNear=g.workers[0].some(e=>dist(e,dest)<=1);
-    const ownNear=g.workers[1].some(w=>dist(w,dest)<=1);
-    const score=evaluate(next,difficulty)
-      + (height===4 && enemyNear?16:0)
-      + (height===3 && ownNear?8:0)
-      - (height===3 && enemyNear?15:0)
-      + Math.random()*(difficulty==='hard'?2:12);
-    return {dest,score};
-  });
-  choices.sort((a,b)=>b.score-a.score);
-  return {type:'build',...choices[0].dest};
-}
-function godStrategy(game,difficulty){
- const acts=legalActions(game,1);
- if(!acts.length)return null;
- if(game.phase==='godpick'){
-  // In solo matches, player 0 picks first; bot chooses from the remaining gods.
-  const priorities=['pan','athena','apollo','artemis','minotaur','demeter','atlas','hephaestus','prometheus','hermes'];
-  return difficulty==='easy'?pick(acts):acts.slice().sort((a,b)=>priorities.indexOf(a.god)-priorities.indexOf(b.god))[0];
- }
- if(game.phase==='place')return choosePlace(game,difficulty);
- if(game.phase==='hermesMove'){
-  const end=acts.filter(a=>a.type==='endMove');
-  if((game.ctx?.hermesSteps??0)>=2&&end.length)return pick(end);
- }
- if(difficulty==='easy')return pick(acts);
- const score=action=>{
-  const g=structuredClone(game);
-  try{applyAction(g,1,action);}catch{return -Infinity;}
-  if(g.winner===1)return 1e8;
-  if(g.winner===0)return -1e8;
-  const own=g.workers[1],other=g.workers[0];
-  let value=0;
-  const height=w=>g.board[w.row][w.col];
-  for(const w of own){
-   value+=height(w)*14+center(w)*1.4;
-   for(const e of other)if(dist(w,e)<=1)value+=2;
-  }
-  for(const w of other)value-=height(w)*12+center(w)*.65;
-  if(action.type==='build'){
-   const h=g.board[action.row][action.col];
-   const nearOwn=own.some(w=>dist(w,action)<=1),nearEnemy=other.some(w=>dist(w,action)<=1);
-   if(h===3){value+=(nearOwn?22:0)-(nearEnemy?35:0);}
-   else if(h===4)value+=nearEnemy?12:0;
-  }
-  if(action.type==='skip')value-=2;
-  if(action.type==='endMove')value+=5;
-  if(action.type==='prebuild')value+=3;
-  if(g.turn===0&&g.phase==='move'){
-   const opponent=legalActions(g,0);
-   const immediate=opponent.filter(a=>a.type==='move'&&a.wins).length;
-   value-=immediate*(difficulty==='hard'?2200:280);
-  }
-  if(g.turn===1&&g.phase==='move'){
-   const immediate=legalActions(g,1).filter(a=>a.type==='move'&&a.wins).length;
-   value+=immediate*140;
-  }
-  return value;
- };
- return acts.map(a=>({a,score:score(a)+Math.random()*(difficulty==='hard'?.9:7)}))
-  .sort((a,b)=>b.score-a.score)[0]?.a||acts[0];
-}
+/**
+ * Santorini Strategic BOT V1.2.
+ * Uses only authoritative game actions, never bypasses God Power rules.
+ * Easy: exploratory. Normal: completes its turn and blocks immediate wins.
+ * Hard: wider complete-turn search plus a bounded opponent reply.
+ * No external API and no player data is transmitted.
+ */
+const copy=g=>structuredClone(g);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const near=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col))===1;
+const distance=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col));
+const center=a=>4-Math.abs(a.row-2)-Math.abs(a.col-2);
+const godPriority=['pan','athena','apollo','artemis','minotaur','atlas','demeter','hephaestus','prometheus','hermes'];
+const WIN=1_000_000;
+const alive=(g,p)=>!g.eliminated?.[p]&&g.workers[p]?.length>0;
+const opponents=(g,p)=>g.workers.map((_,i)=>i).filter(i=>i!==p&&alive(g,i));
+const phaseMove=g=>['move','extraMove','hermesMove'].includes(g.phase);
+const height=(g,w)=>g.board[w.row][w.col];
+const actionKey=a=>[a.type,a.worker??'',a.row??'',a.col??'',a.god??'',a.dome?'d':''].join(':');
 
-/** Multiplayer BOT: same authoritative action list as a human client, any seat/team. */
-export function chooseMultiplayerBotAction(game,difficulty='normal',player=game.turn,available=legalActions(game,player)){
- if(game.winner!==null||!available?.length)return null;
- const choices=available;
- if(choices[0]?.type==='selectGod'){
-  const priority=['pan','athena','apollo','artemis','atlas','minotaur','demeter','hephaestus','prometheus','hermes'];
-  return difficulty==='easy'?pick(choices):choices.slice().sort((a,b)=>priority.indexOf(a.god)-priority.indexOf(b.god))[0];
+function simulate(g,player,action){
+ const n=copy(g);
+ try{applyAction(n,player,action);return n;}catch{return null;}
+}
+function winningNow(g,p){
+ if(g.winner!==null||g.phase!=='move'||!alive(g,p))return [];
+ const trial={...g,turn:p,phase:'move',ctx:{}};
+ return legalActions(trial,p).filter(a=>a.type==='move'&&a.wins);
+}
+function basePosition(g,p){
+ if(g.winner!==null)return g.winner===p?WIN:-WIN;
+ const enemies=opponents(g,p);
+ let total=0;
+ for(let player=0;player<g.workers.length;player++){
+  if(!alive(g,player))continue;
+  const own=player===p,sign=own?1:-1/Math.max(1,enemies.length);
+  for(const w of g.workers[player]){
+   const h=height(g,w);
+   // Ascending toward level 2 is productive, but standing alone on level 2
+   // is less important than having a safe neighbouring build opportunity.
+   total+=sign*(h*22+center(w)*2.8);
+   let exits=0,stepUps=0,winningTowers=0,danger=0;
+   for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+    if(!dr&&!dc)continue;
+    const row=w.row+dr,col=w.col+dc;
+    if(row<0||col<0||row>4||col>4)continue;
+    const hh=g.board[row][col];
+    if(hh===4)continue;
+    const occupied=g.workers.some(a=>a.some(t=>t.row===row&&t.col===col));
+    if(!occupied&&hh<=h+1){exits++;if(hh===h+1)stepUps++;if(h===2&&hh===3)winningTowers++;}
+    if(hh===2&&h<=2)danger++;
+   }
+   total+=sign*(Math.min(exits,6)*2.5+Math.min(stepUps,3)*3.3+Math.min(danger,4)*2.2);
+   if(winningTowers)total+=sign*145*winningTowers;
+   if(exits===0)total+=sign*(-90);
+   if(h===2)total+=sign*22;
+  }
  }
+ // Prefer control of level 2 squares that can be turned into a safe level 3.
+ for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+  const h=g.board[r][c];
+  if(h!==2&&h!==3)continue;
+  const pos={row:r,col:c},ours=g.workers[p]||[];
+  const ownNear=ours.some(w=>near(w,pos));
+  const enemyNear=enemies.some(o=>g.workers[o].some(w=>near(w,pos)));
+  if(h===2)total+=ownNear?7:0;
+  if(h===3){if(ownNear)total+=30;if(enemyNear)total-=45;}
+ }
+ return total;
+}
+function leafScore(g,p){
+ let score=basePosition(g,p);
+ if(g.winner!==null)return score;
+ if(g.phase!=='move'||g.turn===p)return score;
+ const enemies=opponents(g,p);
+ for(const enemy of enemies){
+  const wins=winningNow(g,enemy).length;
+  if(!wins)continue;
+  // A winning move for the very next opponent is essentially fatal.
+  score-=wins*(g.turn===enemy?120_000:10_000);
+ }
+ // A strategy that leaves our own immediate win next turn has value,
+ // but it must not take precedence over preventing a forced opponent win.
+ if(winningNow(g,p).length)score+=140;
+ return score;
+}
+function chooseGod(g,choices,difficulty){
  if(difficulty==='easy')return pick(choices);
- if(game.phase==='hermesMove'&&game.ctx?.hermesSteps>=2){
-  const end=choices.filter(a=>a.type==='endMove');
-  if(end.length)return pick(end);
- }
- const others=Array.from({length:game.workers.length},(_,i)=>i).filter(i=>i!==player&&!game.eliminated?.[i]);
- function evaluateAction(action){
-  const before=game,after=copy(game);
-  const from=action.worker===undefined?null:before.workers[player]?.[action.worker];
-  const oldHeight=from?before.board[from.row][from.col]:0;
-  try{applyAction(after,player,action);}catch{return -1e9;}
-  if(after.winner===player)return 1e9;
-  if(after.winner!==null)return -1e9;
-  let value=0;
-  // Score all of our pieces, not just worker one, and penalise ALL enemies in three-player FFA.
-  for(const w of after.workers[player]||[]){
-   const h=after.board[w.row][w.col];
-   value+=h*14+center(w)*1.6;
-   value+=Math.min(7,legalMoves({...after,phase:'move',turn:player,ctx:{}},player,(after.workers[player]||[]).indexOf(w)).length)*.5;
-  }
-  for(const opponent of others){
-   for(const w of after.workers[opponent]||[]){
-    const h=after.board[w.row][w.col];
-    value-=h*11+center(w)*.55;
-   }
-  }
-  if(action.type==='place'){
-   const placed={row:action.row,col:action.col};
-   value+=center(placed)*2;
-   value-=others.flatMap(x=>after.workers[x]||[]).some(w=>dist(w,placed)<=1)?4:0;
-   const mate=before.workers[player]||[];
-   if(mate.length)value+=Math.min(3,dist(mate[0],placed))*2;
-  }
-  if(action.type==='move'){
-   const nextH=after.board[action.row][action.col];
-   value+=(nextH-oldHeight)*7;
-   // Avoid stepping into an opponent's next-turn winning corridor.
-   const danger=others.some(q=>(after.workers[q]||[]).some(w=>dist(w,action)<=1&&after.board[w.row][w.col]===2&&nextH===3));
-   if(danger)value-=difficulty==='hard'?220:60;
-  }
-  if(action.type==='build'){
-   const height=after.board[action.row][action.col];
-   const ownNear=(after.workers[player]||[]).some(w=>dist(w,action)<=1);
-   const enemyNear=others.some(q=>(after.workers[q]||[]).some(w=>dist(w,action)<=1));
-   if(height===3)value+=(ownNear?32:0)-(enemyNear?55:0);
-   if(height===4)value+=enemyNear?17:-5;
-   if(height===2)value+=ownNear?5:0;
-  }
-  if(action.type==='skip')value-=3;
-  if(action.type==='endMove')value+=5;
-  if(action.type==='prebuild')value+=2;
-  // Critically avoid leaving an immediate floor-3 win to the following opponent(s).
-  if(after.phase==='move'){
-   for(const q of others){
-    const trial={...after,phase:'move',turn:q,ctx:{}};
-    const wins=legalActions(trial,q).filter(a=>a.type==='move'&&a.wins).length;
-    value-=wins*(difficulty==='hard'?500:100);
-   }
-  }
-  return value;
- }
- return choices.map(a=>({a,score:evaluateAction(a)+(Math.random()*(difficulty==='hard'?1.1:6))}))
-  .sort((a,b)=>b.score-a.score)[0]?.a??choices[0];
+ const enemies=g.gods.filter(Boolean);
+ const prefer=choices.map(a=>{
+  let score=20-godPriority.indexOf(a.god);
+  if(a.god==='athena'&&enemies.includes('pan'))score+=3;
+  if(a.god==='apollo'&&enemies.includes('minotaur'))score+=2;
+  return {a,score};
+ });
+ return prefer.sort((x,y)=>y.score-x.score)[0].a;
 }
-
-/** Server-side bot. Never trust the browser to produce a BOT action. */
-
+function choosePlacement(g,p,choices,difficulty){
+ if(difficulty==='easy')return pick(choices);
+ const mates=g.workers[p]||[],enemies=opponents(g,p).flatMap(i=>g.workers[i]);
+ return choices.map(a=>{
+  const pos={row:a.row,col:a.col};
+  let score=center(pos)*2.6;
+  if(mates.length){
+   const d=distance(pos,mates[0]);
+   score+=(d===2?9:d===3?6:d===1?-7:2);
+  }else score+=pos.row===2&&pos.col===2?2:0;
+  const enemyDist=enemies.length?Math.min(...enemies.map(w=>distance(pos,w))):4;
+  score+=(enemyDist===2?4:enemyDist===0?-8:enemyDist===1?-4:0);
+  return {a,score:score+Math.random()*(difficulty==='hard'?.08:2)};
+ }).sort((x,y)=>y.score-x.score)[0].a;
+}
+function optionsFor(g,p){
+ let actions=legalActions(g,p);
+ // Hermes can otherwise cycle indefinitely on equal-level squares.
+ // Ending movement after a small number of steps is strategically sensible.
+ if(g.phase==='hermesMove'&&(g.ctx?.hermesSteps||0)>=3){
+  const ends=actions.filter(a=>a.type==='endMove');
+  if(ends.length)return ends;
+ }
+ return actions;
+}
+function rankByFast(g,p,actions,limit){
+ const scored=[];
+ for(const action of actions){
+  const result=simulate(g,p,action);
+  if(!result)continue;
+  let score=basePosition(result,p);
+  if(result.winner===p)score+=WIN;
+  if(action.type==='skip')score-=.8;
+  if(action.type==='endMove')score+=1;
+  if(action.type==='prebuild')score-=2.5;
+  if(action.type==='move'&&action.special)score+=3;
+  scored.push({action,result,score});
+ }
+ scored.sort((a,b)=>b.score-a.score);
+ const top=scored.slice(0,limit);
+ // Explicitly retain possible tactical wins even when ranking is narrow.
+ for(const x of scored)if(x.result.winner===p&&!top.some(y=>actionKey(y.action)===actionKey(x.action)))top.push(x);
+ return top;
+}
+/**
+ * Search through the rest of OUR TURN, including mandatory build and
+ * extra phases from Artemis, Demeter, Hephaestus, Prometheus and Hermes.
+ * Returns a fully completed position to avoid one-action horizon traps.
+ */
+function completeTurn(g,p,config,budget,depth=0){
+ if(g.winner!==null||g.turn!==p||g.phase==='ended'){
+  return {score:leafScore(g,p),state:g,complete:true};
+ }
+ if(depth>=config.maxDepth||budget.nodes>=config.maxNodes){
+  return {score:basePosition(g,p)-80,state:g,complete:false};
+ }
+ const opts=optionsFor(g,p);
+ if(!opts.length)return {score:-WIN/2,state:g,complete:false};
+ const width=['build','extraBuild'].includes(g.phase)?config.buildWidth:
+  ['extraMove','hermesMove'].includes(g.phase)?config.extraWidth:config.branchWidth;
+ const ranked=rankByFast(g,p,opts,width);
+ let best=null;
+ for(const candidate of ranked){
+  budget.nodes++;
+  let reply=completeTurn(candidate.result,p,config,budget,depth+1);
+  if(!best||reply.score>best.score)best=reply;
+  if(best?.score>=WIN)break;
+  if(budget.nodes>=config.maxNodes)break;
+ }
+ return best||{score:basePosition(g,p)-120,state:g,complete:false};
+}
+function projectedEnemyState(g,op,context={}){
+ if(!context||context.capacity!==4||!Array.isArray(context.seatGods))return g;
+ const order=[2,3,0,1],index=order.indexOf(context.seat??2);
+ const nextSeat=order[(index+1)%4];
+ if(nextSeat%2!==op)return g;
+ const power=context.seatGods[nextSeat];
+ if(!power||g.gods[op]===power)return g;
+ const trial=copy(g);
+ trial.gods[op]=power;
+ return trial;
+}
+/** Hard mode: exact next opponent winning move + bounded MOVE->BUILD counterplay. */
+function opponentResponse(g,p,context,config){
+ if(g.winner!==null||g.phase!=='move'||g.turn===p)return 0;
+ const enemy=g.turn,trial=projectedEnemyState(g,enemy,context);
+ if(winningNow(trial,enemy).length)return -200_000;
+ const candidates=rankByFast(trial,enemy,legalActions(trial,enemy),config.replyWidth);
+ let worst=basePosition(g,p),shown=false;
+ for(const first of candidates){
+  let value=basePosition(first.result,p);
+  if(first.result.winner===enemy)return -200_000;
+  if(first.result.turn===enemy){
+   const follow=optionsFor(first.result,enemy);
+   if(follow.length){
+    const branches=rankByFast(first.result,enemy,follow,config.replyBuildWidth);
+    for(const second of branches){
+     if(second.result.winner===enemy)return -200_000;
+     const z=basePosition(second.result,p);
+     value=Math.min(value,z);
+    }
+   }
+  }
+  worst=Math.min(worst,value);shown=true;
+ }
+ return shown?Math.max(-1000,Math.min(0,(worst-basePosition(g,p))*.6)):0;
+}
+function strategic(g,p,choices,difficulty,context={}){
+ const config=difficulty==='hard'?{
+  rootWidth:25,branchWidth:5,buildWidth:7,extraWidth:5,
+  maxDepth:6,maxNodes:530,replyWidth:6,replyBuildWidth:4,noise:.05
+ }:{
+  rootWidth:17,branchWidth:3,buildWidth:5,extraWidth:3,
+  maxDepth:5,maxNodes:230,replyWidth:0,replyBuildWidth:0,noise:1.1
+ };
+ if(g.phase==='hermesMove'&&(g.ctx?.hermesSteps||0)>=3){
+  const ends=choices.filter(a=>a.type==='endMove');
+  if(ends.length)return strategic(g,p,ends,difficulty,context);
+ }
+ const immediate=choices.filter(a=>a.type==='move'&&a.wins);
+ if(immediate.length)return immediate[0];
+ const root=rankByFast(g,p,choices,config.rootWidth);
+ if(!root.length)return choices[0];
+ const budget={nodes:0};
+ const results=[];
+ for(const x of root){
+  const res=completeTurn(x.result,p,config,budget,1);
+  results.push({action:x.action,score:res.score,completed:res.complete,state:res.state});
+ }
+ if(!results.length)return choices[0];
+ results.sort((a,b)=>b.score-a.score);
+ if(difficulty==='hard'){
+  // Apply the opponent response only to the strongest candidates, keeping
+  // resource consumption predictable on Cloudflare Workers Free.
+  for(const x of results.slice(0,6)){
+   if(x.completed&&x.state.winner===null)x.score+=opponentResponse(x.state,p,context,config);
+  }
+ }
+ results.sort((a,b)=>b.score-a.score);
+ const chosen=results[0];
+ if(difficulty==='normal'&&results.length>1&&Math.random()<.07){
+  const alternative=results.find(x=>x.score>=chosen.score-3);
+  if(alternative)return alternative.action;
+ }
+ return chosen.action;
+}
+export function chooseMultiplayerBotAction(game,difficulty='normal',player=game.turn,available=legalActions(game,player),context={}){
+ if(game.winner!==null||!Array.isArray(available)||!available.length)return null;
+ if(available[0]?.type==='selectGod')return chooseGod(game,available,difficulty);
+ if(game.phase==='place')return choosePlacement(game,player,available,difficulty);
+ const won=available.filter(a=>a.type==='move'&&a.wins);
+ if(won.length&&difficulty!=='easy')return won[0];
+ if(difficulty==='easy')return pick(available);
+ return strategic(game,player,available,difficulty,context);
+}
 export function chooseBotAction(game,difficulty='normal'){
-  if(game.turn!==1||game.winner!==null)return null;
-  if(game.ruleset==='god')return godStrategy(game,difficulty);
-  if(game.phase==='place')return choosePlace(game,difficulty);
-  if(game.phase==='move')return chooseMove(game,difficulty);
-  if(game.phase==='build')return chooseBuild(game,difficulty);
-  return null;
+ if(game.turn!==1||game.winner!==null)return null;
+ return chooseMultiplayerBotAction(game,difficulty,1,legalActions(game,1));
 }
