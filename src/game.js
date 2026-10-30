@@ -219,29 +219,95 @@ function matches(expected,a){
  (expected.under===undefined? a.under!==true:expected.under===a.under)&&
  (expected.target===undefined||expected.target===a.target);
 }
+function completedTowers(g){return g.board.flat().filter(h=>h===4).length;}
+function winnerChronus(g){
+ if(completedTowers(g)<5)return false;
+ const p=g.gods.findIndex((id,i)=>id==='chronus'&&!g.eliminated?.[i]);
+ if(p===-1)return false;
+ g.winner=p;g.phase='ended';g.selected=null;g.lastAction='Chronus chiến thắng: có 5 công trình hoàn chỉnh!';return true;
+}
+function setupChaos(g){
+ for(let p=0;p<g.gods.length;p++)if(g.gods[p]==='chaos'&&!g.advanced.chaos[p]){
+  const deck=SIMPLE_GODS.filter(id=>!g.gods.includes(id));
+  for(let i=deck.length-1;i>0;i--){const k=Math.floor(Math.random()*(i+1));[deck[i],deck[k]]=[deck[k],deck[i]];}
+  g.advanced.chaos[p]={deck,index:0,current:deck[0]??'apollo'};
+ }
+}
+function refreshChaos(g){
+ if(!g.ctx?.domeBuilt)return;
+ setupChaos(g);
+ for(const entry of Object.values(g.advanced.chaos)){
+  if(!entry.deck?.length)continue;
+  entry.index=(entry.index+1)%entry.deck.length;
+  entry.current=entry.deck[entry.index];
+ }
+}
+function beginTurn(g,p){
+ g.ctx={turnStart:g.workers[p].map(w=>({...w}))};
+ if(g.advanced?.circe?.owner===p)g.advanced.circe=null;
+ if(g.gods[p]==='circe'&&g.workers.length===2){
+  const target=1-p,ws=g.workers[target];
+  if(ws.length>=2&&!near(ws[0],ws[1])&&g.gods[target]!=='circe')
+   g.advanced.circe={owner:p,target,power:g.gods[target]};
+ }
+ if(g.gods[p]==='morpheus')
+  g.advanced.morpheus[p]=(g.advanced.morpheus[p]||0)+1;
+}
 function advance(g,p){
  const count=g.workers.length;let next=(p+1)%count;
  for(let k=0;k<count;k++){
   if(g.eliminated?.[next]){next=(next+1)%count;continue;}
-  // Athena's power expires when its owner takes their next turn.
   if(count===3&&g.athenaBlocked===next)g.athenaBlocked=null;
   const trial={...g,phase:'move',turn:next,ctx:{}};
-  if(canTakeTurn(trial,next)){g.turn=next;g.phase='move';g.selected=null;return;}
+  if(canTakeTurn(trial,next)){g.turn=next;g.phase='move';g.selected=null;beginTurn(g,next);return;}
   if(count===2){
    g.winner=p;g.phase='ended';g.lastAction='Đối thủ không thể di chuyển. Người chơi '+(p+1)+' chiến thắng!';return;
   }
   g.eliminated[next]=true;g.workers[next]=[];g.gods[next]=null;
   g.lastAction='Người chơi '+(next+1)+' bị loại vì không còn lượt hợp lệ.';
-  const alive=g.eliminated.map((lost,i)=>lost?null:i).filter(x=>x!==null);
-  if(alive.length===1){
-   g.winner=alive[0];g.turn=alive[0];g.phase='ended';
+  const remaining=g.eliminated.map((lost,i)=>lost?null:i).filter(i=>i!==null);
+  if(remaining.length===1){
+   g.winner=remaining[0];g.turn=remaining[0];g.phase='ended';
    g.lastAction='Chỉ còn một người chơi. Người chơi '+(g.winner+1)+' chiến thắng!';return;
   }
   next=(next+1)%count;
  }
- throw Error('Không thể xác định người chơi tiếp theo.');
 }
-function endTurn(g,p){
+function endTurn(g,p,force=false){
+ const power=god(g,p);
+ if(!force&&!g.ctx?.postDone){
+  if(power==='ares'){
+   const idx=g.ctx?.lastMoved===0?1:0,unmoved=g.workers[p]?.[idx];
+   if(unmoved&&legalBuilds(g,unmoved).some(pos=>g.board[pos.row][pos.col]>0&&g.board[pos.row][pos.col]<4)){
+    g.phase='aresRemove';g.lastAction='Ares có thể phá một khối cạnh quân không di chuyển hoặc bỏ qua.';return;
+   }
+  }
+  if(power==='poseidon'){
+   const idx=g.ctx?.lastMoved===0?1:0,unmoved=g.workers[p]?.[idx];
+   if(unmoved&&g.board[unmoved.row][unmoved.col]===0&&legalBuilds(g,unmoved,p).length){
+    g.phase='poseidonBuild';g.ctx.bonusRemaining=3;
+    g.lastAction='Poseidon có thể xây thêm tối đa 3 lần với quân đứng tầng 0.';return;
+   }
+  }
+  if(power==='dionysus'&&g.ctx?.domeBuilt&&!g.ctx?.dionysusUsed){
+   g.phase='dionysusChoice';g.lastAction='Dionysus có thể điều khiển quân đối thủ để đi thêm một lượt.';return;
+  }
+ }
+ if(power==='medusa'){
+  const petrified=new Set();
+  for(const w of g.workers[p]){
+   for(const q of opponentsOf(g,p))for(const v of g.workers[q])
+    if(near(w,v)&&g.board[w.row][w.col]>g.board[v.row][v.col])petrified.add(v.row+','+v.col);
+  }
+  for(const key of petrified){
+   const [row,col]=key.split(',').map(Number),target=pawnAt(g,row,col);
+   if(!target||target.p===p)continue;
+   g.workers[target.p].splice(target.i,1);g.board[row][col]=Math.min(4,g.board[row][col]+1);
+  }
+  if(petrified.size)g.lastAction='Medusa hóa đá '+petrified.size+' quân đối thủ!';
+ }
+ refreshChaos(g);
+ if(winnerChronus(g))return;
  if(g.workers.length===2&&g.athenaBlocked===p)g.athenaBlocked=null;
  g.ctx={};g.phase='move';g.selected=null;
  advance(g,p);
