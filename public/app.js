@@ -180,35 +180,36 @@ function availableTiles(){
  const v=S.view;if(!v||!isTurn())return [];
  const g=v.game,phase=g.phase;
  if(phase==='place')return getActions('place');
- if(['move','extraMove','hermesMove'].includes(phase)){
+ if(['move','extraMove','hermesMove','tritonMove','dionysusMove'].includes(phase)){
   if(S.selected===null)return [];
-  return getActions(S.powerMode==='prebuild'?'prebuild':'move',S.selected);
+  return getActions(S.powerMode==='prebuild'?'prebuild':'move',S.selected).concat(S.powerMode==='move'?getActions('ferry',S.selected):[]);
  }
- if(['build','extraBuild'].includes(phase)){
+ if(['build','extraBuild','morpheusBuild','poseidonBuild','dionysusBuild'].includes(phase)){
   return getActions('build').filter(x=>!!x.dome===(S.powerMode==='dome'));
  }
+ if(phase==='aresRemove')return getActions('removeBlock');
  return [];
 }
 function tileClick(row,col){
  const v=S.view;if(!isTurn()||!v)return;
  const g=v.game,phase=g.phase;
  if(phase==='place'){const a=getActions('place').find(a=>a.row===row&&a.col===col);if(a)send({type:'place',row,col});return;}
- if(['move','extraMove','hermesMove'].includes(phase)){
-  const worker=g.workers[myTeam()]?.findIndex(w=>w.row===row&&w.col===col);
-  const allowedWorker=worker!==-1&&worker!==undefined&&getActions('move',worker).length+getActions('prebuild',worker).length+getActions('endMove',worker).length>0;
+ if(['move','extraMove','hermesMove','tritonMove','dionysusMove'].includes(phase)){
+  const actor=phase==='dionysusMove'?g.ctx?.dionysusTarget:myTeam();
+   const worker=g.workers[actor]?.findIndex(w=>w.row===row&&w.col===col);
+  const allowedWorker=worker!==-1&&worker!==undefined&&getActions('move',worker).length+getActions('prebuild',worker).length+getActions('endMove',worker).length+getActions('ferry',worker).length>0;
   if(allowedWorker&&!(phase==='extraMove'&&worker!==g.selected)){
    S.selected=worker;S.powerMode='move';beep(380);render();return;
   }
   const action=availableTiles().find(a=>a.row===row&&a.col===col);
   if(action){send({type:action.type,worker:action.worker,row,col});if(action.type==='move')S.selected=null;if(action.type==='prebuild'){S.selected=action.worker;S.powerMode='move';}}
   else message('Chọn quân của bạn rồi chạm vào ô có vòng sáng.');
- }else if(['build','extraBuild'].includes(phase)){
+ }else if(['build','extraBuild','morpheusBuild','poseidonBuild','dionysusBuild'].includes(phase)){
   const a=availableTiles().find(a=>a.row===row&&a.col===col);
-  if(a)send({type:'build',row,col,...(a.dome?{dome:true}:{})});
+  if(a)send({type:'build',row,col,...(a.dome?{dome:true}:{}),...(a.under?{under:true}:{})});
   else message('Hãy chọn vị trí xây có vòng sáng.');
  }
-}
-function drawFallback(){
+  else if(phase==='aresRemove'){const a=availableTiles().find(x=>x.row===row&&x.col===col);if(a)send({type:'removeBlock',row,col});else message('Chạm khối cần phá hoặc Bỏ qua.');}function drawFallback(){
  const g=S.view?.game;if(!g)return;
  const options=availableTiles(),tiles=new Set(options.map(a=>a.row+','+a.col));
  const own=myTeam();
@@ -217,7 +218,8 @@ function drawFallback(){
   const level=g.board[row][col],k=row+','+col,active=tiles.has(k);
   const owner=g.workers.findIndex(team=>team.some(w=>w.row===row&&w.col===col));
   const wi=owner<0?-1:g.workers[owner].findIndex(w=>w.row===row&&w.col===col);
-  const choose=owner===own&&['move','extraMove','hermesMove'].includes(g.phase);
+  const control=g.phase==='dionysusMove'?g.ctx?.dionysusTarget:own;
+   const choose=owner===control&&['move','extraMove','hermesMove','tritonMove','dionysusMove'].includes(g.phase);
   html+='<button class="tile '+(active?'legal ':'')+(choose&&wi===S.selected?'selected ':'')+'" data-row="'+row+'" data-col="'+col+'" aria-label="Ô '+(row+1)+'-'+(col+1)+' tầng '+level+'">';
   if(level){html+='<span class="building">';for(let n=0;n<Math.min(3,level);n++)html+='<span class="block"></span>';if(level===4)html+='<span class="dome"></span>';html+='</span><span class="level-pill">'+(level===4?'◆':level)+'</span>';}
   if(owner>=0)html+='<span class="worker p'+owner+'"><span class="worker-head"></span><span class="worker-body"></span><span class="worker-base"></span></span>';
@@ -228,7 +230,7 @@ function drawFallback(){
 function renderBoard(){
  const v=S.view;if(!v)return;
  drawFallback();
- if(S.three)S.three.update(v.game,availableTiles(),S.selected===null||S.seat===-1?null:{p:myTeam(),i:S.selected},['build','extraBuild'].includes(v.game.phase)||S.powerMode==='prebuild');
+ if(S.three)S.three.update(v.game,availableTiles(),S.selected===null||S.seat===-1?null:{p:v.game.phase==='dionysusMove'?v.game.ctx?.dionysusTarget:myTeam(),i:S.selected},['build','extraBuild','morpheusBuild','poseidonBuild','dionysusBuild','aresRemove'].includes(v.game.phase)||S.powerMode==='prebuild');
 }
 function renderGodPick(g){
  const active=S.view?.ready&&isTurn()&&g.phase==='godpick';
