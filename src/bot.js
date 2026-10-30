@@ -139,6 +139,80 @@ function godStrategy(game,difficulty){
  return acts.map(a=>({a,score:score(a)+Math.random()*(difficulty==='hard'?.9:7)}))
   .sort((a,b)=>b.score-a.score)[0]?.a||acts[0];
 }
+
+/** Multiplayer BOT: same authoritative action list as a human client, any seat/team. */
+export function chooseMultiplayerBotAction(game,difficulty='normal',player=game.turn,available=legalActions(game,player)){
+ if(game.winner!==null||!available?.length)return null;
+ const choices=available;
+ if(choices[0]?.type==='selectGod'){
+  const priority=['pan','athena','apollo','artemis','atlas','minotaur','demeter','hephaestus','prometheus','hermes'];
+  return difficulty==='easy'?pick(choices):choices.slice().sort((a,b)=>priority.indexOf(a.god)-priority.indexOf(b.god))[0];
+ }
+ if(difficulty==='easy')return pick(choices);
+ if(game.phase==='hermesMove'&&game.ctx?.hermesSteps>=2){
+  const end=choices.filter(a=>a.type==='endMove');
+  if(end.length)return pick(end);
+ }
+ const others=Array.from({length:game.workers.length},(_,i)=>i).filter(i=>i!==player&&!game.eliminated?.[i]);
+ function evaluateAction(action){
+  const before=game,after=copy(game);
+  const from=action.worker===undefined?null:before.workers[player]?.[action.worker];
+  const oldHeight=from?before.board[from.row][from.col]:0;
+  try{applyAction(after,player,action);}catch{return -1e9;}
+  if(after.winner===player)return 1e9;
+  if(after.winner!==null)return -1e9;
+  let value=0;
+  // Score all of our pieces, not just worker one, and penalise ALL enemies in three-player FFA.
+  for(const w of after.workers[player]||[]){
+   const h=after.board[w.row][w.col];
+   value+=h*14+center(w)*1.6;
+   value+=Math.min(7,legalMoves({...after,phase:'move',turn:player,ctx:{}},player,(after.workers[player]||[]).indexOf(w)).length)*.5;
+  }
+  for(const opponent of others){
+   for(const w of after.workers[opponent]||[]){
+    const h=after.board[w.row][w.col];
+    value-=h*11+center(w)*.55;
+   }
+  }
+  if(action.type==='place'){
+   const placed={row:action.row,col:action.col};
+   value+=center(placed)*2;
+   value-=others.flatMap(x=>after.workers[x]||[]).some(w=>dist(w,placed)<=1)?4:0;
+   const mate=before.workers[player]||[];
+   if(mate.length)value+=Math.min(3,dist(mate[0],placed))*2;
+  }
+  if(action.type==='move'){
+   const nextH=after.board[action.row][action.col];
+   value+=(nextH-oldHeight)*7;
+   // Avoid stepping into an opponent's next-turn winning corridor.
+   const danger=others.some(q=>(after.workers[q]||[]).some(w=>dist(w,action)<=1&&after.board[w.row][w.col]===2&&nextH===3));
+   if(danger)value-=difficulty==='hard'?220:60;
+  }
+  if(action.type==='build'){
+   const height=after.board[action.row][action.col];
+   const ownNear=(after.workers[player]||[]).some(w=>dist(w,action)<=1);
+   const enemyNear=others.some(q=>(after.workers[q]||[]).some(w=>dist(w,action)<=1));
+   if(height===3)value+=(ownNear?32:0)-(enemyNear?55:0);
+   if(height===4)value+=enemyNear?17:-5;
+   if(height===2)value+=ownNear?5:0;
+  }
+  if(action.type==='skip')value-=3;
+  if(action.type==='endMove')value+=5;
+  if(action.type==='prebuild')value+=2;
+  // Critically avoid leaving an immediate floor-3 win to the following opponent(s).
+  if(after.phase==='move'){
+   for(const q of others){
+    const trial={...after,phase:'move',turn:q,ctx:{}};
+    const wins=legalActions(trial,q).filter(a=>a.type==='move'&&a.wins).length;
+    value-=wins*(difficulty==='hard'?500:100);
+   }
+  }
+  return value;
+ }
+ return choices.map(a=>({a,score:evaluateAction(a)+(Math.random()*(difficulty==='hard'?1.1:6))}))
+  .sort((a,b)=>b.score-a.score)[0]?.a??choices[0];
+}
+
 /** Server-side bot. Never trust the browser to produce a BOT action. */
 
 export function chooseBotAction(game,difficulty='normal'){
