@@ -9,7 +9,7 @@ const team=seat=>seat%2;
 const makeStats=(n=2)=>({wins:Array(n===3?3:2).fill(0),matches:0});
 function freshRoom(){return {game:newGame(),players:[null,null],mode:null,difficulty:'normal',ruleset:'classic',capacity:2,activeSeat:0,nextTeam0:0,seatGods:null,draftIndex:0,history:[],stats:makeStats()};}
 function capacity(r){return [2,3,4].includes(r.capacity)?r.capacity:2;}
-function ready(r){return r.players.length===capacity(r)&&r.players.every(Boolean);}
+function ready(r){return r.players.length===capacity(r)&&r.players.every((p,i)=>!!p||(capacity(r)===3&&!['godpick','place'].includes(r.game.phase)&&r.game.eliminated?.[i]));}
 function seatForTurn(r){
  if(capacity(r)!==4)return r.game.turn;
  if(r.game.phase==='godpick')return r.draftIndex??0;
