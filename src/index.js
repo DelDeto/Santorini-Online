@@ -1,8 +1,11 @@
 import { DurableObject } from 'cloudflare:workers';
 import {newGame,applyAction,resetGame,legalActions,GODS} from './game.js';
-import {chooseBotAction} from './bot.js';
+import {chooseBotAction,chooseMultiplayerBotAction} from './bot.js';
 
 const BOT_TOKEN='bot:server-managed';
+const botToken=seat=>`${BOT_TOKEN}:${seat}`;
+const isBot=p=>p?.token===BOT_TOKEN||String(p?.token||'').startsWith(BOT_TOKEN+':');
+const makeBot=(seat,difficulty)=>({name:'BOT '+seat+' · '+({easy:'Tập sự',normal:'Chiến thuật',hard:'Bậc thầy'}[difficulty]||'Chiến thuật'),token:botToken(seat)});
 const LEVELS=['easy','normal','hard'];
 const cleanName=value=>String(value??'Người chơi').trim().slice(0,24).replace(/[<>]/g,'')||'Người chơi';
 const team=seat=>seat%2;
@@ -29,7 +32,7 @@ function view(r,spectators=0){
   ruleset:r.game.ruleset||'classic',mode:r.mode||'online',difficulty:r.difficulty,
   capacity:n,activeSeat:seatForTurn(r),spectators,
   history:r.history||[],stats:r.stats||makeStats(n),
-  players:r.players.map((p,i)=>({name:p?.name??('Ghế '+(i+1)+' · Đang chờ'),joined:!!p,seat:i,team:n===3?i:team(i),bot:p?.token===BOT_TOKEN})),
+  players:r.players.map((p,i)=>({name:p?.name??('Ghế '+(i+1)+' · Đang chờ'),joined:!!p,seat:i,team:n===3?i:team(i),bot:isBot(p)})),
   ready:ready(r)
  };
 }
@@ -55,8 +58,12 @@ export class SantoriniRoom extends DurableObject{
  broadcast(){const msg=JSON.stringify({type:'state',view:this.getView()});for(const ws of this.ctx.getWebSockets())this.send(ws,JSON.parse(msg));}
  async scheduleBot(){
   const r=this.room;
-  if(r.mode==='bot'&&r.game.turn===1&&r.game.winner===null&&r.players[0])
-   await this.ctx.storage.setAlarm(Date.now()+(r.game.phase==='place'||r.game.phase==='godpick'?950:1100));
+  if(!ready(r)||r.game.phase==='ended'||r.game.winner!==null)return;
+  const seat=seatForTurn(r);
+  if(isBot(r.players[seat])){
+   const setup=['godpick','place'].includes(r.game.phase);
+   await this.ctx.storage.setAlarm(Date.now()+(setup?660:1050));
+  }
  }
  resolveBlockedTeam(){
   const r=this.room;
@@ -106,7 +113,7 @@ record(action,seat,oldWinner,oldRevision){
   if(!r.mode){
    r.mode=u.searchParams.get('mode')==='bot'?'bot':'online';
    r.ruleset=u.searchParams.get('ruleset')==='god'?'god':'classic';
-   r.capacity=r.mode==='bot'?2:([3,4].includes(Number(u.searchParams.get('players')))?Number(u.searchParams.get('players')):2);
+   r.capacity=[2,3,4].includes(Number(u.searchParams.get('players')))?Number(u.searchParams.get('players')):2;
    // Official multi-player matches require individual God Powers.
    if(r.capacity>2)r.ruleset='god';
    r.game=newGame(r.ruleset,r.capacity===3?3:2);
@@ -116,7 +123,7 @@ record(action,seat,oldWinner,oldRevision){
    r.activeSeat=r.capacity===4?2:0;r.nextTeam0=0;r.history=[];r.stats=makeStats(r.capacity);
    if(r.mode==='bot'){
     r.difficulty=LEVELS.includes(u.searchParams.get('difficulty'))?u.searchParams.get('difficulty'):'normal';
-    r.players[1]={name:'BOT · '+({easy:'Tập sự',normal:'Chiến thuật',hard:'Bậc thầy'}[r.difficulty]),token:BOT_TOKEN};
+    for(let seat=1;seat<r.capacity;seat++)r.players[seat]=makeBot(seat,r.difficulty);
    }
   }
   let seat=r.players.findIndex(p=>p?.token===token);
@@ -140,7 +147,7 @@ record(action,seat,oldWinner,oldRevision){
   if(!action||typeof action!=='object')return;
   const {seat,token}=ws.deserializeAttachment()||{},r=this.room;
   if(action.type==='ping'){this.send(ws,{type:'pong'});return;}
-  const authorized=Number.isInteger(seat)&&seat>=0&&seat<capacity(r)&&r.players[seat]?.token===token&&token!==BOT_TOKEN;
+  const authorized=Number.isInteger(seat)&&seat>=0&&seat<capacity(r)&&r.players[seat]?.token===token&&!isBot(r.players[seat]);
   if(action.type==='leave'){
    if(authorized){
     r.players[seat]=null;
@@ -170,6 +177,17 @@ record(action,seat,oldWinner,oldRevision){
    }
    this.send(ws,{type:'left'});try{ws.close(1000,'Left room');}catch{}
    return;
+  }
+  // The room creator can fill unoccupied seats with bots before drafting or placement.
+  if(action.type==='fillBots'){
+   if(!authorized||seat!==0||r.mode!=='online'||!['place','godpick'].includes(r.game.phase)||r.game.revision!==0){
+    this.send(ws,{type:'error',message:'Chỉ chủ phòng được thêm BOT trước khi bắt đầu ván.'});return;
+   }
+   const level=LEVELS.includes(action.difficulty)?action.difficulty:'normal';
+   r.difficulty=level;
+   for(let i=0;i<capacity(r);i++)if(!r.players[i])r.players[i]=makeBot(i,level);
+   r.mode='hybrid';
+   await this.persist();this.broadcast();await this.scheduleBot();return;
   }
   if(!authorized){this.send(ws,{type:'error',message:'Bạn đang xem phòng hoặc đã rời ghế.'});return;}
   if(!ready(r)){this.send(ws,{type:'error',message:'Đợi đủ người vào phòng.'});return;}
@@ -206,12 +224,38 @@ record(action,seat,oldWinner,oldRevision){
  async alarm(){
   await this.ready;
   const r=this.room;
-  if(r.mode!=='bot'||r.game.turn!==1||r.game.winner!==null)return;
-  const action=chooseBotAction(r.game,r.difficulty);
+  if(!ready(r)||r.game.phase==='ended'||r.game.winner!==null)return;
+  const seat=seatForTurn(r);
+  if(!isBot(r.players[seat]))return;
+  const logical=capacity(r)===4?team(seat):seat;
+  const oldTurn=r.game.turn,oldPhase=r.game.phase,oldWinner=r.game.winner,oldRevision=r.game.revision;
+  const choices=availableActions(r);
+  if(!choices.length){
+   console.error('No legal BOT actions',seat,r.game.phase);
+   return;
+  }
+  const action=capacity(r)===2&&logical===1?
+   chooseBotAction(r.game,r.difficulty):
+   chooseMultiplayerBotAction(r.game,r.difficulty,logical,choices);
   if(!action)return;
-  const oldWinner=r.game.winner,oldRevision=r.game.revision;
-  try{applyAction(r.game,1,action);}catch(e){console.error('BOT action failed',e);return;}
-  this.record(action,1,oldWinner,oldRevision);
+  if(capacity(r)===4&&r.game.phase==='godpick'){
+   if(action.type!=='selectGod'||!choices.some(a=>a.god===action.god))return;
+   r.seatGods[seat]=action.god;
+   r.game.lastAction='BOT ghế '+(seat+1)+' chọn '+GODS[action.god].name+'.';
+   r.game.revision++;r.draftIndex++;
+   if(r.draftIndex===4){
+    r.game.phase='place';r.game.turn=0;
+    r.game.gods=[r.seatGods[0],r.seatGods[1]];
+   }
+  }else{
+   const from=capacity(r)===4&&action.type==='move'?r.game.workers[logical]?.[action.worker]:null;
+   const athenaUp=from&&r.seatGods?.[seat]==='athena'&&r.game.board[action.row]?.[action.col]>r.game.board[from.row]?.[from.col];
+   try{applyAction(r.game,logical,action);}catch(e){console.error('BOT action failed',seat,e);return;}
+   if(athenaUp)r.athenaAura=seat;
+   this.advanceAfterAction(oldPhase,oldTurn,seat);
+   this.resolveBlockedTeam();
+  }
+  this.record(action,seat,oldWinner,oldRevision);
   await this.persist();this.broadcast();await this.scheduleBot();
  }
  async webSocketClose(ws){try{ws.close();}catch{}this.broadcast();}
@@ -220,7 +264,7 @@ record(action,seat,oldWinner,oldRevision){
 export default{
  async fetch(request,env){
   const u=new URL(request.url);
-  if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'0.9.0'});
+  if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'1.0.0'});
   if(u.pathname==='/ws'){
    const room=u.searchParams.get('room')||'';
    if(!/^[A-Z2-9]{6,10}$/.test(room))return new Response('Room code invalid',{status:400});
