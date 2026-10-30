@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {GODS,newGame,applyAction,legalActions,legalMoves,canTakeTurn} from '../src/game.js';
+import {GODS,newGame,applyAction,legalActions,legalMoves,canTakeTurn,resetGame} from '../src/game.js';
 const match=(g,p,type,opts={})=>applyAction(g,p,{type,...opts});
 function setup(god,enemy='athena'){
  const g=newGame('god');g.gods=[god,enemy];g.phase='move';g.turn=0;
@@ -78,6 +78,5 @@ test('Prometheus prebuild prevents climbing',()=>{
 });
 test('God mode reset keeps ruleset and requires drafting again',()=>{
  const g=setup('apollo');g.winner=0;g.phase='ended';
- const {resetGame}=await import('../src/game.js');
  const fresh=resetGame(g);assert.equal(fresh.phase,'godpick');assert.deepEqual(fresh.gods,[null,null]);
 });
