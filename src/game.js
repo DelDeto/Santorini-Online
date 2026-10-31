@@ -212,30 +212,60 @@ export function legalActions(g,p=g.turn){
  if(g.winner!==null||p!==g.turn)return [];
  if(g.phase==='fleecePick')return SIMPLE_GODS.filter(id=>validGodFor(id,2)).map(god=>({type:'selectGod',god}));
  if(g.phase==='ramPlace')return Array.from({length:5},(_,row)=>Array.from({length:5},(_,col)=>free(g,row,col)?{type:'placeRam',row,col}:null)).flat().filter(Boolean);
+ if(g.phase==='godpick'&&g.modeId==='heroes')return Object.keys(HEROES).filter(id=>!g.gods.includes(id)).map(id=>({type:'selectGod',god:id}));
  if(g.phase==='godpick')return Object.keys(GODS).filter(id=>(g.modeId!=='agora'||SIMPLE_GODS.includes(id))&&validGodFor(id,g.capacity||g.workers.length,g.gods.filter(Boolean))).map(id=>({type:'selectGod',god:id}));
+ if(g.phase==='heroPost')return [{type:'skip'},...heroPostActions(g,p)];
+ if(g.phase==='heroCorner')return [{type:'skip'},...heroCornerActions(g,p)];
+ if(g.phase==='heroDomes')return [{type:'skip'},...heroDomeActions(g,p)];
+ if(g.phase==='heroMedea')return [{type:'skip'},...heroMedeaActions(g,p)];
  if(g.phase==='place'){const out=[];
  for(let row=0;row<5;row++)for(let col=0;col<5;col++)if(free(g,row,col)){
   if((g.gods[p]==='eros'||g.advanced?.setupEros?.includes(p))&&(!isEdge(row,col)||(g.workers[p].length===1&&!isOppositeEdge(g.workers[p][0],{row,col}))))continue;
   out.push({type:'place',row,col});
  }
  return out;}
- if(['move','extraMove','hermesMove','tritonMove','dionysusMove'].includes(g.phase)){
+ if(['move','extraMove','hermesMove','tritonMove','dionysusMove','heroSprint'].includes(g.phase)){
    const controlled=g.phase==='dionysusMove'?g.ctx?.dionysusTarget:p;
    if(controlled===undefined)return [];
    const out=[];for(let i=0;i<g.workers[controlled].length;i++){
     out.push(...legalMoveDetails(g,controlled,i).map(x=>({type:'move',...x})));
     if(g.phase==='move')out.push(...legalPrebuilds(g,p,i));
    }
-   if(g.phase==='extraMove'||g.phase==='tritonMove'){
+   if(g.phase==='extraMove'||g.phase==='tritonMove'||g.phase==='heroSprint'){
     if(!restrictedByAphrodite(g,p)||nearAphrodite(g,p,g.workers[p][g.selected]))out.push({type:'skip'});
    }
    if(g.phase==='move')out.push(...rawFerryActions(g,p));
+   if(g.phase==='move'&&heroAvailable(g,p,'achilles')){
+    for(let i=0;i<g.workers[p].length;i++)for(const pos of legalBuilds(g,g.workers[p][i],p)){
+     const probe=structuredClone(g);probe.board[pos.row][pos.col]++;
+     probe.ctx={...g.ctx,fixedWorker:i};
+     if(legalMoveDetails(probe,p,i).length)out.push({type:'heroPrebuild',worker:i,...pos});
+    }
+   }
+   if(g.phase==='move'&&heroAvailable(g,p,'jason')){
+    for(let row=0;row<5;row++)for(let col=0;col<5;col++){
+     if(!isEdge(row,col)||g.board[row][col]!==0||!free(g,row,col))continue;
+     const probe={...g,workers:g.workers.map(a=>a.map(w=>({...w})))};
+     probe.workers[p].push({row,col});
+     if(legalBuilds(probe,{row,col},p).length)out.push({type:'heroDeploy',row,col});
+    }
+   }
+   if(g.phase==='move'&&heroAvailable(g,p,'odysseus'))out.push(...heroCornerActions(g,p));
    if(g.phase==='move'&&hasEnemyGod(g,p,'persephone')&&!g.ctx?.upThisTurn){
     const ascents=out.filter(a=>a.type==='move'&&g.board[a.row][a.col]>g.board[g.workers[p][a.worker].row][g.workers[p][a.worker].col]);
     if(ascents.length)return ascents;
    }
    if(god(g,p)==='hermes'&&(g.phase==='hermesMove'||g.phase==='move'))
     g.workers[p].forEach((w,worker)=>{if(legalBuilds(g,w).length)out.push({type:'endMove',worker});});
+   if(g.phase==='move'&&g.heroMark?.target===p){
+    const mark=g.heroMark,victim=g.workers[p][mark.worker],owner=g.workers[mark.owner]||[];
+    const constrained=out.filter(a=>{
+     if(a.type!=='move')return false;
+     const next=a.worker===mark.worker?{row:a.row,col:a.col}:victim;
+     return !!next&&owner.some(w=>near(next,w));
+    });
+    if(constrained.length)return constrained;
+   }
    return out;
  }
  if(g.phase==='aresRemove'){
@@ -270,6 +300,10 @@ export function legalActions(g,p=g.turn){
    if(female)out.push(...legalBuilds(g,female,p).map(pos=>({type:'build',...pos,dome:true})));
   }
   if(g.phase==='build'&&god(g,p)==='zeus'&&g.board[from.row][from.col]<3&&!adjacentGodWorkers(g,p,'limus',from))out.push({type:'build',row:from.row,col:from.col,under:true});
+  if(g.phase==='build'&&heroAvailable(g,p,'atalanta')){
+   const probe={...g,phase:'heroSprint'};
+   if(legalMoveDetails(probe,p,g.selected).length)out.push({type:'activateHero'});
+  }
   if(g.phase==='build'&&god(g,p)==='atlas')
    out.push(...positions.filter(pos=>g.board[pos.row][pos.col]<4).map(pos=>({type:'build',...pos,dome:true})));
   if(['extraBuild','poseidonBuild','morpheusBuild','dionysusBuild'].includes(g.phase))out.push({type:'skip'});
