@@ -114,12 +114,12 @@ function renderPowers(){
  const mine=S.seat===seat,ready=!!v.ready;
  $('powerOwner').textContent=v.modeId==='fleece'?(g.ctx?.fleeceActive===seat?'🐏 ĐƯỢC CỪU BAN PHÉP':'🐏 NĂNG LỰC CHUNG'):ready?(mine?'⚡ LƯỢT CỦA BẠN':'⚡ '+(currentPlayer?.bot?'BOT ĐANG CHƠI':'ĐANG ĐẾN LƯỢT')):'⚡ CHỜ ĐỦ NGƯỜI';
  $('powerActiveName').textContent=currentGod?v.gods?.[currentGod]?.name||currentGod:'Chưa chọn thần';
- $('powerUseHint').textContent=v.modeId==='fleece'&&g.phase==='ramPlace'?'Chạm một ô trống để đặt tượng Cừu Vàng.':v.modeId==='fleece'&&g.ram&&g.ctx?.fleeceActive!==seat?'Đứng cạnh Cừu Vàng khi bắt đầu lượt mới để nhận năng lực.':currentGod?abilityHint(g,currentGod,mine&&isTurn()):'Chọn God Power trước khi đặt quân.';
+ $('powerUseHint').textContent=v.modeId==='heroes'&&g.heroUsed?.[seat]?'🛡 Hero Power đã sử dụng trong ván này.':v.modeId==='fleece'&&g.phase==='ramPlace'?'Chạm một ô trống để đặt tượng Cừu Vàng.':v.modeId==='fleece'&&g.ram&&g.ctx?.fleeceActive!==seat?'Đứng cạnh Cừu Vàng khi bắt đầu lượt mới để nhận năng lực.':currentGod?abilityHint(g,currentGod,mine&&isTurn()):'Chọn God Power trước khi đặt quân.';
  const roster=v.players.map((p,i)=>{
   const power=seatGod(v,i),info=v.gods?.[power],you=i===S.seat,active=i===seat;
-  const dead=!!g.eliminated?.[i],title=power?info?.name||power:'Chưa chọn';
+  const dead=!!g.eliminated?.[i],used=v.modeId==='heroes'&&!!g.heroUsed?.[i],title=power?info?.name||power:'Chưa chọn';
   const name=p.name;
-  return '<button type="button" class="power-god-chip'+(you?' yours':'')+(active?' on-turn':'')+(dead?' eliminated':'')+'" data-power-seat="'+i+'" title="'+escHtml(name+' · '+title+(power?' · '+(POWER_GUIDE[power]?.tip||''):''))+'" aria-label="Xem kỹ năng '+escHtml(title)+' của '+escHtml(name)+'"><strong>'+(you?'★ ':'')+escHtml(title)+'</strong><small>'+escHtml(name)+'</small></button>';
+  return '<button type="button" class="power-god-chip'+(you?' yours':'')+(active?' on-turn':'')+(dead?' eliminated':'')+(used?' hero-used':'')+'" data-power-seat="'+i+'" title="'+escHtml(name+' · '+title+(power?' · '+(POWER_GUIDE[power]?.tip||''):''))+'" aria-label="Xem kỹ năng '+escHtml(title)+' của '+escHtml(name)+'"><strong>'+(you?'★ ':'')+escHtml(title)+'</strong><small>'+escHtml(name)+(used?' · ĐÃ DÙNG':'')+'</small></button>';
  });
  $('godRoster').innerHTML=roster.join('');
  if(!$('powersOverlay').classList.contains('hidden'))renderPowerCards();
@@ -160,7 +160,7 @@ function enter(room,mode='online',ruleset='classic',capacity=2,spectate=false,va
 function ensure3d(){
  if(S.three || $('scene3d').dataset.state==='loading')return;
  $('scene3d').dataset.state='loading';
- import('./board3d.js').then(({createBoard3D})=>{
+ import('./board3d.js?v=2.2.0').then(({createBoard3D})=>{
   if(!S.active)return;
   S.three=createBoard3D($('scene3d'),tileClick);
   S.three.setQuality(S.quality);S.three.setLighting(S.lighting);

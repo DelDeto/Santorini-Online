@@ -541,3 +541,7 @@ body:has(#game:not(.hidden)){height:100dvh;max-height:100dvh;overflow:hidden}
 .hero-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:16px}
 .hero-choices button{min-height:42px;white-space:normal}
 #heroBtn{border:1px solid #d9b57191;color:#ffe1a1}
+
+/* V2.2: Hero availability is visible to both participants */
+.power-god-chip.hero-used{opacity:.65;filter:saturate(.65)}
+.power-god-chip.hero-used small{color:#e1bd85;font-weight:850}
