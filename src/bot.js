@@ -1,4 +1,4 @@
-import {applyAction,legalActions,GODS} from './game.js';
+import {applyAction,legalActions,GODS,HEROES} from './game.js';
 
 /**
  * Santorini Strategic BOT V1.5–V2.0.
@@ -14,15 +14,24 @@ const distance=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col));
 const center=a=>4-Math.abs(a.row-2)-Math.abs(a.col-2);
 const godPriority=['pan','athena','apollo','artemis','minotaur','atlas','demeter','hephaestus','prometheus','hermes'];
 const WIN=1_000_000;
+const CACHE_LIMIT=3800;
 const alive=(g,p)=>!g.eliminated?.[p]&&g.workers[p]?.length>0;
 const opponents=(g,p)=>g.workers.map((_,i)=>i).filter(i=>i!==p&&alive(g,i));
 const phaseMove=g=>['move','extraMove','hermesMove'].includes(g.phase);
 const height=(g,w)=>g.board[w.row][w.col];
-const actionKey=a=>[a.type,a.worker??'',a.row??'',a.col??'',a.god??'',a.dome?'d':''].join(':');
+const actionKey=a=>[a.type,a.worker??'',a.row??'',a.col??'',a.god??'',a.dome?'d':'',a.under?'u':'',a.target??'',a.special??''].join(':');
 
-function simulate(g,player,action){
+// Search-local, bounded transpositions; no game state is persisted across rooms.
+function positionKey(g){
+ return JSON.stringify([g.modeId,g.phase,g.turn,g.selected,g.winner,g.board,g.workers,
+  g.gods,g.ctx,g.athenaBlocked,g.advanced,g.heroUsed,g.heroMark,g.ram,g.eliminated]);
+}
+function simulate(g,player,action,table=null){
+ const key=table?positionKey(g)+'|'+player+'|'+actionKey(action):null;
+ if(key&&table.has(key))return table.get(key);
  const n=copy(g);
- try{applyAction(n,player,action);return n;}catch{return null;}
+ try{applyAction(n,player,action);if(key&&table.size<CACHE_LIMIT)table.set(key,n);return n;}
+ catch{return null;}
 }
 function winningNow(g,p){
  if(g.winner!==null||g.phase!=='move'||!alive(g,p))return [];
@@ -88,6 +97,10 @@ function leafScore(g,p){
 }
 function chooseGod(g,choices,difficulty){
  if(difficulty==='easy')return pick(choices);
+ if(g.modeId==='heroes'){
+  const priority={bellerophon:25,atalanta:23,achilles:22,polyphemus:21,heracles:20,jason:19,odysseus:18,theseus:17,adonis:16,medea:15};
+  return choices.slice().sort((a,b)=>(priority[b.god]||0)-(priority[a.god]||0))[0];
+ }
  const enemies=g.gods.filter(Boolean);
  const prefer=choices.map(a=>{
   const idx=godPriority.indexOf(a.god);
