@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const html=readFileSync('public/index.html','utf8'),app=readFileSync('public/app.js','utf8'),css=readFileSync('public/style.css','utf8');
-test('V1.4: six selectable modes appear before online and bot actions',()=>{
- const indices=['classic','duel','trio','teams','agora','fleece'].map(name=>html.indexOf('data-mode="'+name+'"'));
+test('V2.6: eight distinct selectable modes appear before online and bot actions',()=>{
+ const indices=['classic','basic','advanced','trio','teams','agora','fleece','heroes'].map(name=>html.indexOf('data-mode="'+name+'"'));
  assert.ok(indices.every(i=>i>0));
  assert.ok(Math.max(...indices)<html.indexOf('id="botCountSelect"'));
  assert.ok(Math.max(...indices)<html.indexOf('id="createBtn"'));
