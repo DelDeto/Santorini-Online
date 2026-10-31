@@ -23,7 +23,7 @@ npm run smoke
 npm run deploy
 ```
 
-GitHub CI kiểm thử trên push/PR. Chưa có quy trình tự động deploy lên Cloudflare: **push GitHub không đồng nghĩa website live đã cập nhật**. Khi vận hành, cần chạy `npm run deploy` bằng Wrangler đã xác thực hoặc cấu hình CI với Cloudflare deploy credentials an toàn; không đưa token vào repository.
+**CI/CD đã hoạt động (31/10/2026):** GitHub Actions chạy `npm test` và `npm run smoke` trên mỗi push/PR. Cloudflare Workers Builds đã kết nối repository `DelDeto/Santorini-Online`: mỗi push lên `main` kích hoạt `npm install && npm test`, sau đó `npx wrangler deploy` tới Worker `santorini-online-v01`. Bản V2.0 đã được triển khai từ commit `f0d3a3d98178938c7d89dbe71910a52e3c1365af`. Kết nối hiện tạm dùng chung build token với một Worker khác trong tài khoản; nên tách token triển khai riêng cho Santorini khi thuận tiện. Không đưa token vào repository.
 
 ---
 
