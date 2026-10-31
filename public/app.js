@@ -208,7 +208,7 @@ function connect(epoch){
   S.ruleset=S.view.ruleset??'classic';S.capacity=S.view.capacity||2;S.variant=S.view.modeId||S.variant;
   if(old&&old.revision!==S.view.game.revision){
    S.hintAction=null;
-   if(S.view.game.ctx?.prometheusUsed)S.powerMode='move';
+   if(S.view.game.ctx?.prometheusUsed||S.view.game.ctx?.heroActivated)S.powerMode='move';
    const g=S.view.game;
    if(g.phase==='move'&&g.ctx?.fixedWorker!==undefined)S.selected=g.ctx.fixedWorker;
    else if(['extraMove','tritonMove','heroSprint'].includes(g.phase))S.selected=g.selected;
@@ -232,14 +232,6 @@ function myTeam(){return S.seat<0?-1:S.capacity===3?S.seat:S.seat%2;}
 function availableTiles(){
  const v=S.view;if(!v||!isTurn())return [];
  const g=v.game,phase=g.phase;
- if(['heroDomes','heroMedea'].includes(phase)){
-  const action=availableTiles().find(a=>a.row===row&&a.col===col);
-  if(action)send(action);return;
- }
- if(phase==='move'&&['heroDeploy','heroPrebuild'].includes(S.powerMode)){
-  const a=availableTiles().find(a=>a.row===row&&a.col===col);
-  if(a){send(a);S.powerMode='move';return;}
- }
  if(phase==='place')return getActions('place');
  if(phase==='ramPlace')return getActions('placeRam');
  if(phase==='heroDomes')return getActions('heroDome');
@@ -259,14 +251,23 @@ function availableTiles(){
 function tileClick(row,col){
  const v=S.view;if(!isTurn()||!v)return;
  const g=v.game,phase=g.phase;
+ // A Hero terrain action is a click dispatch, not a recursive tile selector.
+ if(['heroDomes','heroMedea'].includes(phase)){
+  const a=availableTiles().find(x=>x.row===row&&x.col===col);
+  if(a)send(a);return;
+ }
+ if(phase==='move'&&['heroDeploy','heroPrebuild'].includes(S.powerMode)){
+  const a=availableTiles().find(x=>x.row===row&&x.col===col);
+  if(a){send(a);S.powerMode='move';return;}
+ }
  if(phase==='place'){const a=getActions('place').find(a=>a.row===row&&a.col===col);if(a)send({type:'place',row,col});return;}
  if(phase==='ramPlace'){const a=getActions('placeRam').find(a=>a.row===row&&a.col===col);if(a)send({type:'placeRam',row,col});return;}
  if(['move','extraMove','hermesMove','tritonMove','dionysusMove','heroSprint'].includes(phase)){
   const actor=phase==='dionysusMove'?g.ctx?.dionysusTarget:myTeam();
   const worker=g.workers[actor]?.findIndex(w=>w.row===row&&w.col===col);
-  const allowedWorker=worker!==-1&&worker!==undefined&&getActions('move',worker).length+getActions('prebuild',worker).length+getActions('endMove',worker).length+getActions('ferry',worker).length>0;
-  if(allowedWorker&&(!['extraMove','tritonMove'].includes(phase)||worker===g.selected)){
-   S.selected=worker;S.powerMode='move';beep(380);render();return;
+  const allowedWorker=worker!==-1&&worker!==undefined&&getActions('move',worker).length+getActions('prebuild',worker).length+getActions('heroPrebuild',worker).length+getActions('endMove',worker).length+getActions('ferry',worker).length>0;
+  if(allowedWorker&&(!['extraMove','tritonMove','heroSprint'].includes(phase)||worker===g.selected)){
+   S.selected=worker;if(!['heroPrebuild','heroDeploy'].includes(S.powerMode))S.powerMode='move';beep(380);render();return;
   }
   const action=availableTiles().find(a=>a.row===row&&a.col===col);
   if(action){send({type:action.type,worker:action.worker,row,col});if(action.type==='move')S.selected=null;if(['prebuild','heroPrebuild'].includes(action.type)){S.selected=action.worker;S.powerMode='move';}}
@@ -290,7 +291,7 @@ function drawFallback(){
   const owner=g.workers.findIndex(team=>team.some(w=>w.row===row&&w.col===col));
   const wi=owner<0?-1:g.workers[owner].findIndex(w=>w.row===row&&w.col===col);
   const control=g.phase==='dionysusMove'?g.ctx?.dionysusTarget:own;
-  const choose=owner===control&&['move','extraMove','hermesMove','tritonMove','dionysusMove'].includes(g.phase);
+  const choose=owner===control&&['move','extraMove','hermesMove','tritonMove','dionysusMove','heroSprint'].includes(g.phase);
   html+='<button class="tile '+(active?'legal ':'')+(choose&&wi===S.selected?'selected ':'')+'" data-row="'+row+'" data-col="'+col+'" aria-label="Ô '+(row+1)+'-'+(col+1)+' tầng '+level+'">';
   if(level){html+='<span class="building">';for(let n=0;n<Math.min(3,level);n++)html+='<span class="block"></span>';if(level===4)html+='<span class="dome"></span>';html+='</span><span class="level-pill">'+(level===4?'◆':level)+'</span>';}
   if(owner>=0)html+='<span class="worker p'+owner+'"><span class="worker-head"></span><span class="worker-body"></span><span class="worker-base"></span></span>';

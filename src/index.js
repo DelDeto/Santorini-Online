@@ -180,7 +180,8 @@ record(action,seat,oldWinner,oldRevision){
  }
  async webSocketMessage(ws,payload){
   await this.ready;
-  let action;try{action=JSON.parse(String(payload));}catch{this.send(ws,{type:'error',message:'Dữ liệu không hợp lệ.'});return;}
+  if(String(payload).length>8192){this.send(ws,{type:'error',message:'Lệnh vượt giới hạn dung lượng.'});return;}
+   let action;try{action=JSON.parse(String(payload));}catch{this.send(ws,{type:'error',message:'Dữ liệu không hợp lệ.'});return;}
   if(!action||typeof action!=='object')return;
   const {seat,token}=ws.deserializeAttachment()||{},r=this.room;
   if(action.type==='ping'){this.send(ws,{type:'pong'});return;}
