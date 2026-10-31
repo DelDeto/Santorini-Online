@@ -1,4 +1,4 @@
-import {turnDecision} from './turn-decision.js?v=2.5.1';
+import {turnDecision} from './turn-decision.js?v=2.6.0';
 const $=id=>document.getElementById(id);
 const ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const S={room:null,seat:-1,view:null,ws:null,selected:null,heroChoices:[],mode:'online',ruleset:'classic',difficulty:'normal',capacity:2,variant:'duel',spectate:false,powerMode:'move',
@@ -13,14 +13,16 @@ function cueAction(g){
 }
 const MODE_UI={
  classic:{n:2,god:false,title:'♟ CLASSIC',description:'Classic — Hai người đấu trí, không dùng năng lực thần. Mỗi lượt di chuyển một quân rồi xây một tầng.'},
- duel:{n:2,god:true,title:'⚡ GOD POWERS',description:'God Powers — Hai người chọn thần riêng trong 30 lá, sử dụng năng lực đặc biệt để chiến thắng.'},
+ duel:{n:2,god:true,title:'⚡ GOD POWERS · 30 THẦN',description:'Mode 30 thần của các phòng cũ (vẫn chơi được qua link cũ).'},
+ basic:{n:2,god:true,title:'🌿 10 THẦN CƠ BẢN',description:'10 thần cơ bản — Hai người chỉ chọn trong 10 thần cơ bản, dễ làm quen và theo dõi kỹ năng.'},
+ advanced:{n:2,god:true,title:'⚡ 20 THẦN NÂNG CAO',description:'20 thần nâng cao — Hai người chỉ chọn trong 20 thần nâng cao, nhiều kỹ năng và chiến thuật hơn.'},
  trio:{n:3,god:true,title:'♜ 3 NGƯỜI',description:'Đấu tự do — Ba người chơi độc lập, mỗi người hai quân và một thần. Người cuối cùng còn lại chiến thắng.'},
  teams:{n:4,god:true,title:'♟ 4 NGƯỜI 2V2',description:'Đấu đội — Hai đội, dùng chung hai quân mỗi đội; bốn người có bốn thần riêng.'},
  agora:{n:2,god:true,title:'⇄ AGORA',description:'Agora Online — Hai người chọn thần cơ bản; sau mỗi vòng hai lượt, hai vị thần đổi chủ tự động.'},
  fleece:{n:2,god:true,title:'🐏 GOLDEN FLEECE',description:'Golden Fleece — Cả bàn dùng chung một thần; quân đứng cạnh tượng Cừu Vàng lúc bắt đầu lượt được dùng thần ấy.'},
  heroes:{n:2,god:true,title:'🛡 HERO POWERS',description:'Heroes — 2 người, mỗi người chọn một anh hùng. Mỗi năng lực chỉ được kích hoạt một lần trong cả trận.'}
 };
-let chosenMode='duel';
+let chosenMode='basic';
 function selectMode(id){
  if(!MODE_UI[id])return;
  chosenMode=id;
@@ -168,7 +170,7 @@ function enter(room,mode='online',ruleset='classic',capacity=2,spectate=false,va
 function ensure3d(){
  if(S.three || $('scene3d').dataset.state==='loading')return;
  $('scene3d').dataset.state='loading';
- import('./board3d.js?v=2.5.1').then(({createBoard3D})=>{
+ import('./board3d.js?v=2.6.0').then(({createBoard3D})=>{
   if(!S.active)return;
   S.three=createBoard3D($('scene3d'),tileClick);
   S.three.setQuality(S.quality);S.three.setLighting(S.lighting);
@@ -316,17 +318,60 @@ function renderBoard(){
  if(ram)$('ramMarker2d').textContent='🐏 Cừu Vàng · ô '+(ram.row+1)+'–'+(ram.col+1);
  if(S.three)S.three.update(v.game,availableTiles(),S.selected===null||S.seat===-1?null:{p:v.game.phase==='dionysusMove'?v.game.ctx?.dionysusTarget:myTeam(),i:S.selected},['build','extraBuild','morpheusBuild','poseidonBuild','dionysusBuild','aresRemove','heroDomes','heroMedea'].includes(v.game.phase)||S.powerMode==='prebuild');
 }
+function closeGodDetail(){$('godDetailOverlay').classList.add('hidden');$('godDetailPick').dataset.god='';}
+function openGodDetail(id){
+ const v=S.view,g=v?.game,info=v?.gods?.[id],guide=POWER_GUIDE[id];
+ if(!info)return;
+ const eligible=isTurn()&&getActions('selectGod').some(a=>a.god===id);
+ $('godDetailIcon').textContent=guide?.icon||'✦';
+ $('godDetailName').textContent=info.name||id;
+ $('godDetailKind').textContent=guide?.kind||(info.kind==='hero'?'Hero · Một lần':info.players?'Thần nâng cao':'Thần cơ bản');
+ $('godDetailDescription').textContent=info.description||'Chưa có mô tả.';
+ $('godDetailHow').textContent=guide?.how||'Theo các bước hợp lệ được đánh dấu trên bàn.';
+ $('godDetailTip').textContent=guide?.tip||'Chọn quân rồi làm theo các hành động hợp lệ.';
+ const chosen=(v.capacity===4?v.seatGods:g.gods).includes(id);
+ $('godDetailPick').disabled=!eligible||chosen;
+ $('godDetailPick').textContent=chosen?'Đã được chọn':eligible?'✓ Chọn '+(info.name||id):'Chưa thể chọn thần này';
+ $('godDetailPick').dataset.god=id;
+ $('godDetailOverlay').classList.remove('hidden');
+ $('godDetailClose').focus();
+}
 function renderGodPick(g){
  const picking=['godpick','fleecePick'].includes(g.phase);
  const active=S.view?.ready&&isTurn()&&picking;
  $('godOverlay').classList.toggle('hidden',!picking||!S.view?.ready);
- if(!picking||!S.view?.ready)return;
- $('godPickTitle').textContent=g.modeId==='heroes'?'Chọn một Hero Power dùng một lần':g.phase==='fleecePick'?'Chọn năng lực chung cho Cừu Vàng':active?'Chọn vị thần của bạn':'Đối thủ đang chọn thần';
- $('godPickHint').textContent=g.phase==='fleecePick'?'Chọn một thần cơ bản. Ai đứng cạnh Cừu Vàng vào đầu lượt sẽ nhận năng lực thần ấy.':'Mỗi ghế chọn một vị thần riêng trước khi đặt quân.';
+ if(!picking||!S.view?.ready){closeGodDetail();return;}
+ const mode=g.modeId,hero=mode==='heroes',simple=mode==='basic'||mode==='agora'||g.phase==='fleecePick',advancedOnly=mode==='advanced';
+ const mixed=!hero&&!simple&&!advancedOnly;
+ const heading=hero?'Chọn Hero Power (10 anh hùng)':simple?'Chọn thần cơ bản (10 thần)':
+  advancedOnly?'Chọn thần nâng cao (20 thần)':active?'Chọn vị thần của bạn':'Đối thủ đang chọn thần';
+ $('godPickTitle').textContent=heading;
+ $('godPickLead').textContent=hero?'Mỗi Hero dùng một lần trong trận. Chạm Xem hiệu ứng để đọc kỹ.':
+  simple?'Mode này chỉ có 10 thần cơ bản. Đọc đầy đủ năng lực trước khi chọn.':
+  advancedOnly?'Mode này chỉ có 20 thần nâng cao. Chạm Xem hiệu ứng để xem cách dùng.':
+  'Mỗi người chọn một thần khác nhau. Hãy xem hiệu ứng và cách sử dụng trước khi chọn.';
+ $('godFilter').classList.toggle('hidden',!mixed);
+ $('godPickHint').textContent=active?'Chạm “Xem hiệu ứng” để đọc kỹ, sau đó bấm “Chọn thần”.':
+  'Bạn vẫn có thể xem mô tả và cách sử dụng trong khi chờ người khác chọn.';
  const choices=S.view.gods||{},available=new Set(getActions('selectGod').map(x=>x.god)),group=$('godGroup').value;
- $('godCards').innerHTML=Object.entries(choices).filter(([id,info])=>g.modeId==='heroes'?info.kind==='hero':info.kind!=='hero'&&(group==='all'||(group==='advanced')===!!info.players)).map(([id,info])=>{
-  const picked=(S.view.capacity===4?S.view.seatGods:g.gods).includes(id),eligible=available.has(id),disabled=!active||picked||!eligible;
-  return '<button class="god-card '+(info.players?'advanced ':'')+(picked?'picked ':'')+(!eligible?'unavailable ':'')+'" data-god="'+id+'" '+(disabled?'disabled':'')+'><span class="type-tag">'+(info.kind==='hero'?'HERO · 1 LẦN':info.players?'NÂNG CAO':'CƠ BẢN')+'</span><span class="god-symbol">✦</span><strong>'+escHtml(info.name)+'</strong><small>'+escHtml(info.description)+'</small>'+(picked?'<span class="taken">ĐÃ CHỌN</span>':!eligible?'<span class="taken">KHÓA</span>':'')+'</button>';
+ const show=([id,info])=>hero?info.kind==='hero':
+  info.kind==='hero'?false:
+  simple?!info.players:
+  advancedOnly?!!info.players:
+  (group==='all'||(group==='advanced')===!!info.players);
+ $('godCards').innerHTML=Object.entries(choices).filter(show).map(([id,info])=>{
+  const picked=(S.view.capacity===4?S.view.seatGods:g.gods).includes(id);
+  const eligible=available.has(id),canSelect=active&&eligible&&!picked;
+  const title=picked?'Đã chọn':!eligible?'Không hợp lệ':!active?'Đang chờ':'Chọn thần';
+  const help=POWER_GUIDE[id];
+  return '<article class="god-card '+(info.players?'advanced ':'')+(picked?'picked ':'')+(!eligible?'unavailable ':'')+'" data-god-card="'+escHtml(id)+'">'+
+   '<span class="type-tag">'+(info.kind==='hero'?'HERO · 1 LẦN':info.players?'NÂNG CAO':'CƠ BẢN')+'</span>'+
+   '<span class="god-symbol" aria-hidden="true">'+escHtml(help?.icon||'✦')+'</span>'+
+   '<strong>'+escHtml(info.name)+'</strong>'+
+   '<p class="god-card-desc">'+escHtml(info.description)+'</p>'+
+   '<div class="god-card-actions"><button type="button" class="god-info-btn" data-god-info="'+escHtml(id)+'" aria-label="Xem toàn bộ hiệu ứng của '+escHtml(info.name)+'">ⓘ Xem hiệu ứng</button>'+
+   '<button type="button" class="god-select-btn" data-god="'+escHtml(id)+'" '+(canSelect?'':'disabled')+'>'+title+'</button></div>'+
+   (picked?'<span class="taken">ĐÃ CHỌN</span>':'')+'</article>';
  }).join('');
 }
 function render(){
@@ -434,18 +479,30 @@ $('powersOverlay').addEventListener('click',e=>{if(e.target===$('powersOverlay')
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('powersOverlay').classList.contains('hidden'))closePowers();});
 $('board').addEventListener('click',e=>{const b=e.target.closest('.tile');if(b)tileClick(+b.dataset.row,+b.dataset.col);});
 $('godGroup').onchange=()=>{if(S.view)renderGodPick(S.view.game);};
-$('godCards').addEventListener('click',e=>{const b=e.target.closest('button[data-god]');if(b&&!b.disabled)send({type:'selectGod',god:b.dataset.god});});
+$('godCards').addEventListener('click',e=>{
+ const info=e.target.closest('button[data-god-info]');
+ if(info){openGodDetail(info.dataset.godInfo);return;}
+ const b=e.target.closest('button[data-god]');
+ if(b&&!b.disabled)send({type:'selectGod',god:b.dataset.god});
+});
+$('godDetailClose').onclick=closeGodDetail;
+$('godDetailOverlay').onclick=e=>{if(e.target===$('godDetailOverlay'))closeGodDetail();};
+$('godDetailPick').onclick=()=>{
+ const id=$('godDetailPick').dataset.god;
+ if(!$('godDetailPick').disabled&&getActions('selectGod').some(a=>a.god===id)){send({type:'selectGod',god:id});closeGodDetail();}
+};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGodDetail();});
 $('createBtn').onclick=()=>{
  const config=MODE_UI[chosenMode];
  enter(roomCode(),'online',config.god?'god':'classic',config.n,false,chosenMode);
 };
 $('modeGrid').onclick=e=>{const target=e.target.closest('[data-mode]');if(target)selectMode(target.dataset.mode);};
-$('teamSize').onchange=()=>selectMode($('teamSize').value==='3'?'trio':$('teamSize').value==='4'?'teams':'duel');
+$('teamSize').onchange=()=>selectMode($('teamSize').value==='3'?'trio':$('teamSize').value==='4'?'teams':'basic');
 $('botCountSelect').onchange=()=>{
  const n=Number($('botCountSelect').value);
  if(n===3)selectMode('trio');
  else if(n===4)selectMode('teams');
- else if(MODE_UI[chosenMode].n!==2)selectMode('duel');
+ else if(MODE_UI[chosenMode].n!==2)selectMode('basic');
 };
 $('demoBtn').onclick=()=>{
  const config=MODE_UI[chosenMode];
@@ -547,7 +604,7 @@ $('tutorialClose').onclick=()=>$('tutorialOverlay').classList.add('hidden');
 $('tutorialOverlay').onclick=e=>{if(e.target===$('tutorialOverlay'))$('tutorialOverlay').classList.add('hidden');};
 $('historyOverlay').addEventListener('click',e=>{if(e.target===$('historyOverlay'))$('historyOverlay').classList.add('hidden');});
 $('nameInput').value=localStorage.getItem('santorini-name')||'';
-selectMode('duel');
+selectMode('basic');
 const params=new URLSearchParams(location.search),linkRoom=params.get('room');
 if(linkRoom&&/^[A-Z2-9]{6,10}$/.test(linkRoom.toUpperCase())){
  $('codeInput').value=linkRoom.toUpperCase();

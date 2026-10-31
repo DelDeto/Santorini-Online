@@ -580,3 +580,56 @@ body:has(#game:not(.hidden)){height:100dvh;max-height:100dvh;overflow:hidden}
  .game .action-bar:has(.decision-special:not(.hidden)) .power-actions{display:none}
  .game .action-bar:has(.decision-special:not(.hidden)) .turn-decision{width:100%;justify-content:center;gap:12px}
 }
+
+/* V2.6 — Full power descriptions, no clipped card rows in the God draft.
+   Only the card collection scrolls; detail help opens separately. */
+.god-panel{min-height:0;max-height:min(91dvh,850px)!important;overflow:hidden!important}
+.god-cards{flex:1 1 auto;min-height:0;grid-auto-rows:max-content;align-content:start;align-items:stretch;overflow-y:auto;overflow-x:hidden;gap:12px;padding:3px 4px 14px}
+.god-cards .god-card{height:auto;min-height:198px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;padding:12px 11px;overflow:visible;text-align:center}
+.god-cards .god-card .god-symbol{flex:none}
+.god-cards .god-card strong{font-size:14px;line-height:1.25;overflow-wrap:anywhere;white-space:normal}
+.god-cards .god-card-desc{display:block;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:break-word;font-size:12px;line-height:1.48;color:#e2f4fa;margin:0 0 4px;width:100%;text-align:left;flex:0 0 auto}
+.god-cards .god-card-actions{display:grid;grid-template-columns:1fr;gap:7px;width:100%;margin-top:auto;flex:0 0 auto}
+.god-cards .god-card-actions button{min-width:0;min-height:34px;width:100%;border-radius:9px;line-height:1.25;font-size:11px;font-weight:850;padding:8px 6px;white-space:normal}
+.god-cards .god-info-btn{border:1px solid #97cfe1;background:#244f68;color:#e9faff}
+.god-cards .god-select-btn{border:1px solid #92dbbb;background:#ccf9e2;color:#0b4941}
+.god-cards .god-select-btn:disabled{opacity:.62;cursor:not-allowed;background:#264655;color:#bbd3da;border-color:#557487}
+.god-cards .god-card.picked{opacity:.7}
+.god-cards .god-card.unavailable{opacity:.75;filter:none}
+.god-cards .god-card .taken{position:static;order:5;font-size:10px}
+.god-filter.hidden{display:none!important}
+.god-detail-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:40;padding:16px;background:#03182be9;backdrop-filter:blur(9px)}
+.god-detail-overlay.hidden{display:none!important}
+.god-detail-panel{width:min(550px,100%);max-height:min(85dvh,740px);display:flex;flex-direction:column;min-height:0;gap:12px;overflow:hidden;border:1px solid #9fdad3;border-radius:20px;background:linear-gradient(158deg,#143f58,#092a42);padding:clamp(15px,3vw,24px);box-shadow:0 25px 70px #0008;color:#effffc}
+.god-detail-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.god-detail-identity{display:flex;align-items:center;gap:14px}
+.god-detail-emblem{display:grid;place-items:center;width:64px;height:64px;flex:none;border-radius:18px;background:#3b788b;color:#ffe3a4;font-size:30px}
+.god-detail-identity h2{font-size:clamp(23px,5vw,32px);margin:0 0 5px}
+.god-detail-identity span:not(.god-detail-emblem){color:#b9e8e7;font-size:12px}
+.god-detail-scroll{overflow-y:auto;overscroll-behavior:contain;min-height:0;flex:1 1 auto;padding-right:7px;scrollbar-width:thin}
+.god-detail-scroll h3{font-size:12px;color:#e3d79d;letter-spacing:.4px;text-transform:uppercase;margin:16px 0 6px}
+.god-detail-scroll h3:first-child{margin-top:2px}
+.god-detail-scroll p{margin:0 0 9px;line-height:1.58;color:#e6f5f7;font-size:14px;white-space:normal;overflow-wrap:break-word}
+.god-detail-panel #godDetailPick{width:100%;flex:none;min-height:46px;font-weight:900}
+.god-detail-panel #godDetailPick:disabled{opacity:.55}
+@media(min-width:1020px){.god-cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(min-width:651px) and (max-width:1019px){.god-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){
+ .god-overlay{padding:9px}
+ .god-panel{height:min(90dvh,860px);max-height:calc(100dvh - 62px)!important;padding:12px!important;width:100%}
+ .god-panel>p{margin:4px 0 8px;font-size:12px;line-height:1.4}
+ .god-panel h2{font-size:clamp(20px,5vw,26px)}
+ .god-cards{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:max-content;gap:9px;padding:2px 2px 12px}
+ .god-cards .god-card{height:auto;min-height:200px;padding:10px 9px;gap:6px}
+ .god-cards .god-card strong{font-size:14px}
+ .god-cards .god-card-desc{font-size:11px;line-height:1.48}
+ .god-cards .god-card-actions button{font-size:10px;min-height:35px;padding:8px 5px}
+ .god-detail-overlay{padding:9px}
+ .god-detail-panel{max-height:calc(100dvh - 76px);padding:15px;gap:10px}
+ .god-detail-scroll p{font-size:14px}
+}
+@media(max-height:520px) and (orientation:landscape){
+ .god-panel{height:auto;max-height:calc(100dvh - 16px)!important}
+ .god-cards{grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:max-content}
+ .god-detail-panel{max-height:calc(100dvh - 18px)}
+}

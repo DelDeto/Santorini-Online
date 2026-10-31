@@ -19,7 +19,7 @@ async function until(fn,timeout=16000){
   throw Error('Timed out: '+output.slice(-2200));
 }
 async function connect(code,name,mode){
-  const path='/ws?room='+code+'&token='+token()+'&name='+encodeURIComponent(name)+(mode==='fleece'?'&variant=fleece':mode==='agora'?'&variant=agora':mode==='botfleece'?'&mode=bot&difficulty=normal&variant=fleece':mode==='bot'?'&mode=bot&difficulty=normal':mode==='bot3'?'&mode=bot&difficulty=normal&players=3&ruleset=god':mode==='bot4'?'&mode=bot&difficulty=normal&players=4&ruleset=god':mode==='god'?'&ruleset=god':mode==='botgod'?'&mode=bot&difficulty=normal&ruleset=god':mode==='3'?'&players=3':mode==='4'?'&players=4':mode==='heroes'?'&variant=heroes':mode==='watch'?'&spectate=1':'');
+  const path='/ws?room='+code+'&token='+token()+'&name='+encodeURIComponent(name)+(mode==='basic'?'&variant=basic&ruleset=god':mode==='advanced'?'&variant=advanced&ruleset=god':mode==='fleece'?'&variant=fleece':mode==='agora'?'&variant=agora':mode==='botfleece'?'&mode=bot&difficulty=normal&variant=fleece':mode==='bot'?'&mode=bot&difficulty=normal':mode==='bot3'?'&mode=bot&difficulty=normal&players=3&ruleset=god':mode==='bot4'?'&mode=bot&difficulty=normal&players=4&ruleset=god':mode==='god'?'&ruleset=god':mode==='botgod'?'&mode=bot&difficulty=normal&ruleset=god':mode==='3'?'&players=3':mode==='4'?'&players=4':mode==='heroes'?'&variant=heroes':mode==='watch'?'&spectate=1':'');
   const ws=new WebSocket('ws://127.0.0.1:'+PORT+path);sockets.push(ws);
   const inbox=[];
   ws.addEventListener('message',e=>{try{inbox.push(JSON.parse(e.data));}catch{}});
@@ -37,11 +37,31 @@ try{
     try{const res=await fetch(base+'/api/health');if(res.ok){health=await res.json();break;}}catch{}
     await delay(300);
   }
-  assert.equal(health?.version,'2.5.1','server should boot with V2.5.1');
+  assert.equal(health?.version,'2.6.0','server should boot with V2.6');
   const html=await (await fetch(base)).text();
   assert.match(html,/id="demoBtn"/);
   const og=await fetch(base+'/og.png');
   assert.equal(og.status,200);assert.match(og.headers.get('content-type'),/image\/png/);
+  // V2.6: two distinct God Pools checked over the real room WebSocket.
+  for(const [variant,pool,chosen,blocked] of [
+   ['basic',10,'apollo','poseidon'],
+   ['advanced',20,'poseidon','apollo']
+  ]){
+   const code=room(),host=await connect(code,'Draft '+variant+' Host',variant);
+   const guest=await connect(code,'Draft '+variant+' Guest','online');
+   const view=await host.until(v=>v.ready&&v.game.phase==='godpick');
+   assert.equal(view.modeId,variant);
+   assert.equal(view.legalActions.length,pool);
+   assert.ok(view.legalActions.some(a=>a.god===chosen));
+   assert.ok(!view.legalActions.some(a=>a.god===blocked));
+   host.ws.send(JSON.stringify({type:'selectGod',god:blocked}));
+   await delay(100);
+   host.ws.send(JSON.stringify({type:'selectGod',god:chosen}));
+   const selected=await guest.until(v=>v.game.gods[0]===chosen);
+   assert.equal(selected.game.turn,1);
+   assert.equal(selected.legalActions.length,pool-1);
+  }
+  console.log('PASS: V2.6 basic/advanced real-time rooms enforce 10/20 God draft pools.');
   const demo=await connect(room(),'Demo Tester','bot');
   assert.equal(demo.hello.seat,0);
   assert.equal(demo.hello.view.mode,'bot');
