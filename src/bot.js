@@ -236,7 +236,12 @@ function opponentTwoPly(g,p,context={},table=null){
   const state=next.state;
   if(state.winner===enemy)return -360000;
   let score=basePosition(state,p);
-  if(next.complete&&state.turn===p&&winningNow(state,p).length)score+=900;
+  if(next.complete&&state.turn===p){
+   const threats=winningNow(state,enemy).length;
+   if(threats>=2)score-=2600+(threats-2)*350;
+   else if(threats===1)score-=240;
+   if(winningNow(state,p).length)score+=2200;
+  }
   if(!next.complete)score-=65;
   worst=Math.min(worst,score);
  }
@@ -258,14 +263,15 @@ function strategic(g,p,choices,difficulty,context={}){
   ?(choices.filter(a=>a.type==='endMove').length?choices.filter(a=>a.type==='endMove'):choices):choices;
  const immediate=candidates.filter(a=>a.type==='move'&&a.wins);
  if(immediate.length)return immediate[0];
- const root=rankByFast(g,p,candidates,config.rootWidth);
+ const table=new Map();
+ const root=rankByFast(g,p,candidates,config.rootWidth,table);
  if(!root.length)return choices[0];
  const results=[];
  // Allocate search fairly across candidates; a shared node budget used to
  // starve later candidates and make BOT play depend on root ordering.
  const perRootBudget=Math.max(12,Math.floor(config.maxNodes/root.length));
  for(const x of root){
-  const res=completeTurn(x.result,p,{...config,maxNodes:perRootBudget},{nodes:0},1);
+  const res=completeTurn(x.result,p,{...config,maxNodes:perRootBudget},{nodes:0},1,table);
   results.push({action:x.action,score:res.score,completed:res.complete,state:res.state});
  }
  if(!results.length)return choices[0];
@@ -274,8 +280,8 @@ function strategic(g,p,choices,difficulty,context={}){
   // Apply the opponent response only to the strongest candidates, keeping
   // resource consumption predictable on Cloudflare Workers Free.
   for(const x of results.slice(0,difficulty==='expert'?10:6)){
-   if(x.completed&&x.state.winner===null)x.score+=opponentResponse(x.state,p,context,config);
-   if(difficulty==='expert'&&x.completed&&x.state.winner===null)x.score+=opponentTwoPly(x.state,p,context);
+   if(x.completed&&x.state.winner===null)x.score+=opponentResponse(x.state,p,context,config,table);
+   if(difficulty==='expert'&&x.completed&&x.state.winner===null)x.score+=opponentTwoPly(x.state,p,context,table);
   }
  }
  results.sort((a,b)=>b.score-a.score);
