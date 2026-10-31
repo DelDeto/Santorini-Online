@@ -10,7 +10,7 @@ const worker=readFileSync('src/index.js','utf8');
 test('V2.0 exposes Expert difficulty on client and server',()=>{
  assert.match(html,/value="expert"/);
  assert.match(worker,/LEVELS=\['easy','normal','hard','expert'\]/);
- assert.match(html,/V2\.0/);
+ assert.match(html,/V2\.2/);
 });
 test('Expert BOT chooses a legal move in 2, 3 and 4 person simulations',()=>{
  for(const capacity of [2,3,4]){
@@ -35,5 +35,5 @@ test('Replays, undo and help overlay are wired to the interface',()=>{
  assert.match(worker,/undoSolo\(r,seat\)/);
 });
 test('Triton and Dionysus actions can be tapped on the board',()=>{
- assert.match(app,/hermesMove','tritonMove','dionysusMove'\]\.includes\(phase\)/);
+ assert.match(app,/hermesMove','tritonMove','dionysusMove','heroSprint'\]\.includes\(phase\)/);
 });
