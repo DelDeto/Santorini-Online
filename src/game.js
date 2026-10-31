@@ -213,7 +213,15 @@ export function legalActions(g,p=g.turn){
  if(g.phase==='fleecePick')return SIMPLE_GODS.filter(id=>validGodFor(id,2)).map(god=>({type:'selectGod',god}));
  if(g.phase==='ramPlace')return Array.from({length:5},(_,row)=>Array.from({length:5},(_,col)=>free(g,row,col)?{type:'placeRam',row,col}:null)).flat().filter(Boolean);
  if(g.phase==='godpick'&&g.modeId==='heroes')return Object.keys(HEROES).filter(id=>!g.gods.includes(id)).map(id=>({type:'selectGod',god:id}));
- if(g.phase==='godpick')return Object.keys(GODS).filter(id=>(g.modeId!=='agora'||SIMPLE_GODS.includes(id))&&validGodFor(id,g.capacity||g.workers.length,g.gods.filter(Boolean))).map(id=>({type:'selectGod',god:id}));
+ if(g.phase==='godpick'){
+   // Keep the historical duel (all 30) for existing rooms, but strictly
+   // separate the new 10-God and 20-God variants on the server.
+   const pool=g.modeId==='basic'?SIMPLE_GODS:
+    g.modeId==='advanced'?Object.keys(ADVANCED_GODS):
+    g.modeId==='agora'?SIMPLE_GODS:Object.keys(GODS);
+   return pool.filter(id=>validGodFor(id,g.capacity||g.workers.length,g.gods.filter(Boolean)))
+    .map(god=>({type:'selectGod',god}));
+  }
  if(g.phase==='heroPost')return [{type:'skip'},...heroPostActions(g,p)];
  if(g.phase==='heroCorner')return [{type:'skip'},...heroCornerActions(g,p)];
  if(g.phase==='heroDomes')return [{type:'skip'},...heroDomeActions(g,p)];

@@ -11,7 +11,9 @@ const LEVELS=['easy','normal','hard','expert'];
 const BOT_PACES={slow:{setup:1200,turn:2400},normal:{setup:780,turn:1500},fast:{setup:480,turn:920}};
 const GAME_MODES={
  classic:{capacity:2,ruleset:'classic',label:'Classic · Không thần'},
- duel:{capacity:2,ruleset:'god',label:'God Powers · Đấu đôi'},
+ duel:{capacity:2,ruleset:'god',label:'God Powers · 30 thần (phòng cũ)'},
+ basic:{capacity:2,ruleset:'god',label:'10 thần cơ bản · Đấu đôi'},
+ advanced:{capacity:2,ruleset:'god',label:'20 thần nâng cao · Đấu đôi'},
  trio:{capacity:3,ruleset:'god',label:'3 người · Đấu tự do'},
  teams:{capacity:4,ruleset:'god',label:'4 người · Đấu đội'},
  agora:{capacity:2,ruleset:'god',label:'Agora · Xoay thần'},
