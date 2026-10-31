@@ -1,4 +1,33 @@
-# Santorini Online — V0.3 MVP
+# Santorini Online — V2.0 Tactical Experience
+
+Bản phát hành V2.0 tập trung vào **ổn định gameplay, chiến thuật BOT, replay và UX PC/mobile**. Giữ nguyên board Three.js 3D với fallback 2D; room state được Durable Objects xác thực.
+
+### Lịch sử nâng cấp V1.4 → V2.0
+
+| Phiên bản | Thay đổi |
+| --- | --- |
+| V1.4 | 6 chế độ đã tồn tại từ trước: Classic, God Powers, 3 người, 4 người 2v2, Agora Online, Golden Fleece |
+| V1.5 | BOT Expert, phân bổ search budget đồng đều giữa nước đi, tăng phân tích phản đòn; sửa chạm ô đặc biệt Triton/Dionysus |
+| V1.6 | Hướng dẫn trong trận, UI hành động thuận tiện và rõ ràng |
+| V1.7 | Server-authoritative replay lưu tối đa 96 frame/ván, xem bàn 2D theo lượt; Solo undo chỉ trước khi BOT thực hiện hành động tiếp theo |
+| V2.0 | Phiên bản đóng gói thống nhất, bộ kiểm thử và nhãn phiên bản 2.0.0 |
+
+Các chế độ 3/4 người dùng luật chơi cũ với giới hạn God Powers tương ứng; Agora là biến thể **online tùy chỉnh**, không được coi là Pantheon Mode Card chính thức. **Chưa hỗ trợ đầy đủ 12 Pantheon Mode Cards, toàn bộ Hero Powers và 100 God Cards** của Pantheon. Expert là heuristic search có giới hạn trên Cloudflare Workers Free, không cam kết tối ưu tuyệt đối.
+
+### Test & triển khai
+
+```bash
+npm install
+npm test
+npm run smoke
+npm run deploy
+```
+
+GitHub CI kiểm thử trên push/PR. Chưa có quy trình tự động deploy lên Cloudflare: **push GitHub không đồng nghĩa website live đã cập nhật**. Khi vận hành, cần chạy `npm run deploy` bằng Wrangler đã xác thực hoặc cấu hình CI với Cloudflare deploy credentials an toàn; không đưa token vào repository.
+
+---
+
+## Lịch sử V0.3 MVP
 
 Game Santorini cơ bản có Solo Demo đấu BOT và chế độ hai người online, giao diện bàn 5×5 phong cách đảo Hy Lạp (hình khối tự thiết kế).
 

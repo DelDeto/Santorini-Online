@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#09263b">
-  <meta name="description" content="Santorini Online V1.4 Premium Diorama: boardgame 3D điêu khắc, biển Địa Trung Hải, ánh sáng điện ảnh, nhiều chế độ, God Powers, Golden Fleece và đấu BOT. Chơi trực tiếp trên PC và điện thoại.">
-  <title>Santorini Online V1.4 | All Play Modes · Gameplay UX</title>
+  <meta name="description" content="Santorini Online V2.0 Tactical Experience: boardgame 3D điêu khắc, biển Địa Trung Hải, ánh sáng điện ảnh, nhiều chế độ, God Powers, Golden Fleece và đấu BOT. Chơi trực tiếp trên PC và điện thoại.">
+  <title>Santorini Online V2.0 | Tactical Experience</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <link rel="canonical" href="https://santorini-online-v01.duc-nguyen-ndd127.workers.dev/">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="vi_VN">
   <meta property="og:site_name" content="Santorini Online">
-  <meta property="og:title" content="SANTORINI ONLINE · V1.4 PREMIUM DIORAMA">
+  <meta property="og:title" content="SANTORINI ONLINE · V2.0 TACTICAL EXPERIENCE">
   <meta property="og:description" content="Xây thành phố Hy Lạp, chinh phục tầng ba. Chơi với BOT hoặc mời bạn bè, miễn phí trên điện thoại và PC.">
   <meta property="og:url" content="https://santorini-online-v01.duc-nguyen-ndd127.workers.dev/">
   <meta property="og:image" content="https://santorini-online-v01.duc-nguyen-ndd127.workers.dev/og.png">
@@ -28,7 +28,7 @@
   <script type="module" src="/app.js"></script>
 </head>
 <body>
-<header class="topbar"><div class="brand">♜ SANTORINI <small>ONLINE</small></div><div class="header-right"><span class="version">V1.4 · ALL MODES & GAMEPLAY UX</span><button class="mini hidden" id="exitBtn">Thoát phòng</button></div></header>
+<header class="topbar"><div class="brand">♜ SANTORINI <small>ONLINE</small></div><div class="header-right"><span class="version">V2.0 · TACTICAL EXPERIENCE</span><button class="mini hidden" id="exitBtn">Thoát phòng</button></div></header>
 <main>
 <section class="landing" id="landing">
   <div class="intro"><div class="eyebrow">THE ISLAND OF STRATEGY</div><h1>Xây dựng thành phố.<br><em>Chinh phục tầng ba.</em></h1><p>Mỗi lượt chỉ cần di chuyển và xây dựng. Một nước đi có thể thay đổi cả trận đấu.</p></div>
@@ -50,7 +50,7 @@
       <div class="mode-disclaimer">Classic / 3 người / 4 người theo luật truyền thống; Golden Fleece theo biến thể cổ điển. Agora dùng quy tắc xoay thần được điều chỉnh cho phiên bản online.</div>
     </div>
     <div class="bot-entry"><div class="bot-entry-head"><div><strong>⚡ Đấu BOT · 2–4 người</strong><small>Chọn 1, 2 hoặc 3 BOT, không cần chờ người thật</small></div><span class="bot-mark">AI BOT</span></div>
-    <div class="bot-entry-controls"><label for="botCountSelect" class="sr-only">Số người chơi cùng BOT</label><select id="botCountSelect" aria-label="Tổng số người bao gồm BOT"><option value="2">1 + 1 BOT</option><option value="3">1 + 2 BOT</option><option value="4">1 + 3 BOT</option></select><label for="difficultySelect" class="sr-only">Độ khó BOT</label><select id="difficultySelect" aria-label="Độ khó BOT"><option value="easy">Dễ · Làm quen</option><option value="normal" selected>Vừa · Tính trọn lượt</option><option value="hard">Khó · Dự đoán phản đòn</option></select><button id="demoBtn" class="primary">Đấu BOT ▶</button></div></div>
+    <div class="bot-entry-controls"><label for="botCountSelect" class="sr-only">Số người chơi cùng BOT</label><select id="botCountSelect" aria-label="Tổng số người bao gồm BOT"><option value="2">1 + 1 BOT</option><option value="3">1 + 2 BOT</option><option value="4">1 + 3 BOT</option></select><label for="difficultySelect" class="sr-only">Độ khó BOT</label><select id="difficultySelect" aria-label="Độ khó BOT"><option value="easy">Dễ · Làm quen</option><option value="normal" selected>Vừa · Tính trọn lượt</option><option value="hard">Khó · Dự đoán phản đòn</option><option value="expert">Expert · Tìm kiếm chiến thuật sâu</option></select><button id="demoBtn" class="primary">Đấu BOT ▶</button></div></div>
     <div class="divider-text">HOẶC CHƠI VỚI BẠN BÈ</div>
     <div class="ruleset-control legacy-options" aria-hidden="true"><label class="ruleset-option"><input type="radio" name="ruleset" value="classic" checked> Classic</label><label class="ruleset-option"><input type="radio" name="ruleset" value="god"> ⚡ God Powers</label></div>
     <div class="participant-row legacy-options" aria-hidden="true"><label for="teamSize">Số người chơi</label><select id="teamSize"><option value="2">2 người · Đối kháng</option><option value="3">3 người · Độc lập (God Powers)</option><option value="4">4 người · Đội 2 đấu 2 (God Powers)</option></select></div>
@@ -84,7 +84,7 @@
     <div class="hidden" aria-hidden="true"><span id="god0"></span><span id="godEffect"></span><span id="god1"></span><span id="god2"></span></div>
   </div>
   <div class="action-bar"><div class="action-text"><strong id="phaseLabel">Đang tải…</strong><span id="hint">Đồng bộ bàn chơi</span></div><div class="power-actions"><button id="powerBtn" class="mini hidden">⚡ Xây trước</button><button id="domeBtn" class="mini hidden">◆ Đặt mái vòm</button><button id="skipBtn" class="mini hidden">Bỏ qua →</button><button id="endMoveBtn" class="mini hidden">Xây ngay →</button><span id="advancedActions" class="advanced-actions"></span></div><span class="phase-chip" id="phaseChip">● ĐANG CHƠI</span><button class="secondary hidden" id="restartBtn">Chơi lại ↻</button></div>
-  <div class="game-bottom"><button id="fillBotsBtn" class="mini hidden" title="Tự thêm BOT vào các ghế còn trống của phòng">+ Thêm BOT</button><span id="seatText">Đang xác nhận vị trí</span><button id="viewBtn" class="mini">⟳ Góc nhìn</button><button id="lightingBtn" class="mini" title="Chuyển ánh sáng ban ngày/hoàng hôn">☀ Ban ngày</button><button id="qualityBtn" class="mini" title="Đổi chất lượng đồ họa">✧ Auto</button><button id="soundBtn" class="mini">Âm thanh: Bật</button><button id="historyBtn" class="mini">☷ Lượt đấu</button></div>
+  <div class="game-bottom"><button id="fillBotsBtn" class="mini hidden" title="Tự thêm BOT vào các ghế còn trống của phòng">+ Thêm BOT</button><span id="seatText">Đang xác nhận vị trí</span><button id="undoBtn" class="mini hidden" title="Chỉ Solo: hoàn tác hành động cuối trước khi BOT đi">↶ Hoàn tác</button><button id="tutorialBtn" class="mini">? Hướng dẫn</button><button id="viewBtn" class="mini">⟳ Góc nhìn</button><button id="lightingBtn" class="mini" title="Chuyển ánh sáng ban ngày/hoàng hôn">☀ Ban ngày</button><button id="qualityBtn" class="mini" title="Đổi chất lượng đồ họa">✧ Auto</button><button id="soundBtn" class="mini">Âm thanh: Bật</button><button id="historyBtn" class="mini">☷ Lượt đấu</button></div>
   <div class="mode-help-overlay hidden" id="modeOverlay" role="dialog" aria-modal="true" aria-label="Luật chế độ chơi">
     <div class="mode-help-panel">
       <div class="mode-help-top"><div><small>GAME MODE · LUẬT CHƠI</small><h2 id="modeHelpTitle">Santorini</h2></div><button class="mini" id="modeCloseBtn" type="button">Đóng ✕</button></div>
@@ -99,7 +99,8 @@
       <div class="powers-cards" id="powersCards"></div>
     </div>
   </div>
-  <div class="history-overlay hidden" id="historyOverlay"><div class="history-panel"><div class="history-top"><h2>Diễn biến trận đấu</h2><button id="historyClose" class="mini">Đóng ✕</button></div><p id="historyStats"></p><ol id="historyEvents"></ol></div></div>
+  <div class="history-overlay hidden" id="historyOverlay"><div class="history-panel"><div class="history-top"><h2>Diễn biến trận đấu</h2><button id="historyClose" class="mini">Đóng ✕</button></div><p id="historyStats"></p><div class="replay-section"><strong>▶ Replay bàn chơi · từng hành động</strong><p id="replayInfo">Đang tải replay…</p><div id="replayBoard" class="replay-board" aria-label="Bàn cờ 2D của bước replay"></div><div class="replay-nav"><button id="replayPrev" class="mini" type="button">‹</button><input id="replaySlider" type="range" min="0" max="0" value="0" aria-label="Chọn bước replay"><button id="replayNext" class="mini" type="button">›</button></div></div><ol id="historyEvents"></ol></div></div>
+  <div class="tutorial-overlay hidden" id="tutorialOverlay" role="dialog" aria-modal="true" aria-label="Hướng dẫn chơi"><div class="tutorial-panel"><div class="history-top"><h2>Hướng dẫn chơi Santorini</h2><button type="button" id="tutorialClose" class="mini">Đóng ✕</button></div><ol><li><b>Đặt quân:</b> mỗi đội có 2 quân trên bàn 5×5.</li><li><b>Di chuyển:</b> chọn quân rồi chọn ô sáng kề bên; có thể leo lên tối đa 1 tầng, xuống nhiều tầng.</li><li><b>Xây:</b> xây 1 tầng ở ô kề bên, tối đa tầng 3, sau đó đặt mái vòm.</li><li><b>Chiến thắng:</b> di chuyển từ tầng 2 lên tầng 3, hoặc thỏa điều kiện thắng đặc biệt của thần.</li><li><b>God Powers:</b> chạm tên thần phía dưới bàn để xem mô tả và thời điểm kích hoạt.</li><li><b>Camera:</b> kéo xoay, vuốt/pinch hoặc cuộn zoom; nút Góc nhìn đưa camera về mặc định.</li><li><b>Replay:</b> mở Lượt đấu, kéo thanh thời gian để xem vị trí quân và công trình sau mỗi hành động.</li></ol><p class="small-note">Hoàn tác chỉ áp dụng Solo trước khi BOT thực hiện hành động tiếp theo.</p></div></div>
   <div class="god-overlay hidden" id="godOverlay"><div class="god-panel"><div class="eyebrow">OLYMPUS · GOD POWERS</div><h2 id="godPickTitle">Chọn vị thần của bạn</h2><p>Mỗi người chọn một vị thần khác nhau; phòng 4 người có bốn thần riêng.</p><div class="god-filter"><label for="godGroup">Nhóm thần</label><select id="godGroup"><option value="all">Tất cả 30 thần</option><option value="simple">10 Cơ bản</option><option value="advanced">20 Nâng cao</option></select><span>Thần không hợp lệ với chế độ hiện tại sẽ bị khóa.</span></div><div id="godCards" class="god-cards"></div><small id="godPickHint">Mỗi người lần lượt chọn một thần riêng trước khi đặt quân.</small></div></div>
   <div class="win-overlay hidden" id="winOverlay"><div class="win-card"><div class="trophy">🏆</div><div class="eyebrow">GAME OVER</div><h2 id="winTitle">Chiến thắng!</h2><p id="winText"></p><button class="primary" id="rematchBtn">Tái đấu ↻</button></div></div>
 </section>
