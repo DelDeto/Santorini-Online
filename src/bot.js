@@ -137,10 +137,10 @@ function optionsFor(g,p){
  }
  return actions;
 }
-function rankByFast(g,p,actions,limit){
+function rankByFast(g,p,actions,limit,table=null){
  const scored=[];
  for(const action of actions){
-  const result=simulate(g,p,action);
+  const result=simulate(g,p,action,table);
   if(!result)continue;
   let score=basePosition(result,p);
   if(result.winner===p)score+=WIN;
@@ -161,7 +161,7 @@ function rankByFast(g,p,actions,limit){
  * extra phases from Artemis, Demeter, Hephaestus, Prometheus and Hermes.
  * Returns a fully completed position to avoid one-action horizon traps.
  */
-function completeTurn(g,p,config,budget,depth=0){
+function completeTurn(g,p,config,budget,depth=0,table=null){
  if(g.winner!==null||g.turn!==p||g.phase==='ended'){
   return {score:leafScore(g,p),state:g,complete:true};
  }
@@ -172,11 +172,11 @@ function completeTurn(g,p,config,budget,depth=0){
  if(!opts.length)return {score:-WIN/2,state:g,complete:false};
  const width=['build','extraBuild'].includes(g.phase)?config.buildWidth:
   ['extraMove','hermesMove'].includes(g.phase)?config.extraWidth:config.branchWidth;
- const ranked=rankByFast(g,p,opts,width);
+ const ranked=rankByFast(g,p,opts,width,table);
  let best=null;
  for(const candidate of ranked){
   budget.nodes++;
-  let reply=completeTurn(candidate.result,p,config,budget,depth+1);
+  let reply=completeTurn(candidate.result,p,config,budget,depth+1,table);
   if(!best||reply.score>best.score)best=reply;
   if(best?.score>=WIN)break;
   if(budget.nodes>=config.maxNodes)break;
@@ -195,11 +195,11 @@ function projectedEnemyState(g,op,context={}){
  return trial;
 }
 /** Hard mode: exact next opponent winning move + bounded MOVE->BUILD counterplay. */
-function opponentResponse(g,p,context,config){
+function opponentResponse(g,p,context,config,table=null){
  if(g.winner!==null||g.phase!=='move'||g.turn===p)return 0;
  const enemy=g.turn,trial=projectedEnemyState(g,enemy,context);
  if(winningNow(trial,enemy).length)return -200_000;
- const candidates=rankByFast(trial,enemy,legalActions(trial,enemy),config.replyWidth);
+ const candidates=rankByFast(trial,enemy,legalActions(trial,enemy),config.replyWidth,table);
  let worst=basePosition(g,p),shown=false;
  for(const first of candidates){
   let value=basePosition(first.result,p);
@@ -207,7 +207,7 @@ function opponentResponse(g,p,context,config){
   if(first.result.turn===enemy){
    const follow=optionsFor(first.result,enemy);
    if(follow.length){
-    const branches=rankByFast(first.result,enemy,follow,config.replyBuildWidth);
+    const branches=rankByFast(first.result,enemy,follow,config.replyBuildWidth,table);
     for(const second of branches){
      if(second.result.winner===enemy)return -200_000;
      const z=basePosition(second.result,p);
@@ -225,14 +225,14 @@ function opponentResponse(g,p,context,config){
  * movement. This handles dome denial, immediate winning moves and multi-player
  * turn order without making every BOT step an unbounded minimax search.
  */
-function opponentTwoPly(g,p,context={}){
+function opponentTwoPly(g,p,context={},table=null){
  if(g.winner!==null||g.phase!=='move'||g.turn===p)return 0;
  const enemy=g.turn,trial=projectedEnemyState(g,enemy,context);
- const first=rankByFast(trial,enemy,optionsFor(trial,enemy),5);
+ const first=rankByFast(trial,enemy,optionsFor(trial,enemy),5,table);
  let worst=Infinity;
  const config={branchWidth:3,buildWidth:4,extraWidth:3,maxDepth:7,maxNodes:55};
  for(const a of first){
-  const next=completeTurn(a.result,enemy,config,{nodes:0},1);
+  const next=completeTurn(a.result,enemy,config,{nodes:0},1,table);
   const state=next.state;
   if(state.winner===enemy)return -360000;
   let score=basePosition(state,p);
