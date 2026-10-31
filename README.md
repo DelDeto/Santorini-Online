@@ -1,3 +1,14 @@
+# V2.5.1 — Power Effects UI Audit & Poseidon Fix
+
+- Fixed Poseidon's **Dừng xây thêm** after 0, 1 or 2 of the three optional bonus builds. This command is authorized by the game server and visible in a dedicated priority action area on PC/mobile, outside a horizontally scrolling toolbar.
+- The same persistent Skip/Finish affordance now covers optional Artemis, Demeter, Hephaestus, Hestia, Triton, Ares, Dionysus, Morpheus and classical Hero phases.
+- Hermes: the **Xây ngay** action is visible even before selecting a worker; if multiple workers can build, a simple picker presents each choice.
+- Dionysus: opponent-control choice has a dedicated button and picker, while Skip remains visible.
+- Morpheus: spend stored build stock on either a block or a dome, or choose to stop (including zero builds).
+- Added regression tests of Poseidon (0/1/2/3 bonus builds), all 12 optional-action phases, 30 God Powers and 10 Hero Powers, and static accessibility/visibility checks.
+- No claims of complete parity with revised/new editions beyond the 30 existing God Powers and ten classical Hero Powers.
+
+---
 # Santorini Online — V2.5 (V2.3 + V2.4 + V2.5)
 
 ## V2.3 — Stability and rules regression
