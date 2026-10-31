@@ -1,7 +1,7 @@
 import {applyAction,legalActions,GODS,HEROES} from './game.js';
 
 /**
- * Santorini Strategic BOT V1.5–V2.0.
+ * Santorini Strategic BOT V2.5.
  * Uses only authoritative game actions, never bypasses God Power rules.
  * Easy: exploratory. Normal: completes its turn and blocks immediate wins.
  * Hard: bounded complete-turn search. Expert: wider tactical search + deeper reply checks.

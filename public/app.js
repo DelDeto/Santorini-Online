@@ -167,7 +167,7 @@ function enter(room,mode='online',ruleset='classic',capacity=2,spectate=false,va
 function ensure3d(){
  if(S.three || $('scene3d').dataset.state==='loading')return;
  $('scene3d').dataset.state='loading';
- import('./board3d.js?v=2.2.0').then(({createBoard3D})=>{
+ import('./board3d.js?v=2.5.0').then(({createBoard3D})=>{
   if(!S.active)return;
   S.three=createBoard3D($('scene3d'),tileClick);
   S.three.setQuality(S.quality);S.three.setLighting(S.lighting);
