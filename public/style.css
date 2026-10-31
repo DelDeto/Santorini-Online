@@ -505,3 +505,26 @@ body:has(#game:not(.hidden)){height:100dvh;max-height:100dvh;overflow:hidden}
  .game .game-bottom .mini{padding:4px 7px;font-size:9px;flex:none}
  .game .game-bottom #seatText{display:inline-block;min-width:80px}
 }
+
+/* V1.6/1.7 — tutorial, replay and tactical action clarity */
+.tutorial-overlay{position:fixed;inset:0;z-index:110;display:grid;place-items:center;background:#021a2bdc;padding:14px;backdrop-filter:blur(8px)}
+.tutorial-overlay.hidden{display:none}
+.tutorial-panel{background:linear-gradient(155deg,#193f54,#082737);border:1px solid #89c8db65;border-radius:20px;max-width:600px;width:min(100%,600px);max-height:88dvh;overflow:auto;padding:22px;color:#eff9fa;box-shadow:0 20px 70px #001923a3}
+.tutorial-panel ol{padding:0 0 0 22px;display:grid;gap:12px;margin:18px 0}
+.tutorial-panel li{line-height:1.4;font-size:14px}
+.replay-section{margin:14px 0;border-radius:13px;border:1px solid #85b9d655;padding:12px;background:#0b3045}
+.replay-section strong{font-size:13px}
+#replayInfo{font-size:12px;min-height:32px;line-height:1.3;color:#d4ebf8}
+.replay-board{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));aspect-ratio:1;width:min(100%,280px);margin:10px auto;gap:4px}
+.replay-tile{border:1px solid #a4d3e77a;border-radius:5px;display:grid;place-items:center;font-weight:700;color:#123146;background:#e2edea;position:relative}
+.replay-tile.level-1{background:#c1d6e0}
+.replay-tile.level-2{background:#92b6d2}
+.replay-tile.level-3{background:#588bba;color:white}
+.replay-tile.level-4{background:#244b7a;color:#c3edff}
+.replay-worker{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;font-size:25px;color:#1672ca;background:#f8fafb;box-shadow:0 1px 6px #0005}
+.replay-worker.p1{color:#cf6949}
+.replay-worker.p2{color:#894de1}
+.replay-nav{display:flex;gap:8px;align-items:center;justify-content:center}
+.replay-nav input{flex:1;max-width:320px;min-width:0;accent-color:#4ccde1}
+#undoBtn{border-color:#e6be7866;color:#ffdfaa}
+@media(max-width:700px){.tutorial-panel{padding:14px;border-radius:14px}.tutorial-panel li{font-size:12px}.replay-board{width:min(100%,210px)}}

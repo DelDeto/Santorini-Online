@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import {newGame,applyAction,resetGame,legalActions,GODS,validGodFor,beginAdvancedTurn} from './game.js';
 import {chooseBotAction,chooseMultiplayerBotAction} from './bot.js';
+import {recordReplay,soloCheckpoint,canUndoSolo,undoSolo} from './replay.js';
 
 const BOT_TOKEN='bot:server-managed';
 const botToken=seat=>`${BOT_TOKEN}:${seat}`;
@@ -26,7 +27,7 @@ function resolveMode(u){
 const cleanName=value=>String(value??'Người chơi').trim().slice(0,24).replace(/[<>]/g,'')||'Người chơi';
 const team=seat=>seat%2;
 const makeStats=(n=2)=>({wins:Array(n===3?3:2).fill(0),matches:0});
-function freshRoom(){return {game:newGame(),players:[null,null],mode:null,modeId:'classic',difficulty:'normal',ruleset:'classic',capacity:2,activeSeat:0,nextTeam0:0,seatGods:null,draftIndex:0,athenaAura:null,history:[],stats:makeStats()};}
+function freshRoom(){return {game:newGame(),players:[null,null],mode:null,modeId:'classic',difficulty:'normal',ruleset:'classic',capacity:2,activeSeat:0,nextTeam0:0,seatGods:null,draftIndex:0,athenaAura:null,history:[],replay:[],undo:null,stats:makeStats()};}
 function capacity(r){return [2,3,4].includes(r.capacity)?r.capacity:2;}
 function ready(r){return r.players.length===capacity(r)&&r.players.every((p,i)=>!!p||(capacity(r)===3&&!['godpick','place'].includes(r.game.phase)&&r.game.eliminated?.[i]));}
 function seatForTurn(r){
@@ -47,7 +48,7 @@ function view(r,spectators=0){
   game:r.game,legalActions:availableActions(r),gods:GODS,seatGods:r.seatGods||null,
   ruleset:r.game.ruleset||'classic',mode:r.mode||'online',modeId:r.modeId||r.game.modeId||'classic',modeLabel:GAME_MODES[r.modeId||r.game.modeId]?.label||'Santorini',difficulty:r.difficulty,
   capacity:n,activeSeat:seatForTurn(r),spectators,
-  history:r.history||[],stats:r.stats||makeStats(n),
+  history:r.history||[],replayCount:(r.replay||[]).length,canUndo:canUndoSolo(r),stats:r.stats||makeStats(n),
   players:r.players.map((p,i)=>({name:p?.name??('Ghế '+(i+1)+' · Đang chờ'),joined:!!p,seat:i,team:n===3?i:team(i),bot:isBot(p)})),
   ready:ready(r)
  };
@@ -60,6 +61,8 @@ export class SantoriniRoom extends DurableObject{
    this.room.capacity=capacity(this.room);
    this.room.modeId??=this.room.game.modeId||(this.room.capacity===3?'trio':this.room.capacity===4?'teams':this.room.ruleset==='god'?'duel':'classic');
    this.room.history??=[];
+   this.room.replay??=[];
+   this.room.undo??=null;
    this.room.stats??=makeStats();
    this.room.activeSeat??=0;
    this.room.nextTeam0??=0;
@@ -122,6 +125,7 @@ record(action,seat,oldWinner,oldRevision){
   if(r.game.revision===oldRevision)return;
   r.history??=[];
   r.history.push({seat,action:action.type,description:r.game.lastAction,revision:r.game.revision});
+  recordReplay(r,action,seat);
   if(r.history.length>12)r.history.shift();
   if(oldWinner===null&&r.game.winner!==null){
    r.stats??=makeStats();
@@ -146,7 +150,7 @@ record(action,seat,oldWinner,oldRevision){
    r.athenaAura=null;
    r.seatGods=r.capacity===4?Array(4).fill(null):null;r.draftIndex=0;
    r.players=Array(r.capacity).fill(null);
-   r.activeSeat=r.capacity===4?2:0;r.nextTeam0=0;r.history=[];r.stats=makeStats(r.capacity);
+   r.activeSeat=r.capacity===4?2:0;r.nextTeam0=0;r.history=[];r.replay=[];r.undo=null;r.stats=makeStats(r.capacity);
    if(r.mode==='bot'){
     r.difficulty=LEVELS.includes(u.searchParams.get('difficulty'))?u.searchParams.get('difficulty'):'normal';
     for(let seat=1;seat<r.capacity;seat++)r.players[seat]=makeBot(seat,r.difficulty);
@@ -173,6 +177,9 @@ record(action,seat,oldWinner,oldRevision){
   if(!action||typeof action!=='object')return;
   const {seat,token}=ws.deserializeAttachment()||{},r=this.room;
   if(action.type==='ping'){this.send(ws,{type:'pong'});return;}
+  if(action.type==='requestReplay'){
+   this.send(ws,{type:'replay',frames:(r.replay||[]).slice(-96)});return;
+  }
   const authorized=Number.isInteger(seat)&&seat>=0&&seat<capacity(r)&&r.players[seat]?.token===token&&!isBot(r.players[seat]);
   if(action.type==='leave'){
    if(authorized){
@@ -217,12 +224,17 @@ record(action,seat,oldWinner,oldRevision){
   }
   if(!authorized){this.send(ws,{type:'error',message:'Bạn đang xem phòng hoặc đã rời ghế.'});return;}
   if(!ready(r)){this.send(ws,{type:'error',message:'Đợi đủ người vào phòng.'});return;}
+  if(action.type==='undo'){
+   if(!undoSolo(r,seat)){this.send(ws,{type:'error',message:'Chỉ có thể hoàn tác hành động Solo gần nhất trước khi BOT thực hiện.'});return;}
+   await this.persist();this.broadcast();await this.scheduleBot();return;
+  }
   if(action.type==='restart'){
    if(r.game.phase!=='ended'){this.send(ws,{type:'error',message:'Chỉ tái đấu sau khi kết thúc ván.'});return;}
-   r.game=resetGame(r.game);r.athenaAura=null;r.seatGods=capacity(r)===4?Array(4).fill(null):null;r.draftIndex=0;r.activeSeat=capacity(r)===4?2:0;r.nextTeam0=0;r.history=[];
+   r.game=resetGame(r.game);r.athenaAura=null;r.seatGods=capacity(r)===4?Array(4).fill(null):null;r.draftIndex=0;r.activeSeat=capacity(r)===4?2:0;r.nextTeam0=0;r.history=[];r.replay=[];r.undo=null;
   }else{
    if(seat!==seatForTurn(r)){this.send(ws,{type:'error',message:'Chưa đến lượt ghế của bạn.'});return;}
    const previousTurn=r.game.turn,previousPhase=r.game.phase,oldWinner=r.game.winner,oldRevision=r.game.revision;
+   const checkpoint=soloCheckpoint(r,seat);
    if(capacity(r)===4&&r.game.phase==='godpick'){
     if(!availableActions(r).some(a=>a.type==='selectGod'&&a.god===action.god)){
      this.send(ws,{type:'error',message:'Vị thần đã được chọn hoặc không hợp lệ.'});return;
@@ -249,6 +261,7 @@ record(action,seat,oldWinner,oldRevision){
     this.resolveBlockedTeam();
    }
    this.record(action,seat,oldWinner,oldRevision);
+   if(checkpoint&&r.game.revision!==oldRevision){checkpoint.revisionAfter=r.game.revision;r.undo=checkpoint;}
   }
   await this.persist();this.broadcast();await this.scheduleBot();
  }
@@ -292,6 +305,7 @@ record(action,seat,oldWinner,oldRevision){
    this.resolveBlockedTeam();
   }
   this.record(action,seat,oldWinner,oldRevision);
+  r.undo=null; // Once a BOT acts, prior human action is committed.
   await this.persist();this.broadcast();await this.scheduleBot();
  }
  async webSocketClose(ws){try{ws.close();}catch{}this.broadcast();}
