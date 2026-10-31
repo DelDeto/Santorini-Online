@@ -21,7 +21,7 @@ test('V1.1: power HUD and help modal retain responsive one-screen layout',()=>{
 });
 test('V1.1: Prometheus prebuild returns to move selection without requiring a reload',()=>{
  assert.match(app,/if\(\['prebuild','heroPrebuild'\]\.includes\(action\.type\)\)\{S\.selected=action\.worker;S\.powerMode='move';\}/);
- assert.match(app,/if\(S\.view\.game\.ctx\?\.prometheusUsed\)S\.powerMode='move'/);
+ assert.match(app,/if\(S\.view\.game\.ctx\?\.prometheusUsed\|\|S\.view\.game\.ctx\?\.heroActivated\)S\.powerMode='move'/);
  const g=newGame('god');
  g.phase='move';g.gods=['prometheus','apollo'];g.workers=[[{row:2,col:2},{row:0,col:0}],[{row:4,col:4},{row:4,col:3}]];
  const pre=legalActions(g).find(a=>a.type==='prebuild'&&a.worker===0);
@@ -36,5 +36,5 @@ test('V1.1: explicit God action buttons and automatic passive skills are explain
   assert.ok(app.includes(text));
  }
  assert.match(app,/powersOverlay/);
- assert.match(html,/V2\.2/);
+ assert.match(html,/V2\.5/);
 });

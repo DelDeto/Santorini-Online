@@ -1,3 +1,26 @@
+# Santorini Online — V2.5 (V2.3 + V2.4 + V2.5)
+
+## V2.3 — Stability and rules regression
+- Fixed a real V2.2 infinite recursion in `availableTiles()` during Hero dome removal, Medea effects and Jason/Achilles target selection. The client now dispatches targeted actions in `tileClick()` against server-provided `legalActions`.
+- Preserve Hero selection mode while selecting Workers and handle Atalanta Sprint in the 2D fallback.
+- Reject socket requests over 8 KiB before decoding JSON; added deterministic multi-mode game-state walks and rule regressions.
+
+## V2.4 — Character motion and readable game pace
+- 3D workers turn by the shortest angle, walk/climb with elevation-sensitive arcs, gesture at build locations and animate removal; movement and capture effects are procedural and respect reduced-motion settings.
+- Compact Vietnamese action narration over the board, without adding screen scrolling.
+- Solo BOT action cadence: slow 2400 ms, normal 1500 ms, fast 920 ms after each action. Setup pace is separately tuned.
+- The original 2D board remains a fallback when WebGL cannot be initialized.
+
+## V2.5 — Tactical BOT and reproducible evaluation
+- Expert search uses a bounded, per-decision transposition table (up to 3800 positions) to reuse exact simulated actions reached by different paths.
+- Lookahead scores opponent double threats and potential winning replies, with distinct Hero draft priorities.
+- Benchmark: `npm run benchmark -- --games=20 --maxActions=180 --mode=classic --challenger=expert --opponent=normal`.
+- GitHub Actions runs a compact seeded BOT-vs-BOT benchmark; results are observed measurements, not guaranteed win rates.
+- Server remains authoritative: bots never bypass legal move validation.
+
+**Scope:** This is an incremental engine/UX/AI upgrade over the existing 30 Gods and 10 classical Heroes. It does not implement every modern Pantheon card, Blender rigged characters, or full browser-device end-to-end testing.
+
+---
 # Santorini Online — V2.2 Hero Powers & 3D Character Actions
 
 ## V2.1–V2.2 · Hoàn thiện hạng mục còn thiếu

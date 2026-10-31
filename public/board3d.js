@@ -160,6 +160,8 @@ export function createBoard3D(container,onCell){
  const glowBuild=new THREE.MeshBasicMaterial({color:0xffc86b,transparent:true,opacity:.77,depthWrite:false,side:THREE.DoubleSide});
  const glowSelected=new THREE.MeshBasicMaterial({color:0xfdf29d,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide});
  const tweens=[];
+ const MOTION={walk:850,build:740,gesture:810,exit:620,spawn:510};
+ const shortestTurn=(from,to)=>Math.atan2(Math.sin(to-from),Math.cos(to-from));
  const buildParticles=[];
  const particleMat=new THREE.MeshBasicMaterial({color:0xf7deb0,transparent:true,opacity:.7,depthWrite:false});
  function buildDust(row,col,height){
@@ -341,11 +343,13 @@ export function createBoard3D(container,onCell){
      towers.set(key,group);
      if(previous&&height>old){
       group.scale.y=.81;
-      tweens.push({obj:group,start:performance.now(),duration:660,type:'rise'});
+      tweens.push({obj:group,start:performance.now(),duration:prefersReducedMotion?0:MOTION.build,type:'rise'});
       if(!prefersReducedMotion){
        buildDust(row,col,height);
+       const active=previous?.selected!==null&&previous?.selected!==undefined?figures.get(previous.turn+':'+previous.selected):null;
        const actors=[...figures.values()].filter(f=>Math.max(Math.abs(f.userData.row-row),Math.abs(f.userData.col-col))===1);
-       if(actors.length)tweens.push({obj:actors[0],start:performance.now(),duration:700,type:'gesture'});
+       const actor=active&&actors.includes(active)?active:actors[0];
+       if(actor)tweens.push({obj:actor,start:performance.now(),duration:MOTION.gesture,type:'gesture'});
       }
      }
     }
@@ -353,17 +357,28 @@ export function createBoard3D(container,onCell){
    for(let p=0;p<g.workers.length;p++)for(let i=0;i<Math.max(3,g.workers[p]?.length||0,previous?.workers[p]?.length||0);i++){
     const key=p+':'+i,location=g.workers[p]?.[i],before=previous?.workers[p]?.[i];
     let figure=figures.get(key);
-    if(!location){if(figure){pieces.remove(figure);figures.delete(key);}continue;}
+    if(!location){
+     if(figure){
+      figures.delete(key);
+      if(previous&&!prefersReducedMotion)tweens.push({obj:figure,start:performance.now(),duration:MOTION.exit,type:'vanish',baseY:figure.position.y});
+      else pieces.remove(figure);
+     }
+     continue;
+    }
     if(!figure){figure=worker(pieces,p,location.row,location.col,g.board[location.row][location.col],i);figures.set(key,figure);}
     const goal=tileAt(location.row,location.col),goalY=.42+g.board[location.row][location.col]*.53;
     Object.assign(figure.userData,{row:location.row,col:location.col,p,index:i});
     if(before&&!samePos(before,location)){
      const heading=Math.atan2(goal.x-figure.position.x,goal.z-figure.position.z);
-     tweens.push({obj:figure,start:performance.now(),duration:prefersReducedMotion?0:710,type:'move',
+     const levelBefore=previous?.board?.[before.row]?.[before.col]??0;
+     const stepUp=g.board[location.row][location.col]-levelBefore;
+     tweens.push({obj:figure,start:performance.now(),duration:prefersReducedMotion?0:MOTION.walk,type:'move',
       x:figure.position.x,z:figure.position.z,y:figure.position.y,
-      toX:goal.x,toZ:goal.z,toY:goalY,heading,initialHeading:figure.rotation.y});
+      toX:goal.x,toZ:goal.z,toY:goalY,turnDelta:shortestTurn(figure.rotation.y,heading),initialHeading:figure.rotation.y,stepUp});
+     if(previous?.workers?.some((team,q)=>q!==p&&team.some(w=>samePos(w,location)))&&!prefersReducedMotion)
+      buildDust(location.row,location.col,g.board[location.row][location.col]);
     }else{figure.position.set(goal.x,goalY,goal.z);}
-    if(!before){figure.scale.setScalar(.12);tweens.push({obj:figure,start:performance.now(),duration:420,type:'spawn'});}
+    if(!before){figure.scale.setScalar(.12);tweens.push({obj:figure,start:performance.now(),duration:prefersReducedMotion?0:MOTION.spawn,type:'spawn'});}
    }
    current.state=structuredClone(g);
   }
@@ -413,8 +428,8 @@ export function createBoard3D(container,onCell){
    if(tw.type==='move'){
     tw.obj.position.x=tw.x+(tw.toX-tw.x)*e;
     tw.obj.position.z=tw.z+(tw.toZ-tw.z)*e;
-    tw.obj.position.y=tw.y+(tw.toY-tw.y)*e+(prefersReducedMotion?0:Math.sin(Math.PI*t)*.23);
-    tw.obj.rotation.y=tw.initialHeading+(tw.heading-tw.initialHeading)*e;
+    tw.obj.position.y=tw.y+(tw.toY-tw.y)*e+(prefersReducedMotion?0:Math.sin(Math.PI*t)*(tw.stepUp>0?.38:tw.stepUp<0?.18:.13));
+    tw.obj.rotation.y=tw.initialHeading+tw.turnDelta*e;
     if(rig&&!prefersReducedMotion){
      const gait=Math.sin(t*Math.PI*5.5),swing=gait*.46*Math.sin(Math.PI*t);
      rig.arms[0].rotation.x=swing;rig.arms[1].rotation.x=-swing;
@@ -427,10 +442,13 @@ export function createBoard3D(container,onCell){
      rig.arms[1].rotation.x=-strike*.5;
      tw.obj.rotation.z=Math.sin(2*Math.PI*t)*.08;
     }
+   }else if(tw.type==='vanish'){
+    tw.obj.scale.setScalar(1-.92*e);tw.obj.position.y=tw.baseY-.17*e;tw.obj.rotation.z=e*.65;
    }else if(tw.type==='rise')tw.obj.scale.y=.81+.19*e;
    else tw.obj.scale.setScalar(.12+.88*e);
    if(t===1){
     if(rig){rig.arms.forEach(a=>a.rotation.x=0);rig.feet.forEach(f=>f.position.z=.052);tw.obj.rotation.z=0;}
+    if(tw.type==='vanish')pieces.remove(tw.obj);
     tweens.splice(i,1);
    }
   }

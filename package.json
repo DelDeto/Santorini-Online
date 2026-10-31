@@ -1,13 +1,15 @@
 {
   "name": "santorini-online",
-  "version": "2.2.0",
+  "version": "2.5.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "node --test && node --check public/app.js && node --check public/board3d.js && node --check public/premium3d.js && node --check src/index.js && node --check src/game.js && node --check src/bot.js",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "benchmark": "node scripts/bot-tournament.mjs",
+    "benchmark:quick": "node scripts/bot-tournament.mjs --games=24 --maxActions=150 --mode=classic"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

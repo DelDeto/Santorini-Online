@@ -8,7 +8,7 @@ const botToken=seat=>`${BOT_TOKEN}:${seat}`;
 const isBot=p=>p?.token===BOT_TOKEN||String(p?.token||'').startsWith(BOT_TOKEN+':');
 const makeBot=(seat,difficulty)=>({name:'BOT '+seat+' · '+({easy:'Tập sự',normal:'Chiến thuật',hard:'Bậc thầy',expert:'Chuyên gia'}[difficulty]||'Chiến thuật'),token:botToken(seat)});
 const LEVELS=['easy','normal','hard','expert'];
-const BOT_PACES={slow:{setup:1150,turn:1850},normal:{setup:750,turn:1250},fast:{setup:450,turn:730}};
+const BOT_PACES={slow:{setup:1200,turn:2400},normal:{setup:780,turn:1500},fast:{setup:480,turn:920}};
 const GAME_MODES={
  classic:{capacity:2,ruleset:'classic',label:'Classic · Không thần'},
  duel:{capacity:2,ruleset:'god',label:'God Powers · Đấu đôi'},
@@ -180,7 +180,8 @@ record(action,seat,oldWinner,oldRevision){
  }
  async webSocketMessage(ws,payload){
   await this.ready;
-  let action;try{action=JSON.parse(String(payload));}catch{this.send(ws,{type:'error',message:'Dữ liệu không hợp lệ.'});return;}
+  if(String(payload).length>8192){this.send(ws,{type:'error',message:'Lệnh vượt giới hạn dung lượng.'});return;}
+   let action;try{action=JSON.parse(String(payload));}catch{this.send(ws,{type:'error',message:'Dữ liệu không hợp lệ.'});return;}
   if(!action||typeof action!=='object')return;
   const {seat,token}=ws.deserializeAttachment()||{},r=this.room;
   if(action.type==='ping'){this.send(ws,{type:'pong'});return;}
@@ -329,7 +330,7 @@ record(action,seat,oldWinner,oldRevision){
 export default{
  async fetch(request,env){
   const u=new URL(request.url);
-  if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'2.2.0',modes:Object.keys(GAME_MODES)});
+  if(u.pathname==='/api/health')return Response.json({ok:true,name:'Santorini Online',version:'2.5.0',modes:Object.keys(GAME_MODES)});
   if(u.pathname==='/ws'){
    const room=u.searchParams.get('room')||'';
    if(!/^[A-Z2-9]{6,10}$/.test(room))return new Response('Room code invalid',{status:400});

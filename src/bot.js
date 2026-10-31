@@ -1,7 +1,7 @@
-import {applyAction,legalActions,GODS} from './game.js';
+import {applyAction,legalActions,GODS,HEROES} from './game.js';
 
 /**
- * Santorini Strategic BOT V1.5–V2.0.
+ * Santorini Strategic BOT V2.5.
  * Uses only authoritative game actions, never bypasses God Power rules.
  * Easy: exploratory. Normal: completes its turn and blocks immediate wins.
  * Hard: bounded complete-turn search. Expert: wider tactical search + deeper reply checks.
@@ -14,15 +14,24 @@ const distance=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col));
 const center=a=>4-Math.abs(a.row-2)-Math.abs(a.col-2);
 const godPriority=['pan','athena','apollo','artemis','minotaur','atlas','demeter','hephaestus','prometheus','hermes'];
 const WIN=1_000_000;
+const CACHE_LIMIT=3800;
 const alive=(g,p)=>!g.eliminated?.[p]&&g.workers[p]?.length>0;
 const opponents=(g,p)=>g.workers.map((_,i)=>i).filter(i=>i!==p&&alive(g,i));
 const phaseMove=g=>['move','extraMove','hermesMove'].includes(g.phase);
 const height=(g,w)=>g.board[w.row][w.col];
-const actionKey=a=>[a.type,a.worker??'',a.row??'',a.col??'',a.god??'',a.dome?'d':''].join(':');
+const actionKey=a=>[a.type,a.worker??'',a.row??'',a.col??'',a.god??'',a.dome?'d':'',a.under?'u':'',a.target??'',a.special??''].join(':');
 
-function simulate(g,player,action){
+// Search-local, bounded transpositions; no game state is persisted across rooms.
+function positionKey(g){
+ return JSON.stringify([g.modeId,g.phase,g.turn,g.selected,g.winner,g.board,g.workers,
+  g.gods,g.ctx,g.athenaBlocked,g.advanced,g.heroUsed,g.heroMark,g.ram,g.eliminated]);
+}
+function simulate(g,player,action,table=null){
+ const key=table?positionKey(g)+'|'+player+'|'+actionKey(action):null;
+ if(key&&table.has(key))return table.get(key);
  const n=copy(g);
- try{applyAction(n,player,action);return n;}catch{return null;}
+ try{applyAction(n,player,action);if(key&&table.size<CACHE_LIMIT)table.set(key,n);return n;}
+ catch{return null;}
 }
 function winningNow(g,p){
  if(g.winner!==null||g.phase!=='move'||!alive(g,p))return [];
@@ -88,6 +97,10 @@ function leafScore(g,p){
 }
 function chooseGod(g,choices,difficulty){
  if(difficulty==='easy')return pick(choices);
+ if(g.modeId==='heroes'){
+  const priority={bellerophon:25,atalanta:23,achilles:22,polyphemus:21,heracles:20,jason:19,odysseus:18,theseus:17,adonis:16,medea:15};
+  return choices.slice().sort((a,b)=>(priority[b.god]||0)-(priority[a.god]||0))[0];
+ }
  const enemies=g.gods.filter(Boolean);
  const prefer=choices.map(a=>{
   const idx=godPriority.indexOf(a.god);
@@ -124,10 +137,10 @@ function optionsFor(g,p){
  }
  return actions;
 }
-function rankByFast(g,p,actions,limit){
+function rankByFast(g,p,actions,limit,table=null){
  const scored=[];
  for(const action of actions){
-  const result=simulate(g,p,action);
+  const result=simulate(g,p,action,table);
   if(!result)continue;
   let score=basePosition(result,p);
   if(result.winner===p)score+=WIN;
@@ -148,7 +161,7 @@ function rankByFast(g,p,actions,limit){
  * extra phases from Artemis, Demeter, Hephaestus, Prometheus and Hermes.
  * Returns a fully completed position to avoid one-action horizon traps.
  */
-function completeTurn(g,p,config,budget,depth=0){
+function completeTurn(g,p,config,budget,depth=0,table=null){
  if(g.winner!==null||g.turn!==p||g.phase==='ended'){
   return {score:leafScore(g,p),state:g,complete:true};
  }
@@ -159,11 +172,11 @@ function completeTurn(g,p,config,budget,depth=0){
  if(!opts.length)return {score:-WIN/2,state:g,complete:false};
  const width=['build','extraBuild'].includes(g.phase)?config.buildWidth:
   ['extraMove','hermesMove'].includes(g.phase)?config.extraWidth:config.branchWidth;
- const ranked=rankByFast(g,p,opts,width);
+ const ranked=rankByFast(g,p,opts,width,table);
  let best=null;
  for(const candidate of ranked){
   budget.nodes++;
-  let reply=completeTurn(candidate.result,p,config,budget,depth+1);
+  let reply=completeTurn(candidate.result,p,config,budget,depth+1,table);
   if(!best||reply.score>best.score)best=reply;
   if(best?.score>=WIN)break;
   if(budget.nodes>=config.maxNodes)break;
@@ -182,11 +195,11 @@ function projectedEnemyState(g,op,context={}){
  return trial;
 }
 /** Hard mode: exact next opponent winning move + bounded MOVE->BUILD counterplay. */
-function opponentResponse(g,p,context,config){
+function opponentResponse(g,p,context,config,table=null){
  if(g.winner!==null||g.phase!=='move'||g.turn===p)return 0;
  const enemy=g.turn,trial=projectedEnemyState(g,enemy,context);
  if(winningNow(trial,enemy).length)return -200_000;
- const candidates=rankByFast(trial,enemy,legalActions(trial,enemy),config.replyWidth);
+ const candidates=rankByFast(trial,enemy,legalActions(trial,enemy),config.replyWidth,table);
  let worst=basePosition(g,p),shown=false;
  for(const first of candidates){
   let value=basePosition(first.result,p);
@@ -194,7 +207,7 @@ function opponentResponse(g,p,context,config){
   if(first.result.turn===enemy){
    const follow=optionsFor(first.result,enemy);
    if(follow.length){
-    const branches=rankByFast(first.result,enemy,follow,config.replyBuildWidth);
+    const branches=rankByFast(first.result,enemy,follow,config.replyBuildWidth,table);
     for(const second of branches){
      if(second.result.winner===enemy)return -200_000;
      const z=basePosition(second.result,p);
@@ -212,18 +225,23 @@ function opponentResponse(g,p,context,config){
  * movement. This handles dome denial, immediate winning moves and multi-player
  * turn order without making every BOT step an unbounded minimax search.
  */
-function opponentTwoPly(g,p,context={}){
+function opponentTwoPly(g,p,context={},table=null){
  if(g.winner!==null||g.phase!=='move'||g.turn===p)return 0;
  const enemy=g.turn,trial=projectedEnemyState(g,enemy,context);
- const first=rankByFast(trial,enemy,optionsFor(trial,enemy),5);
+ const first=rankByFast(trial,enemy,optionsFor(trial,enemy),5,table);
  let worst=Infinity;
  const config={branchWidth:3,buildWidth:4,extraWidth:3,maxDepth:7,maxNodes:55};
  for(const a of first){
-  const next=completeTurn(a.result,enemy,config,{nodes:0},1);
+  const next=completeTurn(a.result,enemy,config,{nodes:0},1,table);
   const state=next.state;
   if(state.winner===enemy)return -360000;
   let score=basePosition(state,p);
-  if(next.complete&&state.turn===p&&winningNow(state,p).length)score+=900;
+  if(next.complete&&state.turn===p){
+   const threats=winningNow(state,enemy).length;
+   if(threats>=2)score-=2600+(threats-2)*350;
+   else if(threats===1)score-=240;
+   if(winningNow(state,p).length)score+=2200;
+  }
   if(!next.complete)score-=65;
   worst=Math.min(worst,score);
  }
@@ -245,14 +263,15 @@ function strategic(g,p,choices,difficulty,context={}){
   ?(choices.filter(a=>a.type==='endMove').length?choices.filter(a=>a.type==='endMove'):choices):choices;
  const immediate=candidates.filter(a=>a.type==='move'&&a.wins);
  if(immediate.length)return immediate[0];
- const root=rankByFast(g,p,candidates,config.rootWidth);
+ const table=new Map();
+ const root=rankByFast(g,p,candidates,config.rootWidth,table);
  if(!root.length)return choices[0];
  const results=[];
  // Allocate search fairly across candidates; a shared node budget used to
  // starve later candidates and make BOT play depend on root ordering.
  const perRootBudget=Math.max(12,Math.floor(config.maxNodes/root.length));
  for(const x of root){
-  const res=completeTurn(x.result,p,{...config,maxNodes:perRootBudget},{nodes:0},1);
+  const res=completeTurn(x.result,p,{...config,maxNodes:perRootBudget},{nodes:0},1,table);
   results.push({action:x.action,score:res.score,completed:res.complete,state:res.state});
  }
  if(!results.length)return choices[0];
@@ -261,8 +280,8 @@ function strategic(g,p,choices,difficulty,context={}){
   // Apply the opponent response only to the strongest candidates, keeping
   // resource consumption predictable on Cloudflare Workers Free.
   for(const x of results.slice(0,difficulty==='expert'?10:6)){
-   if(x.completed&&x.state.winner===null)x.score+=opponentResponse(x.state,p,context,config);
-   if(difficulty==='expert'&&x.completed&&x.state.winner===null)x.score+=opponentTwoPly(x.state,p,context);
+   if(x.completed&&x.state.winner===null)x.score+=opponentResponse(x.state,p,context,config,table);
+   if(difficulty==='expert'&&x.completed&&x.state.winner===null)x.score+=opponentTwoPly(x.state,p,context,table);
   }
  }
  results.sort((a,b)=>b.score-a.score);

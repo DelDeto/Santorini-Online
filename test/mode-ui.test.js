@@ -28,5 +28,5 @@ test('V1.4: responsive gameplay uses viewport height, expanded board and compact
  }
  assert.ok(css.includes('body:has(#game:not(.hidden))'));
  assert.ok(css.includes('overflow-x:auto'));
- assert.match(html,/V2\.2/);
+ assert.match(html,/V2\.5/);
 });
