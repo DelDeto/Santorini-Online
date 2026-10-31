@@ -369,7 +369,9 @@ function render(){
  $('phaseChip').textContent=phases[g.phase]||'CHƠI';
  const turnName=solo&&g.turn===1?'BOT':v.players[v.activeSeat]?.name||'Đối thủ';
  const messages={fleecePick:'Chọn thần dùng chung cho Cừu Vàng',ramPlace:'Chạm ô trống để đặt Cừu Vàng',godpick:'Chọn vị thần cho trận đấu',place:'Đặt hai quân lên bàn cờ',move:'Chọn quân rồi chạm ô sáng để đi',extraMove:'Artemis: đi thêm hoặc bỏ qua',hermesMove:'Hermes: tiếp tục đi ngang hoặc chọn quân để xây',tritonMove:'Triton: đi tiếp hoặc Bỏ qua',dionysusMove:'Chọn quân đối thủ để di chuyển',dionysusBuild:'Xây bằng quân đối thủ',heroPost:'Có thể dùng Hero Power hoặc Bỏ qua',heroDomes:'Chạm ô sáng để dựng mái vòm hoặc Bỏ qua',heroMedea:'Chạm ô có quân để hạ tầng hoặc Bỏ qua',heroSprint:'Atalanta: đi tiếp hoặc Bỏ qua để xây',heroCorner:'Odysseus: đẩy quân khác hoặc Bỏ qua',dionysusChoice:'Chọn đội đối thủ để điều khiển',aresRemove:'Ares: phá khối hoặc Bỏ qua',poseidonBuild:'Poseidon: xây thêm hoặc Bỏ qua',morpheusBuild:'Morpheus: xây từ kho dự trữ hoặc Bỏ qua',build:'Chạm ô sáng để xây',extraBuild:'Có thể xây thêm hoặc bỏ qua',ended:'Trận đấu kết thúc'};
- $('phaseLabel').textContent=!v.ready?'Đợi đủ '+(v.capacity||2)+' người':g.phase==='ended'?'Đã kết thúc':turn?messages[g.phase]:(turnName+' đang thực hiện lượt');
+ $('phaseLabel').textContent=!v.ready?'Đợi đủ '+(v.capacity||2)+' người':g.phase==='ended'?'Đã kết thúc':
+   turn&&g.phase==='poseidonBuild'?'POSEIDON · XÂY THÊM '+Math.max(0,3-(g.ctx?.bonusRemaining??3))+'/3':
+   turn?messages[g.phase]:(turnName+' đang thực hiện lượt');
  $('hint').textContent=!v.ready?'Sao chép link mời bạn bè tham gia.':turn?(g.phase==='move'&&g.ctx?.prometheusUsed?'Prometheus đã xây trước: không được di chuyển lên tầng.':messages[g.phase]):g.lastAction;
  renderGodPick(g);
  if(['extraMove','heroSprint'].includes(g.phase))S.selected=g.selected;

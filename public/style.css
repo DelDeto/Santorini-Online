@@ -572,3 +572,11 @@ body:has(#game:not(.hidden)){height:100dvh;max-height:100dvh;overflow:hidden}
 @media(max-height:520px) and (min-width:601px){
  .game .turn-decision .mini{min-height:29px;padding:4px 7px;font-size:10px}
 }
+
+/* Keep commands visible on cramped phones; Poseidon and Dionysus primary actions */
+.game .turn-decision .decision-special{background:#d2e5ff;color:#073c60;border:2px solid #7fa8e3}
+@media(max-width:700px){
+ .game .action-bar:has(.decision-special:not(.hidden)) .action-text{display:none}
+ .game .action-bar:has(.decision-special:not(.hidden)) .power-actions{display:none}
+ .game .action-bar:has(.decision-special:not(.hidden)) .turn-decision{width:100%;justify-content:center;gap:12px}
+}
