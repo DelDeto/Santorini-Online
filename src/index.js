@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import {newGame,applyAction,resetGame,legalActions,GODS,validGodFor,beginAdvancedTurn} from './game.js';
+import {newGame,applyAction,resetGame,legalActions,GODS,HEROES,validGodFor,beginAdvancedTurn} from './game.js';
 import {chooseBotAction,chooseMultiplayerBotAction} from './bot.js';
 import {recordReplay,soloCheckpoint,canUndoSolo,undoSolo} from './replay.js';
 
@@ -15,7 +15,8 @@ const GAME_MODES={
  trio:{capacity:3,ruleset:'god',label:'3 người · Đấu tự do'},
  teams:{capacity:4,ruleset:'god',label:'4 người · Đấu đội'},
  agora:{capacity:2,ruleset:'god',label:'Agora · Xoay thần'},
- fleece:{capacity:2,ruleset:'god',label:'Golden Fleece · Cừu vàng'}
+ fleece:{capacity:2,ruleset:'god',label:'Golden Fleece · Cừu vàng'},
+ heroes:{capacity:2,ruleset:'god',label:'Hero Powers · Một lần mỗi trận'}
 };
 function resolveMode(u){
  const wanted=u.searchParams.get('variant');
@@ -46,7 +47,7 @@ function availableActions(r){
 function view(r,spectators=0){
  const n=capacity(r);
  return {
-  game:r.game,legalActions:availableActions(r),gods:GODS,seatGods:r.seatGods||null,
+  game:r.game,legalActions:availableActions(r),gods:{...GODS,...HEROES},seatGods:r.seatGods||null,
   ruleset:r.game.ruleset||'classic',mode:r.mode||'online',modeId:r.modeId||r.game.modeId||'classic',modeLabel:GAME_MODES[r.modeId||r.game.modeId]?.label||'Santorini',difficulty:r.difficulty,
   capacity:n,activeSeat:seatForTurn(r),spectators,
   history:r.history||[],botPace:r.pace||'normal',replayCount:(r.replay||[]).length,canUndo:canUndoSolo(r),stats:r.stats||makeStats(n),
@@ -73,6 +74,8 @@ export class SantoriniRoom extends DurableObject{
    this.room.athenaAura??=null;
    // Backward compatibility: rooms persisted by V1.2 did not have Advanced Gods state.
    this.room.game.capacity??=this.room.capacity;
+   this.room.game.heroUsed??=Array(this.room.game.workers.length).fill(false);
+   this.room.game.heroMark??=null;
    this.room.game.modeId??=this.room.modeId;
    this.room.game.advanced??={chaos:{},morpheus:{},circe:null,bonus:null,erasures:[]};
    this.room.game.advanced.chaos??={};

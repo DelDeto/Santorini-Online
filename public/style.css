@@ -533,3 +533,11 @@ body:has(#game:not(.hidden)){height:100dvh;max-height:100dvh;overflow:hidden}
 .bot-entry-controls #botPaceSelect{min-width:105px;flex:1}
 #hintBtn{border:1px solid #c7d4a971;color:#e4edbc}
 @media(max-width:700px){.bot-entry-controls #botPaceSelect{width:100%;min-width:0;font-size:11px;padding:9px 5px}}
+
+/* V2.2 Hero Powers targets */
+.hero-overlay{position:fixed;inset:0;z-index:105;background:#031b2be8;display:grid;place-items:center;padding:16px;backdrop-filter:blur(5px)}
+.hero-overlay.hidden{display:none}
+.hero-panel{width:min(95vw,510px);max-height:84dvh;overflow:auto;background:#12394b;color:#fff;padding:18px;border:1px solid #8ecbdb6b;border-radius:18px}
+.hero-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:16px}
+.hero-choices button{min-height:42px;white-space:normal}
+#heroBtn{border:1px solid #d9b57191;color:#ffe1a1}
