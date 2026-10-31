@@ -1,3 +1,4 @@
+import {turnDecision} from './turn-decision.js?v=2.5.1';
 const $=id=>document.getElementById(id);
 const ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const S={room:null,seat:-1,view:null,ws:null,selected:null,heroChoices:[],mode:'online',ruleset:'classic',difficulty:'normal',capacity:2,variant:'duel',spectate:false,powerMode:'move',
@@ -386,10 +387,15 @@ function render(){
  $('domeBtn').classList.toggle('hidden',!dome);
  $('domeBtn').classList.toggle('chosen',S.powerMode==='dome');
  $('domeBtn').textContent=S.powerMode==='dome'?'↩ Xây tầng':'◆ Đặt mái vòm';
- $('skipBtn').classList.toggle('hidden',!(turn&&getActions('skip').length));
+ const decision=turnDecision(g,turn?actions():[]);
+ $('skipBtn').classList.toggle('hidden',!decision.canSkip);
+ $('skipBtn').textContent=decision.skipLabel;
+ $('skipBtn').title=decision.skipTitle;
+ $('skipBtn').setAttribute('aria-label',decision.skipTitle);
  $('advancedActions').innerHTML=turn?getActions('commandeer').map(a=>'<button type="button" class="mini" data-command="'+a.target+'">Điều khiển phe '+(a.target+1)+'</button>').join(''):'';
  const end=turn&&S.selected!==null&&getActions('endMove',S.selected).length>0;
  $('endMoveBtn').classList.toggle('hidden',!end);
+ $('turnDecision').classList.toggle('hidden',!(decision.canSkip||end));
  $('restartBtn').classList.toggle('hidden',g.phase!=='ended'||S.seat<0);
  $('fillBotsBtn').classList.toggle('hidden',!(S.seat===0&&!v.ready&&v.mode==='online'&&v.capacity>2&&g.revision===0));
  $('undoBtn').classList.toggle('hidden',!(S.seat===0&&v.canUndo));
