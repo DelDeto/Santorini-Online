@@ -420,13 +420,17 @@ function endTurn(g,p,force=false){
    g.lastAction='Agora: hai vị thần đổi chủ sau mỗi vòng!';
   }
  }
+ if(!force&&!g.ctx?.postDone&&g.modeId==='heroes'&&!g.heroUsed[p]&&heroPostActions(g,p).length){
+  g.phase='heroPost';g.lastAction='Có thể kích hoạt Hero Power một lần ở cuối lượt hoặc bỏ qua.';return;
+ }
+ if(g.heroMark?.target===p)g.heroMark=null;
  if(winnerChronus(g))return;
  if(g.workers.length===2&&g.athenaBlocked===p)g.athenaBlocked=null;
  g.ctx={};g.phase='move';g.selected=null;
  advance(g,p);
 }
 export function applyAction(g,p,a){
- if(!a||typeof a!=='object'||!['place','placeRam','move','build','skip','selectGod','prebuild','endMove','ferry','commandeer','removeBlock'].includes(a.type))throw Error('Hành động không hợp lệ.');
+ if(!a||typeof a!=='object'||!['place','placeRam','move','build','skip','selectGod','prebuild','endMove','ferry','commandeer','removeBlock','heroPrebuild','heroDeploy','heroCorner','heroMark','heroRemove','heroDome','heroUnbuild','activateHero'].includes(a.type))throw Error('Hành động không hợp lệ.');
  if(g.winner!==null)throw Error('Ván đã kết thúc.');
  if(!Number.isInteger(p)||p<0||p>=g.workers.length||p!==g.turn)throw Error('Chưa đến lượt của bạn.');
  const allowed=legalActions(g,p).find(x=>matches(x,a));
@@ -436,12 +440,48 @@ export function applyAction(g,p,a){
   g.fleeceGod=a.god;g.phase='place';g.turn=0;g.ctx={startSeat:0};
   g.lastAction='Golden Fleece: đã chọn '+GODS[a.god].name+' làm năng lực chung.';
  }else if(a.type==='selectGod'){
-  g.gods[p]=a.god;g.lastAction='Người chơi '+(p+1)+' chọn '+GODS[a.god].name+'.';
+  g.gods[p]=a.god;g.lastAction='Người chơi '+(p+1)+' chọn '+(GODS[a.god]||HEROES[a.god]).name+'.';
   if(p<g.gods.length-1)g.turn=p+1;
   else{
    g.turn=g.gods.indexOf('bia')>=0?g.gods.indexOf('bia'):0;
    g.ctx={startSeat:g.turn};g.phase='place';setupChaos(g);
   }
+  }else if(a.type==='heroPrebuild'){
+  g.board[a.row][a.col]++;
+  g.heroUsed[p]=true;g.ctx={...g.ctx,fixedWorker:a.worker,heroActivated:'achilles'};
+  g.lastAction='Achilles xây trước khi di chuyển, sẽ xây thêm sau khi đi.';
+ }else if(a.type==='heroDeploy'){
+  g.workers[p].push({row:a.row,col:a.col});g.heroUsed[p]=true;
+  g.selected=g.workers[p].length-1;g.phase='build';g.ctx={...g.ctx,lastMoved:g.selected};
+  g.lastAction='Jason đưa quân thứ ba ra rìa rồi chuẩn bị xây.';
+ }else if(a.type==='heroCorner'){
+  const enemy=1-p;
+  g.workers[enemy][a.worker]={row:a.row,col:a.col};
+  g.heroUsed[p]=true;g.phase='heroCorner';
+  g.ctx={...g.ctx,heroCornerAffected:[...(g.ctx.heroCornerAffected||[]),a.worker]};
+  g.lastAction='Odysseus đưa quân đối thủ đến một góc trống.';
+ }else if(a.type==='heroMark'){
+  g.heroUsed[p]=true;g.heroMark={owner:p,target:1-p,worker:a.worker};
+  g.ctx.postDone=true;g.lastAction='Adonis đánh dấu quân đối thủ phải đứng gần nếu có thể.';
+  endTurn(g,p,true);
+ }else if(a.type==='heroRemove'){
+  g.workers[1-p].splice(a.worker,1);g.heroUsed[p]=true;g.ctx.postDone=true;
+  g.lastAction='Theseus loại một quân cao hơn đúng hai tầng.';
+  endTurn(g,p,true);
+ }else if(a.type==='activateHero'){
+  const id=god(g,p);g.heroUsed[p]=true;
+  if(id==='atalanta'){g.phase='heroSprint';g.ctx={...g.ctx,heroSprintSteps:0};}
+  else if(id==='medea'){g.phase='heroMedea';g.ctx={...g.ctx,postDone:true,heroAffected:[]};}
+  else if(id==='heracles'||id==='polyphemus'){g.phase='heroDomes';g.ctx={...g.ctx,postDone:true,heroDomeCount:0};}
+  g.lastAction='Đã kích hoạt năng lực '+HEROES[id].name+'.';
+ }else if(a.type==='heroDome'){
+  g.board[a.row][a.col]=4;g.ctx.heroDomeCount=(g.ctx.heroDomeCount||0)+1;
+  g.lastAction='Hero xây một mái vòm đặc biệt.';
+  if(!heroDomeActions(g,p).length)endTurn(g,p,true);
+ }else if(a.type==='heroUnbuild'){
+  g.board[a.row][a.col]--;g.ctx.heroAffected.push(a.row+','+a.col);
+  g.lastAction='Medea gỡ một tầng dưới quân.';
+  if(!heroMedeaActions(g,p).length)endTurn(g,p,true);
  }else if(a.type==='place'){
   g.workers[p].push({row:a.row,col:a.col});
   g.lastAction='Người chơi '+(p+1)+' đã đặt quân '+g.workers[p].length+'/2.';
@@ -477,7 +517,7 @@ export function applyAction(g,p,a){
   g.selected=a.worker;g.phase='build';
   g.lastAction='Hermes kết thúc di chuyển và chọn quân để xây.';
  }else if(a.type==='move'){
-  const controlled=g.phase==='dionysusMove',actor=controlled?g.ctx.dionysusTarget:p;
+  const controlled=g.phase==='dionysusMove',sprinting=g.phase==='heroSprint',actor=controlled?g.ctx.dionysusTarget:p;
   const from={...g.workers[actor][a.worker]},before=g.board[from.row][from.col],after=g.board[a.row][a.col];
   const actorPower=controlled?null:power,blocker=pawnAt(g,a.row,a.col);
   if(blocker){
@@ -485,6 +525,7 @@ export function applyAction(g,p,a){
    else if(actorPower==='minotaur')g.workers[blocker.p][blocker.i]={row:a.row+(a.row-from.row),col:a.col+(a.col-from.col)};
   }
   g.workers[actor][a.worker]={row:a.row,col:a.col};
+  if(actorPower==='bellerophon'&&after===before+2)g.heroUsed[p]=true;
   if(actorPower==='bia'){
    const back={row:a.row+(a.row-from.row),col:a.col+(a.col-from.col)};
    const target=cell(back.row,back.col)?pawnAt(g,back.row,back.col):null;
@@ -503,6 +544,10 @@ export function applyAction(g,p,a){
   }else if(controlled){
    g.phase='dionysusBuild';g.selected=a.worker;
    g.lastAction='Dionysus: xây một khối bằng quân đối thủ (không thể thắng).';
+  }else if(sprinting){
+   g.phase='heroSprint';g.selected=a.worker;
+   g.ctx.heroSprintSteps=(g.ctx.heroSprintSteps||0)+1;
+   g.lastAction='Atalanta có thể đi tiếp hoặc Bỏ qua để xây.';
   }else if(actorPower==='athena'&&after>before){
    g.athenaBlocked=g.workers.length===2?1-p:p;
    if(actorPower==='artemis')g.phase='extraMove';else{g.phase='build';g.selected=a.worker;}
@@ -552,10 +597,12 @@ export function applyAction(g,p,a){
    if(!legalActions(g,p).some(x=>x.type==='build'))endTurn(g,p);
   }else endTurn(g,p);
  }else if(a.type==='skip'){
-  if(g.phase==='extraMove'||g.phase==='tritonMove'){
+  if(g.phase==='extraMove'||g.phase==='tritonMove'||g.phase==='heroSprint'){
    g.phase=power==='morpheus'?'morpheusBuild':'build';
    g.lastAction='Bỏ qua bước di chuyển thêm.';
-  }else if(g.phase==='extraBuild'||g.phase==='morpheusBuild')endTurn(g,p);
+  }else if(g.phase==='heroCorner')g.phase='move';
+  else if(['heroPost','heroDomes','heroMedea'].includes(g.phase)){g.ctx.postDone=true;endTurn(g,p,true);}
+  else if(g.phase==='extraBuild'||g.phase==='morpheusBuild')endTurn(g,p);
   else if(g.phase==='poseidonBuild'||g.phase==='aresRemove'||g.phase==='dionysusChoice'){
    g.ctx.postDone=true;endTurn(g,p,true);
   }
