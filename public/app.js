@@ -181,7 +181,7 @@ function connect(epoch){
   if(msg.type==='error'){message(msg.message);return;}
   if(msg.type==='left'){return;}
   if(msg.type==='pong')return;
-  if(msg.type==='replay'){S.replayFrames=Array.isArray(msg.frames)?msg.frames:[];renderReplay();return;}
+  if(msg.type==='replay'){S.replayFrames=Array.isArray(msg.frames)?msg.frames:[];$('replaySlider').value=String(Math.max(0,S.replayFrames.length-1));renderReplay();return;}
   const old=S.view?.game;
   if(msg.type==='hello'){S.seat=msg.seat;S.view=msg.view;}
   else if(msg.type==='state'){S.view=msg.view;}
