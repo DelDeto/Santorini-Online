@@ -35,5 +35,5 @@ test('Replays, undo and help overlay are wired to the interface',()=>{
  assert.match(worker,/undoSolo\(r,seat\)/);
 });
 test('Triton and Dionysus actions can be tapped on the board',()=>{
- assert.match(app,/hermesMove','tritonMove','dionysusMove'\]\.includes\(phase\)/);
+ assert.match(app,/hermesMove','tritonMove','dionysusMove','heroSprint'\]\.includes\(phase\)/);
 });
