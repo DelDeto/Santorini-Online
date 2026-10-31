@@ -10,7 +10,7 @@ const worker=readFileSync('src/index.js','utf8');
 test('V2.0 exposes Expert difficulty on client and server',()=>{
  assert.match(html,/value="expert"/);
  assert.match(worker,/LEVELS=\['easy','normal','hard','expert'\]/);
- assert.match(html,/V2\.5/);
+ assert.match(html,/V2\.6/);
 });
 test('Expert BOT chooses a legal move in 2, 3 and 4 person simulations',()=>{
  for(const capacity of [2,3,4]){

@@ -1,4 +1,4 @@
-import {turnDecision} from './turn-decision.js?v=2.5.1';
+import {turnDecision} from './turn-decision.js?v=2.6.0';
 const $=id=>document.getElementById(id);
 const ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const S={room:null,seat:-1,view:null,ws:null,selected:null,heroChoices:[],mode:'online',ruleset:'classic',difficulty:'normal',capacity:2,variant:'duel',spectate:false,powerMode:'move',
@@ -170,7 +170,7 @@ function enter(room,mode='online',ruleset='classic',capacity=2,spectate=false,va
 function ensure3d(){
  if(S.three || $('scene3d').dataset.state==='loading')return;
  $('scene3d').dataset.state='loading';
- import('./board3d.js?v=2.5.1').then(({createBoard3D})=>{
+ import('./board3d.js?v=2.6.0').then(({createBoard3D})=>{
   if(!S.active)return;
   S.three=createBoard3D($('scene3d'),tileClick);
   S.three.setQuality(S.quality);S.three.setLighting(S.lighting);

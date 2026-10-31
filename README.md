@@ -1,3 +1,14 @@
+# V2.6 — Chọn thần đầy đủ / 10 cơ bản / 20 nâng cao
+
+- **Basic Gods** (2 người): chỉ lựa chọn được mười thần cơ bản. Server không cho phép chọn thẻ nâng cao, bao gồm cả khi gửi lệnh trực tiếp qua WebSocket.
+- **Advanced Gods** (2 người): chỉ lựa chọn được hai mươi thần nâng cao. Server không cho phép chọn thẻ cơ bản. Hạn chế ghép thần như Circe/Eros tiếp tục được áp dụng.
+- Hai mode hoạt động với cả Solo BOT và phòng Multiplayer; mã `variant` giữ nguyên khi chia sẻ link và khi tái đấu.
+- Thẻ thần hiện đầy đủ mô tả, không ép mỗi thẻ vào chiều cao 95px như trước. Danh sách thẻ cuộn bên trong hộp chọn thần, không làm tăng chiều cao màn chơi.
+- Nút **ⓘ Xem hiệu ứng** mở trang thông tin chi tiết, gồm mô tả, cách kích hoạt kỹ năng và gợi ý chiến thuật trong game; nút **Chọn thần** tách riêng để tránh chạm nhầm.
+- Mode God Powers 30 thần `duel` vẫn được hỗ trợ khi truy cập phòng hoặc link cũ, nhưng không còn là lựa chọn mặc định. Các mode 3/4 người hiện vẫn sử dụng kho 30 thần như trước.
+- Kiểm thử unit: giới hạn số thần, không trộn nhóm, luật chọn hai thẻ khác nhau, giữ mode khi reset; integration smoke: hai phòng WebSocket cho hai nhóm thần.
+
+---
 # V2.5.1 — Power Effects UI Audit & Poseidon Fix
 
 - Fixed Poseidon's **Dừng xây thêm** after 0, 1 or 2 of the three optional bonus builds. This command is authorized by the game server and visible in a dedicated priority action area on PC/mobile, outside a horizontally scrolling toolbar.
