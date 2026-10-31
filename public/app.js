@@ -228,11 +228,11 @@ function tileClick(row,col){
  const g=v.game,phase=g.phase;
  if(phase==='place'){const a=getActions('place').find(a=>a.row===row&&a.col===col);if(a)send({type:'place',row,col});return;}
  if(phase==='ramPlace'){const a=getActions('placeRam').find(a=>a.row===row&&a.col===col);if(a)send({type:'placeRam',row,col});return;}
- if(['move','extraMove','hermesMove'].includes(phase)){
+ if(['move','extraMove','hermesMove','tritonMove','dionysusMove'].includes(phase)){
   const actor=phase==='dionysusMove'?g.ctx?.dionysusTarget:myTeam();
   const worker=g.workers[actor]?.findIndex(w=>w.row===row&&w.col===col);
   const allowedWorker=worker!==-1&&worker!==undefined&&getActions('move',worker).length+getActions('prebuild',worker).length+getActions('endMove',worker).length+getActions('ferry',worker).length>0;
-  if(allowedWorker&&!(phase==='extraMove'&&worker!==g.selected)){
+  if(allowedWorker&&(!['extraMove','tritonMove'].includes(phase)||worker===g.selected)){
    S.selected=worker;S.powerMode='move';beep(380);render();return;
   }
   const action=availableTiles().find(a=>a.row===row&&a.col===col);

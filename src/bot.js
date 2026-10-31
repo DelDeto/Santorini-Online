@@ -1,10 +1,10 @@
 import {applyAction,legalActions,GODS} from './game.js';
 
 /**
- * Santorini Strategic BOT V1.2.
+ * Santorini Strategic BOT V1.5–V2.0.
  * Uses only authoritative game actions, never bypasses God Power rules.
  * Easy: exploratory. Normal: completes its turn and blocks immediate wins.
- * Hard: wider complete-turn search plus a bounded opponent reply.
+ * Hard: bounded complete-turn search. Expert: wider tactical search + deeper reply checks.
  * No external API and no player data is transmitted.
  */
 const copy=g=>structuredClone(g);
@@ -111,7 +111,7 @@ function choosePlacement(g,p,choices,difficulty){
   }else score+=pos.row===2&&pos.col===2?2:0;
   const enemyDist=enemies.length?Math.min(...enemies.map(w=>distance(pos,w))):4;
   score+=(enemyDist===2?4:enemyDist===0?-8:enemyDist===1?-4:0);
-  return {a,score:score+Math.random()*(difficulty==='hard'?.08:2)};
+  return {a,score:score+Math.random()*(['hard','expert'].includes(difficulty)?.08:2)};
  }).sort((x,y)=>y.score-x.score)[0].a;
 }
 function optionsFor(g,p){
@@ -207,7 +207,10 @@ function opponentResponse(g,p,context,config){
  return shown?Math.max(-1000,Math.min(0,(worst-basePosition(g,p))*.6)):0;
 }
 function strategic(g,p,choices,difficulty,context={}){
- const config=difficulty==='hard'?{
+ const config=difficulty==='expert'?{
+  rootWidth:27,branchWidth:7,buildWidth:9,extraWidth:6,
+  maxDepth:8,maxNodes:1350,replyWidth:10,replyBuildWidth:7,noise:0
+ }:difficulty==='hard'?{
   rootWidth:25,branchWidth:5,buildWidth:7,extraWidth:5,
   maxDepth:6,maxNodes:530,replyWidth:6,replyBuildWidth:4,noise:.05
  }:{
@@ -220,18 +223,20 @@ function strategic(g,p,choices,difficulty,context={}){
  if(immediate.length)return immediate[0];
  const root=rankByFast(g,p,candidates,config.rootWidth);
  if(!root.length)return choices[0];
- const budget={nodes:0};
  const results=[];
+ // Allocate search fairly across candidates; a shared node budget used to
+ // starve later candidates and make BOT play depend on root ordering.
+ const perRootBudget=Math.max(12,Math.floor(config.maxNodes/root.length));
  for(const x of root){
-  const res=completeTurn(x.result,p,config,budget,1);
+  const res=completeTurn(x.result,p,{...config,maxNodes:perRootBudget},{nodes:0},1);
   results.push({action:x.action,score:res.score,completed:res.complete,state:res.state});
  }
  if(!results.length)return choices[0];
  results.sort((a,b)=>b.score-a.score);
- if(difficulty==='hard'){
+ if(difficulty==='hard'||difficulty==='expert'){
   // Apply the opponent response only to the strongest candidates, keeping
   // resource consumption predictable on Cloudflare Workers Free.
-  for(const x of results.slice(0,6)){
+  for(const x of results.slice(0,difficulty==='expert'?10:6)){
    if(x.completed&&x.state.winner===null)x.score+=opponentResponse(x.state,p,context,config);
   }
  }

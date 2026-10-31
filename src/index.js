@@ -5,8 +5,8 @@ import {chooseBotAction,chooseMultiplayerBotAction} from './bot.js';
 const BOT_TOKEN='bot:server-managed';
 const botToken=seat=>`${BOT_TOKEN}:${seat}`;
 const isBot=p=>p?.token===BOT_TOKEN||String(p?.token||'').startsWith(BOT_TOKEN+':');
-const makeBot=(seat,difficulty)=>({name:'BOT '+seat+' · '+({easy:'Tập sự',normal:'Chiến thuật',hard:'Bậc thầy'}[difficulty]||'Chiến thuật'),token:botToken(seat)});
-const LEVELS=['easy','normal','hard'];
+const makeBot=(seat,difficulty)=>({name:'BOT '+seat+' · '+({easy:'Tập sự',normal:'Chiến thuật',hard:'Bậc thầy',expert:'Chuyên gia'}[difficulty]||'Chiến thuật'),token:botToken(seat)});
+const LEVELS=['easy','normal','hard','expert'];
 const GAME_MODES={
  classic:{capacity:2,ruleset:'classic',label:'Classic · Không thần'},
  duel:{capacity:2,ruleset:'god',label:'God Powers · Đấu đôi'},
