@@ -37,16 +37,17 @@
     <input id="nameInput" maxlength="24" autocomplete="nickname" placeholder="Nhập tên của bạn">
 
     <div class="mode-choice" id="modeChoice" aria-label="Lựa chọn chế độ trước khi chơi">
-      <div class="mode-choice-heading"><strong>CHỌN CHẾ ĐỘ CHƠI</strong><span>7 chế độ · BOT hoặc Multiplayer</span></div>
+      <div class="mode-choice-heading"><strong>CHỌN CHẾ ĐỘ CHƠI</strong><span>8 chế độ · BOT hoặc Multiplayer</span></div>
       <div class="mode-grid" id="modeGrid" role="group" aria-label="Chế độ chơi">
         <button type="button" data-mode="classic" class="mode-card"><span class="mode-ico">♟</span><strong>Classic</strong><small>2 người · Không thần</small></button>
-        <button type="button" data-mode="duel" class="mode-card selected" aria-pressed="true"><span class="mode-ico">⚡</span><strong>God Powers</strong><small>2 người · 30 thần</small></button>
+        <button type="button" data-mode="basic" class="mode-card selected" aria-pressed="true"><span class="mode-ico">🌿</span><strong>10 Thần cơ bản</strong><small>2 người · Chỉ 10 thần</small></button>
+        <button type="button" data-mode="advanced" class="mode-card"><span class="mode-ico">⚡</span><strong>20 Thần nâng cao</strong><small>2 người · Chỉ 20 thần</small></button>
         <button type="button" data-mode="trio" class="mode-card"><span class="mode-ico">♜</span><strong>3 người</strong><small>Đấu tự do · Thần</small></button>
         <button type="button" data-mode="teams" class="mode-card"><span class="mode-ico">♟♟</span><strong>4 người</strong><small>Đấu đội 2v2 · Thần</small></button>
         <button type="button" data-mode="agora" class="mode-card"><span class="mode-ico">⇄</span><strong>Agora</strong><small>2 người · Thần luân chuyển</small></button>
         <button type="button" data-mode="fleece" class="mode-card"><span class="mode-ico">🐏</span><strong>Golden Fleece</strong><small>2 người · Tranh năng lực</small></button><button type="button" data-mode="heroes" class="mode-card"><span class="mode-ico">🛡</span><strong>Hero Powers</strong><small>2 người · 10 anh hùng</small></button>
       </div>
-      <div class="mode-description" id="modeDescription">⚡ God Powers — Mỗi người sở hữu một thần riêng, di chuyển và xây dựng để giành chiến thắng.</div>
+      <div class="mode-description" id="modeDescription">🌿 10 thần cơ bản — Mỗi người chọn một trong 10 thần cơ bản để đấu.</div>
       <div class="mode-disclaimer">Classic / 3 người / 4 người theo luật truyền thống; Golden Fleece theo biến thể cổ điển. Agora dùng quy tắc xoay thần được điều chỉnh cho phiên bản online.</div>
     </div>
     <div class="bot-entry"><div class="bot-entry-head"><div><strong>⚡ Đấu BOT · 2–4 người</strong><small>Chọn 1, 2 hoặc 3 BOT, không cần chờ người thật</small></div><span class="bot-mark">AI BOT</span></div>
