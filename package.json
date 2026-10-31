@@ -7,7 +7,9 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "node --test && node --check public/app.js && node --check public/board3d.js && node --check public/premium3d.js && node --check src/index.js && node --check src/game.js && node --check src/bot.js",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "benchmark": "node scripts/bot-tournament.mjs",
+    "benchmark:quick": "node scripts/bot-tournament.mjs --games=2 --maxActions=85 --mode=classic"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
