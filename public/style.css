@@ -545,3 +545,11 @@ body:has(#game:not(.hidden)){height:100dvh;max-height:100dvh;overflow:hidden}
 /* V2.2: Hero availability is visible to both participants */
 .power-god-chip.hero-used{opacity:.65;filter:saturate(.65)}
 .power-god-chip.hero-used small{color:#e1bd85;font-weight:850}
+
+/* V2.4: one-screen action narration in the 3D/2D stage. */
+.action-cue{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:max-content;max-width:min(86%,560px);z-index:8;padding:8px 15px;border-radius:100px;background:#073349df;border:1px solid #98e1e78f;box-shadow:0 8px 24px #052c3a66;color:#ecfbff;font-size:12px;font-weight:750;line-height:1.4;text-align:center;pointer-events:none;animation:cueRise .22s ease-out both}
+.action-cue.build{border-color:#ffdf8eb3;color:#fff3d6}
+.action-cue.hidden{display:none}
+@keyframes cueRise{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+@media(max-width:650px){.action-cue{font-size:10px;bottom:6px;padding:5px 10px;max-width:91%}}
+@media(prefers-reduced-motion:reduce){.action-cue{animation:none}}

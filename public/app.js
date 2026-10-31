@@ -2,7 +2,14 @@ const $=id=>document.getElementById(id);
 const ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const S={room:null,seat:-1,view:null,ws:null,selected:null,heroChoices:[],mode:'online',ruleset:'classic',difficulty:'normal',capacity:2,variant:'duel',spectate:false,powerMode:'move',
  sound:localStorage.getItem('santorini-sound')!=='false',quality:localStorage.getItem('santorini-quality')||'auto',lighting:localStorage.getItem('santorini-lighting')||'noon',epoch:0,attempt:0,active:false,three:null,oldRevision:-1,replayFrames:[],hintAction:null,pace:'normal'};
-let audio,toastTimer;
+let audio,toastTimer,actionCueTimer;
+function cueAction(g){
+ const e=$('actionCue');if(!e||!g?.lastAction)return;
+ e.textContent=g.lastAction.slice(0,115);
+ e.classList.toggle('build',/xây|dựng|mái vòm|khối/i.test(g.lastAction));
+ e.classList.remove('hidden');clearTimeout(actionCueTimer);
+ actionCueTimer=setTimeout(()=>e.classList.add('hidden'),1550);
+}
 const MODE_UI={
  classic:{n:2,god:false,title:'♟ CLASSIC',description:'Classic — Hai người đấu trí, không dùng năng lực thần. Mỗi lượt di chuyển một quân rồi xây một tầng.'},
  duel:{n:2,god:true,title:'⚡ GOD POWERS',description:'God Powers — Hai người chọn thần riêng trong 30 lá, sử dụng năng lực đặc biệt để chiến thắng.'},
@@ -207,7 +214,7 @@ function connect(epoch){
   else return;
   S.ruleset=S.view.ruleset??'classic';S.capacity=S.view.capacity||2;S.variant=S.view.modeId||S.variant;
   if(old&&old.revision!==S.view.game.revision){
-   S.hintAction=null;
+   S.hintAction=null;cueAction(S.view.game);
    if(S.view.game.ctx?.prometheusUsed||S.view.game.ctx?.heroActivated)S.powerMode='move';
    const g=S.view.game;
    if(g.phase==='move'&&g.ctx?.fixedWorker!==undefined)S.selected=g.ctx.fixedWorker;
