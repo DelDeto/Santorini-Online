@@ -19,7 +19,7 @@ async function until(fn,timeout=16000){
   throw Error('Timed out: '+output.slice(-2200));
 }
 async function connect(code,name,mode){
-  const path='/ws?room='+code+'&token='+token()+'&name='+encodeURIComponent(name)+(mode==='fleece'?'&variant=fleece':mode==='agora'?'&variant=agora':mode==='botfleece'?'&mode=bot&difficulty=normal&variant=fleece':mode==='bot'?'&mode=bot&difficulty=normal':mode==='bot3'?'&mode=bot&difficulty=normal&players=3&ruleset=god':mode==='bot4'?'&mode=bot&difficulty=normal&players=4&ruleset=god':mode==='god'?'&ruleset=god':mode==='botgod'?'&mode=bot&difficulty=normal&ruleset=god':mode==='3'?'&players=3':mode==='4'?'&players=4':mode==='watch'?'&spectate=1':'');
+  const path='/ws?room='+code+'&token='+token()+'&name='+encodeURIComponent(name)+(mode==='fleece'?'&variant=fleece':mode==='agora'?'&variant=agora':mode==='botfleece'?'&mode=bot&difficulty=normal&variant=fleece':mode==='bot'?'&mode=bot&difficulty=normal':mode==='bot3'?'&mode=bot&difficulty=normal&players=3&ruleset=god':mode==='bot4'?'&mode=bot&difficulty=normal&players=4&ruleset=god':mode==='god'?'&ruleset=god':mode==='botgod'?'&mode=bot&difficulty=normal&ruleset=god':mode==='3'?'&players=3':mode==='4'?'&players=4':mode==='heroes'?'&variant=heroes':mode==='watch'?'&spectate=1':'');
   const ws=new WebSocket('ws://127.0.0.1:'+PORT+path);sockets.push(ws);
   const inbox=[];
   ws.addEventListener('message',e=>{try{inbox.push(JSON.parse(e.data));}catch{}});
@@ -289,6 +289,43 @@ try{
   const botPlayed=await fleeceBot.until(v=>v.game.revision>botPlaying.game.revision,20000);
   assert.ok(botPlayed.history.some(x=>x.seat===1));
   console.log('PASS: V1.4 Golden Fleece human/BOT and online Agora turn rotation.');
+
+  // V2.2: Heroes are separate from Gods, and once-only Hero actions are
+  // authorized and persisted through actual Durable Object WebSockets.
+  const heroRoom=room();
+  const heroA=await connect(heroRoom,'Hero Achilles','heroes');
+  const heroB=await connect(heroRoom,'Hero Bellerophon','online');
+  const heroStart=await heroA.until(v=>v.ready&&v.modeId==='heroes'&&v.game.phase==='godpick');
+  assert.equal(heroStart.legalActions.filter(a=>a.type==='selectGod').length,10);
+  heroA.ws.send(JSON.stringify({type:'selectGod',god:'achilles'}));
+  await heroB.until(v=>v.game.turn===1&&v.game.gods[0]==='achilles');
+  heroB.ws.send(JSON.stringify({type:'selectGod',god:'bellerophon'}));
+  await heroA.until(v=>v.game.phase==='place');
+  heroA.ws.send(JSON.stringify({type:'place',row:0,col:0}));
+  await heroA.until(v=>v.game.workers[0].length===1);
+  heroA.ws.send(JSON.stringify({type:'place',row:0,col:1}));
+  await heroB.until(v=>v.game.turn===1);
+  heroB.ws.send(JSON.stringify({type:'place',row:4,col:4}));
+  await heroB.until(v=>v.game.workers[1].length===1);
+  heroB.ws.send(JSON.stringify({type:'place',row:4,col:3}));
+  const heroReady=await heroA.until(v=>v.game.phase==='move'&&v.activeSeat===0);
+  assert.equal(heroReady.modeId,'heroes');
+  const preHero=heroReady.legalActions.find(a=>a.type==='heroPrebuild');
+  assert.ok(preHero);
+  heroA.ws.send(JSON.stringify(preHero));
+  const afterPreHero=await heroA.until(v=>v.game.heroUsed[0]===true);
+  assert.equal(afterPreHero.game.phase,'move');
+  assert.equal(afterPreHero.legalActions.filter(a=>a.type==='heroPrebuild').length,0);
+  const heroMove=afterPreHero.legalActions.find(a=>a.type==='move');
+  assert.ok(heroMove);
+  heroA.ws.send(JSON.stringify(heroMove));
+  const heroBuild=await heroA.until(v=>v.game.phase==='build');
+  const heroBuildAction=heroBuild.legalActions.find(a=>a.type==='build');
+  assert.ok(heroBuildAction);
+  heroA.ws.send(JSON.stringify(heroBuildAction));
+  const heroNext=await heroB.until(v=>v.game.turn===1&&v.game.phase==='move');
+  assert.equal(heroNext.game.heroUsed[0],true);
+  console.log('PASS: V2.2 Heroes draft, one-time Achilles prebuild, move/build and server persistence.');
 
   // Leaving a room before game setup releases the seat.
   const exitRoom=room();
