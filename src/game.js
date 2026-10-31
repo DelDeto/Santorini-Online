@@ -11,6 +11,18 @@ export const GODS={
  pan:{name:'Pan',description:'Thắng khi di chuyển xuống ít nhất hai tầng.'},
  prometheus:{name:'Prometheus',description:'Có thể xây trước rồi đi, nhưng sau đó không được đi lên.'}
 };
+export const HEROES={
+ achilles:{name:'Achilles',kind:'hero',description:'Một lần: xây trước và sau khi di chuyển.'},
+ adonis:{name:'Adonis',kind:'hero',description:'Một lần: bắt một quân đối thủ kết thúc lượt kế gần quân bạn nếu có thể.'},
+ atalanta:{name:'Atalanta',kind:'hero',description:'Một lần: quân vừa đi tiếp tục di chuyển nhiều bước rồi xây.'},
+ bellerophon:{name:'Bellerophon',kind:'hero',description:'Một lần: leo lên hai tầng trong một bước.'},
+ heracles:{name:'Heracles',kind:'hero',description:'Một lần cuối lượt: hai quân có thể xây nhiều mái vòm cạnh mình.'},
+ jason:{name:'Jason',kind:'hero',description:'Một lần: đặt quân thứ ba ở rìa tầng 0 và xây.'},
+ medea:{name:'Medea',kind:'hero',description:'Một lần cuối lượt: tháo một tầng dưới các quân cạnh quân không di chuyển.'},
+ odysseus:{name:'Odysseus',kind:'hero',description:'Một lần đầu lượt: đưa quân địch đứng sát quân bạn đến các ô góc trống.'},
+ polyphemus:{name:'Polyphemus',kind:'hero',description:'Một lần cuối lượt: dựng tối đa hai mái vòm tại ô trống bất kỳ.'},
+ theseus:{name:'Theseus',kind:'hero',description:'Một lần cuối lượt: loại quân địch đứng cạnh và cao hơn đúng hai tầng.'}
+};
 export const SIMPLE_GODS=['apollo','artemis','athena','atlas','demeter','hephaestus','hermes','minotaur','pan','prometheus'];
 export const ADVANCED_GODS={
  aphrodite:{name:'Aphrodite',players:[2,4],description:'Nếu quân đối thủ bắt đầu lượt cạnh quân của bạn, nước di chuyển cuối phải kết thúc cạnh quân của bạn.'},
@@ -35,6 +47,7 @@ export const ADVANCED_GODS={
  zeus:{name:'Zeus',players:[2,3,4],description:'Có thể xây một khối ngay bên dưới quân vừa di chuyển (không làm thắng do xây).'}
 };
 Object.assign(GODS,ADVANCED_GODS);
+const heroAvailable=(g,p,id)=>g.modeId==='heroes'&&g.gods[p]===id&&!g.heroUsed?.[p];
 const isEdge=(r,c)=>r===0||r===4||c===0||c===4;
 const isOppositeEdge=(a,b)=>(a.row===0&&b.row===4)||(a.row===4&&b.row===0)||(a.col===0&&b.col===4)||(a.col===4&&b.col===0);
 const opponentsOf=(g,p)=>g.workers.map((_,i)=>i).filter(i=>i!==p&&!g.eliminated?.[i]);
@@ -60,7 +73,7 @@ export const validGodFor=(id,players,selected=[])=>{
 };
 export function newGame(ruleset='classic',players=2,modeId=null){
  const count=players===3?3:2;
- return {modeId:modeId||(players===3?'trio':players===4?'teams':ruleset==='god'?'gods':'classic'),fleeceGod:null,ram:null,agoraTurns:0,capacity:players,board:Array.from({length:5},()=>Array(5).fill(0)),workers:Array.from({length:count},()=>[]),phase:modeId==='fleece'?'fleecePick':ruleset==='god'?'godpick':'place',ruleset:ruleset==='god'?'god':'classic',gods:Array(count).fill(null),turn:0,selected:null,winner:null,eliminated:Array(count).fill(false),revision:0,lastAction:'Bắt đầu trận đấu.',ctx:{},athenaBlocked:null,advanced:{chaos:{},morpheus:{},circe:null,bonus:null,erasures:[]}};
+ return {modeId:modeId||(players===3?'trio':players===4?'teams':ruleset==='god'?'gods':'classic'),fleeceGod:null,ram:null,agoraTurns:0,heroUsed:Array(count).fill(false),heroMark:null,capacity:players,board:Array.from({length:5},()=>Array(5).fill(0)),workers:Array.from({length:count},()=>[]),phase:modeId==='fleece'?'fleecePick':ruleset==='god'?'godpick':'place',ruleset:ruleset==='god'?'god':'classic',gods:Array(count).fill(null),turn:0,selected:null,winner:null,eliminated:Array(count).fill(false),revision:0,lastAction:'Bắt đầu trận đấu.',ctx:{},athenaBlocked:null,advanced:{chaos:{},morpheus:{},circe:null,bonus:null,erasures:[]}};
 }
 const cell=(r,c)=>Number.isInteger(r)&&Number.isInteger(c)&&r>=0&&r<5&&c>=0&&c<5;
 const near=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col))===1;
@@ -80,9 +93,9 @@ function movedCopy(g,p,i,to,occupant=null){
  return {...g,workers};
 }
 function legalMoveDetails(g,p,i){
- const from=g.workers[p]?.[i];if(!from||!['move','extraMove','hermesMove','tritonMove','dionysusMove'].includes(g.phase))return [];
+ const from=g.workers[p]?.[i];if(!from||!['move','extraMove','hermesMove','tritonMove','dionysusMove','heroSprint'].includes(g.phase))return [];
  if(g.ctx?.fixedWorker!==undefined&&g.ctx.fixedWorker!==i)return [];
- if(['extraMove','tritonMove'].includes(g.phase)&&g.selected!==i)return [];
+ if(['extraMove','tritonMove','heroSprint'].includes(g.phase)&&g.selected!==i)return [];
  if(opponentsOf(g,p).some(other=>god(g,other)==='hypnus')&&g.workers[p].length>1&&g.workers[p].every((w,j)=>j===i||g.board[w.row][w.col]<g.board[from.row][from.col]))return [];
  const power=g.phase==='dionysusMove'?null:god(g,p),before=g.board[from.row][from.col],out=[];
  for(let row=Math.max(0,from.row-1);row<=Math.min(4,from.row+1);row++)
@@ -90,7 +103,8 @@ function legalMoveDetails(g,p,i){
   const dest={row,col};if(!near(from,dest))continue;
   // Golden Fleece Ram is a stationary obstacle: no Worker may occupy its square.
   if(g.ram&&eq(dest,g.ram))continue;
-  const h=g.board[row][col];if(h===4||h>before+1)continue;
+  const h=g.board[row][col],heroLeap=h===before+2&&g.phase==='move'&&heroAvailable(g,p,'bellerophon');
+  if(h===4||(h>before+1&&!heroLeap))continue;
   if(((g.workers.length===2?g.athenaBlocked===p:(g.athenaBlocked!==null&&g.athenaBlocked!==p))||g.ctx?.prometheusUsed)&&h>before)continue;
   if(g.phase==='hermesMove'&&h!==before)continue;
   if(g.phase==='extraMove'&&eq(dest,g.ctx?.origin))continue;
@@ -106,6 +120,7 @@ function legalMoveDetails(g,p,i){
     special='push';forced=back;
    }else continue;
   }
+  if(heroLeap)special='heroLeap';
   const projected=movedCopy(g,p,i,dest,blocker?{...blocker,forced}:null);
   if(power==='bia'&&!blocker){
    const forward={row:row+(row-from.row),col:col+(col-from.col)};
@@ -116,7 +131,7 @@ function legalMoveDetails(g,p,i){
   const rawWins=(h===3&&before<3)||(power==='pan'&&before-h>=2)||erosWin;
   const wins=rawWins&&g.phase!=='dionysusMove'&&!(isEdge(row,col)&&hasEnemyGod(g,p,'hera'));
   // Hermes may traverse an intermediate same-level square even when it is not a final build position.
-  if(!wins&&!legalBuilds(projected,dest,p).length&&!(power==='hermes'&&h===before)&&!(power==='triton'&&isEdge(row,col))&&power!=='morpheus'&&!(power==='zeus'&&h<3))continue;
+  if(!wins&&!legalBuilds(projected,dest,p).length&&!(power==='hermes'&&h===before)&&!(power==='triton'&&isEdge(row,col))&&power!=='morpheus'&&!(power==='zeus'&&h<3)&&!(power==='atalanta'&&g.phase==='heroSprint'))continue;
   out.push({row,col,worker:i,...(special?{special}:{}),...(wins?{wins:true}:{})});
  }
  return out;
@@ -155,6 +170,44 @@ function legalPrebuilds(g,p,i){
    return legalMoves(trial,p,i).length>0;
  }).map(x=>({type:'prebuild',worker:i,...x}));
 }
+
+function heroCornerActions(g,p){
+ const enemy=1-p,used=g.ctx?.heroCornerAffected||[];
+ const corners=[{row:0,col:0},{row:0,col:4},{row:4,col:0},{row:4,col:4}];
+ return g.workers[enemy].flatMap((w,worker)=>used.includes(worker)||!g.workers[p].some(own=>near(w,own))?[]:
+  corners.filter(x=>free(g,x.row,x.col)).map(x=>({type:'heroCorner',worker,...x})));
+}
+function heroPostActions(g,p){
+ const id=god(g,p),other=1-p;
+ if(g.modeId!=='heroes'||g.heroUsed?.[p])return [];
+ if(id==='adonis')return g.workers[other].map((w,worker)=>({type:'heroMark',worker}));
+ if(id==='theseus')return g.workers[other].flatMap((w,worker)=>
+  g.workers[p].some(own=>near(w,own)&&g.board[w.row][w.col]-g.board[own.row][own.col]===2)?[{type:'heroRemove',worker}]:[]);
+ if(id==='heracles')return g.workers[p].some(w=>legalBuilds(g,w).length)?[{type:'activateHero'}]:[];
+ if(id==='polyphemus')return g.board.some((row,r)=>row.some((h,c)=>free(g,r,c)))?[{type:'activateHero'}]:[];
+ if(id==='medea'){
+  const unmoved=g.workers[p][g.ctx?.lastMoved===0?1:0];
+  if(unmoved&&g.workers.some(team=>team.some(w=>near(w,unmoved)&&g.board[w.row][w.col]>0)))return [{type:'activateHero'}];
+ }
+ return [];
+}
+function heroDomeActions(g,p){
+ const id=god(g,p),out=[];
+ if(id==='polyphemus'&&(g.ctx?.heroDomeCount||0)>=2)return out;
+ for(let row=0;row<5;row++)for(let col=0;col<5;col++){
+  if(!free(g,row,col)||id==='heracles'&&!g.workers[p].some(w=>near(w,{row,col})))continue;
+  out.push({type:'heroDome',row,col});
+ }
+ return out;
+}
+function heroMedeaActions(g,p){
+ const unmoved=g.workers[p][g.ctx?.lastMoved===0?1:0],used=g.ctx?.heroAffected||[];
+ if(!unmoved)return [];
+ return g.workers.flatMap(team=>team.flatMap(w=>
+  near(w,unmoved)&&g.board[w.row][w.col]>0&&!used.includes(w.row+','+w.col)?
+  [{type:'heroUnbuild',row:w.row,col:w.col}]:[]));
+}
+
 export function legalActions(g,p=g.turn){
  if(g.winner!==null||p!==g.turn)return [];
  if(g.phase==='fleecePick')return SIMPLE_GODS.filter(id=>validGodFor(id,2)).map(god=>({type:'selectGod',god}));
