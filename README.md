@@ -1,3 +1,15 @@
+# Santorini Online — V2.2 Hero Powers & 3D Character Actions
+
+## V2.1–V2.2 · Hoàn thiện hạng mục còn thiếu
+- Động tác nhân vật 3D: tay, bước chân, hướng quay, cử chỉ xây và hạt bụi; tôn trọng cài đặt giảm chuyển động.
+- BOT Expert: bổ sung kiểm tra chuỗi phản đòn trọn lượt (đi + xây), tránh chỉ nhìn 1 thao tác; vẫn giới hạn node để tối ưu Workers Free.
+- Solo có **Gợi ý** (chỉ trả nước hợp lệ khi đến lượt mình); tốc độ BOT **Chậm/Vừa/Nhanh**.
+- Chế độ **Hero Powers 2 người** với 10 Hero Powers từ quy tắc Golden Fleece/Heroes cổ điển: Achilles, Adonis, Atalanta, Bellerophon, Heracles, Jason, Medea, Odysseus, Polyphemus, Theseus.
+- Hero sử dụng một lần trong mỗi ván, xử lý nước đi tại server; biểu mẫu chọn mục tiêu và hướng dẫn tiếng Việt.
+
+**Phạm vi:** 10 Hero Powers ở trên thuộc bộ quy tắc cũ (2017), không thay thế toàn bộ 100 God Cards hoặc 12 Mode Cards của Santorini Pantheon mới. Bộ 30 God Powers và sáu mode trước đó vẫn được giữ nguyên. 3D sử dụng các hình khối điêu khắc bằng Three.js; chưa có model có xương được tạo bằng Blender. Replay vẫn là bàn 2D theo bước.
+
+---
 # Santorini Online — V2.0 Tactical Experience
 
 Bản phát hành V2.0 tập trung vào **ổn định gameplay, chiến thuật BOT, replay và UX PC/mobile**. Giữ nguyên board Three.js 3D với fallback 2D; room state được Durable Objects xác thực.

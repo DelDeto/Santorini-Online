@@ -118,8 +118,8 @@ function optionsFor(g,p){
  let actions=legalActions(g,p);
  // Hermes can otherwise cycle indefinitely on equal-level squares.
  // Ending movement after a small number of steps is strategically sensible.
- if((g.phase==='hermesMove'&&(g.ctx?.hermesSteps||0)>=3)||(g.phase==='tritonMove'&&(g.ctx?.tritonSteps||0)>=4)){
-  const ends=actions.filter(a=>a.type=== (g.phase==='tritonMove'?'skip':'endMove'));
+ if((g.phase==='hermesMove'&&(g.ctx?.hermesSteps||0)>=3)||(g.phase==='tritonMove'&&(g.ctx?.tritonSteps||0)>=4)||(g.phase==='heroSprint'&&(g.ctx?.heroSprintSteps||0)>=4)){
+  const ends=actions.filter(a=>a.type=== (g.phase==='tritonMove'||g.phase==='heroSprint'?'skip':'endMove'));
   if(ends.length)return ends;
  }
  return actions;

@@ -37,7 +37,7 @@ try{
     try{const res=await fetch(base+'/api/health');if(res.ok){health=await res.json();break;}}catch{}
     await delay(300);
   }
-  assert.equal(health?.version,'2.0.0','server should boot with V2.0');
+  assert.equal(health?.version,'2.2.0','server should boot with V2.2');
   const html=await (await fetch(base)).text();
   assert.match(html,/id="demoBtn"/);
   const og=await fetch(base+'/og.png');
