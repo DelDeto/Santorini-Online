@@ -528,3 +528,8 @@ body:has(#game:not(.hidden)){height:100dvh;max-height:100dvh;overflow:hidden}
 .replay-nav input{flex:1;max-width:320px;min-width:0;accent-color:#4ccde1}
 #undoBtn{border-color:#e6be7866;color:#ffdfaa}
 @media(max-width:700px){.tutorial-panel{padding:14px;border-radius:14px}.tutorial-panel li{font-size:12px}.replay-board{width:min(100%,210px)}}
+
+/* V2.1: explicit BOT pace and training cue */
+.bot-entry-controls #botPaceSelect{min-width:105px;flex:1}
+#hintBtn{border:1px solid #c7d4a971;color:#e4edbc}
+@media(max-width:700px){.bot-entry-controls #botPaceSelect{width:100%;min-width:0;font-size:11px;padding:9px 5px}}

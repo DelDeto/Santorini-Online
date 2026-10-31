@@ -8,6 +8,7 @@ const botToken=seat=>`${BOT_TOKEN}:${seat}`;
 const isBot=p=>p?.token===BOT_TOKEN||String(p?.token||'').startsWith(BOT_TOKEN+':');
 const makeBot=(seat,difficulty)=>({name:'BOT '+seat+' · '+({easy:'Tập sự',normal:'Chiến thuật',hard:'Bậc thầy',expert:'Chuyên gia'}[difficulty]||'Chiến thuật'),token:botToken(seat)});
 const LEVELS=['easy','normal','hard','expert'];
+const BOT_PACES={slow:{setup:1150,turn:1850},normal:{setup:750,turn:1250},fast:{setup:450,turn:730}};
 const GAME_MODES={
  classic:{capacity:2,ruleset:'classic',label:'Classic · Không thần'},
  duel:{capacity:2,ruleset:'god',label:'God Powers · Đấu đôi'},
@@ -27,7 +28,7 @@ function resolveMode(u){
 const cleanName=value=>String(value??'Người chơi').trim().slice(0,24).replace(/[<>]/g,'')||'Người chơi';
 const team=seat=>seat%2;
 const makeStats=(n=2)=>({wins:Array(n===3?3:2).fill(0),matches:0});
-function freshRoom(){return {game:newGame(),players:[null,null],mode:null,modeId:'classic',difficulty:'normal',ruleset:'classic',capacity:2,activeSeat:0,nextTeam0:0,seatGods:null,draftIndex:0,athenaAura:null,history:[],replay:[],undo:null,stats:makeStats()};}
+function freshRoom(){return {game:newGame(),players:[null,null],mode:null,modeId:'classic',difficulty:'normal',pace:'normal',ruleset:'classic',capacity:2,activeSeat:0,nextTeam0:0,seatGods:null,draftIndex:0,athenaAura:null,history:[],replay:[],undo:null,stats:makeStats()};}
 function capacity(r){return [2,3,4].includes(r.capacity)?r.capacity:2;}
 function ready(r){return r.players.length===capacity(r)&&r.players.every((p,i)=>!!p||(capacity(r)===3&&!['godpick','place'].includes(r.game.phase)&&r.game.eliminated?.[i]));}
 function seatForTurn(r){
@@ -48,7 +49,7 @@ function view(r,spectators=0){
   game:r.game,legalActions:availableActions(r),gods:GODS,seatGods:r.seatGods||null,
   ruleset:r.game.ruleset||'classic',mode:r.mode||'online',modeId:r.modeId||r.game.modeId||'classic',modeLabel:GAME_MODES[r.modeId||r.game.modeId]?.label||'Santorini',difficulty:r.difficulty,
   capacity:n,activeSeat:seatForTurn(r),spectators,
-  history:r.history||[],replayCount:(r.replay||[]).length,canUndo:canUndoSolo(r),stats:r.stats||makeStats(n),
+  history:r.history||[],botPace:r.pace||'normal',replayCount:(r.replay||[]).length,canUndo:canUndoSolo(r),stats:r.stats||makeStats(n),
   players:r.players.map((p,i)=>({name:p?.name??('Ghế '+(i+1)+' · Đang chờ'),joined:!!p,seat:i,team:n===3?i:team(i),bot:isBot(p)})),
   ready:ready(r)
  };
@@ -61,6 +62,7 @@ export class SantoriniRoom extends DurableObject{
    this.room.capacity=capacity(this.room);
    this.room.modeId??=this.room.game.modeId||(this.room.capacity===3?'trio':this.room.capacity===4?'teams':this.room.ruleset==='god'?'duel':'classic');
    this.room.history??=[];
+   this.room.pace??='normal';
    this.room.replay??=[];
    this.room.undo??=null;
    this.room.stats??=makeStats();
@@ -90,7 +92,8 @@ export class SantoriniRoom extends DurableObject{
   const seat=seatForTurn(r);
   if(isBot(r.players[seat])){
    const setup=['godpick','fleecePick','ramPlace','place'].includes(r.game.phase);
-   await this.ctx.storage.setAlarm(Date.now()+(setup?660:1050));
+   const pace=BOT_PACES[r.pace]||BOT_PACES.normal;
+   await this.ctx.storage.setAlarm(Date.now()+(setup?pace.setup:pace.turn));
   }
  }
  resolveBlockedTeam(){
@@ -153,6 +156,7 @@ record(action,seat,oldWinner,oldRevision){
    r.activeSeat=r.capacity===4?2:0;r.nextTeam0=0;r.history=[];r.replay=[];r.undo=null;r.stats=makeStats(r.capacity);
    if(r.mode==='bot'){
     r.difficulty=LEVELS.includes(u.searchParams.get('difficulty'))?u.searchParams.get('difficulty'):'normal';
+    r.pace=Object.hasOwn(BOT_PACES,u.searchParams.get('pace'))?u.searchParams.get('pace'):'normal';
     for(let seat=1;seat<r.capacity;seat++)r.players[seat]=makeBot(seat,r.difficulty);
    }
   }
@@ -217,13 +221,21 @@ record(action,seat,oldWinner,oldRevision){
     this.send(ws,{type:'error',message:'Chỉ chủ phòng được thêm BOT trước khi bắt đầu ván.'});return;
    }
    const level=LEVELS.includes(action.difficulty)?action.difficulty:'normal';
-   r.difficulty=level;
+   r.difficulty=level;r.pace=Object.hasOwn(BOT_PACES,action.pace)?action.pace:'normal';
    for(let i=0;i<capacity(r);i++)if(!r.players[i])r.players[i]=makeBot(i,level);
    r.mode='hybrid';
    await this.persist();this.broadcast();await this.scheduleBot();return;
   }
   if(!authorized){this.send(ws,{type:'error',message:'Bạn đang xem phòng hoặc đã rời ghế.'});return;}
   if(!ready(r)){this.send(ws,{type:'error',message:'Đợi đủ người vào phòng.'});return;}
+  if(action.type==='hint'){
+   if(r.mode!=='bot'||seat!==0||seat!==seatForTurn(r)||r.game.phase==='ended'){
+    this.send(ws,{type:'error',message:'Gợi ý chiến thuật chỉ hỗ trợ lượt Solo của bạn.'});return;
+   }
+   const choice=chooseMultiplayerBotAction(r.game,'hard',0,availableActions(r));
+   if(choice)this.send(ws,{type:'hint',action:choice});
+   return;
+  }
   if(action.type==='undo'){
    if(!undoSolo(r,seat)){this.send(ws,{type:'error',message:'Chỉ có thể hoàn tác hành động Solo gần nhất trước khi BOT thực hiện.'});return;}
    await this.persist();this.broadcast();await this.scheduleBot();return;

@@ -206,6 +206,30 @@ function opponentResponse(g,p,context,config){
  }
  return shown?Math.max(-1000,Math.min(0,(worst-basePosition(g,p))*.6)):0;
 }
+/**
+ * Bounded adversarial full-turn reply search.
+ * We compare complete move+build sequences, not only the opponent's first
+ * movement. This handles dome denial, immediate winning moves and multi-player
+ * turn order without making every BOT step an unbounded minimax search.
+ */
+function opponentTwoPly(g,p,context={}){
+ if(g.winner!==null||g.phase!=='move'||g.turn===p)return 0;
+ const enemy=g.turn,trial=projectedEnemyState(g,enemy,context);
+ const first=rankByFast(trial,enemy,optionsFor(trial,enemy),5);
+ let worst=Infinity;
+ const config={branchWidth:3,buildWidth:4,extraWidth:3,maxDepth:7,maxNodes:55};
+ for(const a of first){
+  const next=completeTurn(a.result,enemy,config,{nodes:0},1);
+  const state=next.state;
+  if(state.winner===enemy)return -360000;
+  let score=basePosition(state,p);
+  if(next.complete&&state.turn===p&&winningNow(state,p).length)score+=900;
+  if(!next.complete)score-=65;
+  worst=Math.min(worst,score);
+ }
+ return worst===Infinity?0:Math.max(-30000,Math.min(5000,(worst-basePosition(g,p))*1.2));
+}
+
 function strategic(g,p,choices,difficulty,context={}){
  const config=difficulty==='expert'?{
   rootWidth:27,branchWidth:7,buildWidth:9,extraWidth:6,
@@ -238,6 +262,7 @@ function strategic(g,p,choices,difficulty,context={}){
   // resource consumption predictable on Cloudflare Workers Free.
   for(const x of results.slice(0,difficulty==='expert'?10:6)){
    if(x.completed&&x.state.winner===null)x.score+=opponentResponse(x.state,p,context,config);
+   if(difficulty==='expert'&&x.completed&&x.state.winner===null)x.score+=opponentTwoPly(x.state,p,context);
   }
  }
  results.sort((a,b)=>b.score-a.score);

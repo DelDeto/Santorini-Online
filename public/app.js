@@ -1,7 +1,7 @@
 const $=id=>document.getElementById(id);
 const ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const S={room:null,seat:-1,view:null,ws:null,selected:null,mode:'online',ruleset:'classic',difficulty:'normal',capacity:2,variant:'duel',spectate:false,powerMode:'move',
- sound:localStorage.getItem('santorini-sound')!=='false',quality:localStorage.getItem('santorini-quality')||'auto',lighting:localStorage.getItem('santorini-lighting')||'noon',epoch:0,attempt:0,active:false,three:null,oldRevision:-1,replayFrames:[]};
+ sound:localStorage.getItem('santorini-sound')!=='false',quality:localStorage.getItem('santorini-quality')||'auto',lighting:localStorage.getItem('santorini-lighting')||'noon',epoch:0,attempt:0,active:false,three:null,oldRevision:-1,replayFrames:[],hintAction:null,pace:'normal'};
 let audio,toastTimer;
 const MODE_UI={
  classic:{n:2,god:false,title:'♟ CLASSIC',description:'Classic — Hai người đấu trí, không dùng năng lực thần. Mỗi lượt di chuyển một quân rồi xây một tầng.'},
@@ -140,7 +140,7 @@ function roomCode(){return Array.from(crypto.getRandomValues(new Uint32Array(8))
 function seatToken(room){const key='santorini-seat:'+room;let t=localStorage.getItem(key);if(!t){t=Array.from(crypto.getRandomValues(new Uint8Array(24)),x=>x.toString(16).padStart(2,'0')).join('');localStorage.setItem(key,t);}return t;}
 function enter(room,mode='online',ruleset='classic',capacity=2,spectate=false,variant=chosenMode){
  S.mode=mode;S.ruleset=ruleset;S.capacity=capacity;S.variant=variant;S.spectate=spectate;S.room=room;S.seat=-1;S.active=true;S.view=null;S.selected=null;S.attempt=0;S.epoch++;S.oldRevision=-1;S.powerMode='move';
- S.difficulty=$('difficultySelect').value;
+ S.difficulty=$('difficultySelect').value;S.pace=$('botPaceSelect').value;
  $('landing').classList.add('hidden');$('game').classList.remove('hidden');$('exitBtn').classList.remove('hidden');
  history.replaceState({},'',location.pathname+'?room='+encodeURIComponent(room)+(mode==='bot'?'&mode=bot':ruleset==='god'?'&ruleset=god':'')+(capacity>2?'&players='+capacity:'')+'&variant='+encodeURIComponent(S.variant)+(spectate?'&spectate=1':''));
  connect(S.epoch);render();ensure3d();
@@ -167,7 +167,7 @@ function connect(epoch){
  localStorage.setItem('santorini-name',name);
  const url=new URL((location.protocol==='https:'?'wss:':'ws:')+'//'+location.host+'/ws');
  url.searchParams.set('room',S.room);url.searchParams.set('token',seatToken(S.room));url.searchParams.set('name',name);
- if(S.mode==='bot'){url.searchParams.set('mode','bot');url.searchParams.set('difficulty',S.difficulty);}
+ if(S.mode==='bot'){url.searchParams.set('mode','bot');url.searchParams.set('difficulty',S.difficulty);url.searchParams.set('pace',S.pace);}
  url.searchParams.set('variant',S.variant);
  if(S.capacity>2)url.searchParams.set('players',String(S.capacity));
  if(S.spectate)url.searchParams.set('spectate','1');
@@ -181,6 +181,13 @@ function connect(epoch){
   if(msg.type==='error'){message(msg.message);return;}
   if(msg.type==='left'){return;}
   if(msg.type==='pong')return;
+  if(msg.type==='hint'){
+   const a=msg.action;S.hintAction=a;
+   if(a?.worker!==undefined){S.selected=a.worker;S.powerMode='move';}
+   const description=a?.row!==undefined?'ô ('+(a.row+1)+','+(a.col+1)+')':'nút hành động tương ứng';
+   message('💡 '+({move:'Di chuyển',build:'Xây',place:'Đặt quân',selectGod:'Chọn thần',skip:'Bỏ qua',endMove:'Kết thúc di chuyển'}[a?.type]||'Nước gợi ý')+' → '+(a?.god||description));
+   render();return;
+  }
   if(msg.type==='replay'){S.replayFrames=Array.isArray(msg.frames)?msg.frames:[];$('replaySlider').value=String(Math.max(0,S.replayFrames.length-1));renderReplay();return;}
   const old=S.view?.game;
   if(msg.type==='hello'){S.seat=msg.seat;S.view=msg.view;}
@@ -188,6 +195,7 @@ function connect(epoch){
   else return;
   S.ruleset=S.view.ruleset??'classic';S.capacity=S.view.capacity||2;S.variant=S.view.modeId||S.variant;
   if(old&&old.revision!==S.view.game.revision){
+   S.hintAction=null;
    if(S.view.game.ctx?.prometheusUsed)S.powerMode='move';
    const g=S.view.game;
    if(g.phase==='move'&&g.ctx?.fixedWorker!==undefined)S.selected=g.ctx.fixedWorker;
@@ -353,6 +361,7 @@ function render(){
  $('restartBtn').classList.toggle('hidden',g.phase!=='ended'||S.seat<0);
  $('fillBotsBtn').classList.toggle('hidden',!(S.seat===0&&!v.ready&&v.mode==='online'&&v.capacity>2&&g.revision===0));
  $('undoBtn').classList.toggle('hidden',!(S.seat===0&&v.canUndo));
+ $('hintBtn').classList.toggle('hidden',!(turn&&v.mode==='bot'&&S.seat===0));
  $('winOverlay').classList.toggle('hidden',g.phase!=='ended');
  $('rematchBtn').classList.toggle('hidden',S.seat<0);
  if(g.phase==='ended'){
@@ -395,7 +404,8 @@ $('demoBtn').onclick=()=>{
  const config=MODE_UI[chosenMode];
  enter(roomCode(),'bot',config.god?'god':'classic',config.n,false,chosenMode);
 };
-$('fillBotsBtn').onclick=()=>send({type:'fillBots',difficulty:$('difficultySelect').value});
+$('fillBotsBtn').onclick=()=>send({type:'fillBots',difficulty:$('difficultySelect').value,pace:$('botPaceSelect').value});
+$('hintBtn').onclick=()=>send({type:'hint'});
 $('undoBtn').onclick=()=>send({type:'undo'});
 $('joinBtn').onclick=()=>{const room=$('codeInput').value.trim().toUpperCase();if(!/^[A-Z2-9]{6,10}$/.test(room))return message('Mã phòng không hợp lệ.');enter(room,'online','classic');};
 $('watchBtn').onclick=()=>{const room=$('codeInput').value.trim().toUpperCase();if(!/^[A-Z2-9]{6,10}$/.test(room))return message('Mã phòng không hợp lệ.');enter(room,'online','classic',2,true);};
@@ -404,7 +414,7 @@ $('nameInput').onkeydown=e=>{if(e.key==='Enter')$('createBtn').click();};
 $('copyBtn').onclick=async()=>{const link=location.origin+location.pathname+'?room='+S.room+(S.ruleset==='god'?'&ruleset=god':'')+(S.capacity>2?'&players='+S.capacity:'')+'&variant='+encodeURIComponent(S.variant);try{await navigator.clipboard.writeText(link);message('Đã sao chép link mời.');}catch{prompt('Link mời',link);}};
 $('exitBtn').onclick=()=>{
  if(S.seat>=0&&S.ws?.readyState===WebSocket.OPEN)S.ws.send(JSON.stringify({type:'leave'}));
- S.active=false;S.epoch++;S.ws?.close();S.view=null;S.seat=-1;S.room=null;S.replayFrames=[];
+ S.active=false;S.epoch++;S.ws?.close();S.view=null;S.seat=-1;S.room=null;S.replayFrames=[];S.hintAction=null;
  $('historyOverlay').classList.add('hidden');$('modeOverlay').classList.add('hidden');closePowers();
  S.three?.destroy();S.three=null;
  $('scene3d').classList.remove('ready');$('scene3d').classList.remove('hidden');$('scene3d').dataset.state='';
