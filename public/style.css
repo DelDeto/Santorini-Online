@@ -553,3 +553,30 @@ body:has(#game:not(.hidden)){height:100dvh;max-height:100dvh;overflow:hidden}
 @keyframes cueRise{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
 @media(max-width:650px){.action-cue{font-size:10px;bottom:6px;padding:5px 10px;max-width:91%}}
 @media(prefers-reduced-motion:reduce){.action-cue{animation:none}}
+
+/* V2.5.1 — Primary decisions are always visible outside the scrollable powers strip. */
+.game .turn-decision{display:flex;align-items:center;gap:4px;flex:0 0 auto;min-width:max-content;position:relative;z-index:8;overflow:visible}
+.game .turn-decision.hidden{display:none!important}
+.game .turn-decision .mini{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;border-radius:9px;padding:8px 11px;font-size:11px;font-weight:900;line-height:1.15;min-height:34px}
+.game .turn-decision .mini.hidden{display:none!important}
+.game .turn-decision .decision-skip{background:#fce8a6;color:#493606;border:2px solid #c89230;box-shadow:0 1px 8px #b68e5660}
+.game .turn-decision .decision-end{background:#d9fff0;color:#124f3d;border:2px solid #68c7a4}
+.game .action-bar:has(.turn-decision:not(.hidden)) .action-text{flex:1 1 110px;min-width:65px}
+.game .action-bar:has(.turn-decision:not(.hidden)) .power-actions{flex:1 1 0;max-width:30%;justify-content:flex-start}
+@media(max-width:700px){
+ .game .turn-decision .mini{min-height:31px;padding:6px 7px;font-size:10px}
+ .game .action-bar:has(.turn-decision:not(.hidden)) .action-text{min-width:56px;flex:1 1 65px}
+ .game .action-bar:has(.turn-decision:not(.hidden)) .action-text span{display:none}
+ .game .action-bar:has(.turn-decision:not(.hidden)) .power-actions{max-width:24%;flex:1 1 20px}
+}
+@media(max-height:520px) and (min-width:601px){
+ .game .turn-decision .mini{min-height:29px;padding:4px 7px;font-size:10px}
+}
+
+/* Keep commands visible on cramped phones; Poseidon and Dionysus primary actions */
+.game .turn-decision .decision-special{background:#d2e5ff;color:#073c60;border:2px solid #7fa8e3}
+@media(max-width:700px){
+ .game .action-bar:has(.decision-special:not(.hidden)) .action-text{display:none}
+ .game .action-bar:has(.decision-special:not(.hidden)) .power-actions{display:none}
+ .game .action-bar:has(.decision-special:not(.hidden)) .turn-decision{width:100%;justify-content:center;gap:12px}
+}

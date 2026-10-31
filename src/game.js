@@ -295,6 +295,8 @@ export function legalActions(g,p=g.turn){
   }
   if(g.phase==='morpheusBuild'&&(g.advanced?.morpheus?.[p]||0)<=0)positions=[];
   const out=positions.map(pos=>({type:'build',...pos}));
+   // Morpheus may exchange stored blocks for domes and may choose not to build.
+   if(g.phase==='morpheusBuild')out.push(...positions.map(pos=>({type:'build',...pos,dome:true})));
   if(g.phase==='build'&&god(g,p)==='selene'){
    const female=g.workers[p][1];
    if(female)out.push(...legalBuilds(g,female,p).map(pos=>({type:'build',...pos,dome:true})));
@@ -604,8 +606,13 @@ export function applyAction(g,p,a){
   else if(['heroPost','heroDomes','heroMedea'].includes(g.phase)){g.ctx.postDone=true;endTurn(g,p,true);}
   else if(g.phase==='extraBuild'||g.phase==='morpheusBuild')endTurn(g,p);
   else if(g.phase==='poseidonBuild'||g.phase==='aresRemove'||g.phase==='dionysusChoice'){
-   g.ctx.postDone=true;endTurn(g,p,true);
-  }
+    if(g.phase==='poseidonBuild'){
+     const used=Math.max(0,3-(g.ctx.bonusRemaining??3));
+     g.lastAction='Poseidon kết thúc xây thêm sau '+used+'/3 lần, chuyển lượt.';
+    }else if(g.phase==='aresRemove')g.lastAction='Ares không phá khối; kết thúc lượt.';
+    else g.lastAction='Dionysus bỏ qua lượt phụ; kết thúc lượt.';
+    g.ctx.postDone=true;endTurn(g,p,true);
+   }
  }
  g.revision++;
  return g;

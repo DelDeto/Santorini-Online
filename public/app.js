@@ -1,3 +1,4 @@
+import {turnDecision} from './turn-decision.js?v=2.5.1';
 const $=id=>document.getElementById(id);
 const ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const S={room:null,seat:-1,view:null,ws:null,selected:null,heroChoices:[],mode:'online',ruleset:'classic',difficulty:'normal',capacity:2,variant:'duel',spectate:false,powerMode:'move',
@@ -167,7 +168,7 @@ function enter(room,mode='online',ruleset='classic',capacity=2,spectate=false,va
 function ensure3d(){
  if(S.three || $('scene3d').dataset.state==='loading')return;
  $('scene3d').dataset.state='loading';
- import('./board3d.js?v=2.5.0').then(({createBoard3D})=>{
+ import('./board3d.js?v=2.5.1').then(({createBoard3D})=>{
   if(!S.active)return;
   S.three=createBoard3D($('scene3d'),tileClick);
   S.three.setQuality(S.quality);S.three.setLighting(S.lighting);
@@ -368,7 +369,9 @@ function render(){
  $('phaseChip').textContent=phases[g.phase]||'CHƠI';
  const turnName=solo&&g.turn===1?'BOT':v.players[v.activeSeat]?.name||'Đối thủ';
  const messages={fleecePick:'Chọn thần dùng chung cho Cừu Vàng',ramPlace:'Chạm ô trống để đặt Cừu Vàng',godpick:'Chọn vị thần cho trận đấu',place:'Đặt hai quân lên bàn cờ',move:'Chọn quân rồi chạm ô sáng để đi',extraMove:'Artemis: đi thêm hoặc bỏ qua',hermesMove:'Hermes: tiếp tục đi ngang hoặc chọn quân để xây',tritonMove:'Triton: đi tiếp hoặc Bỏ qua',dionysusMove:'Chọn quân đối thủ để di chuyển',dionysusBuild:'Xây bằng quân đối thủ',heroPost:'Có thể dùng Hero Power hoặc Bỏ qua',heroDomes:'Chạm ô sáng để dựng mái vòm hoặc Bỏ qua',heroMedea:'Chạm ô có quân để hạ tầng hoặc Bỏ qua',heroSprint:'Atalanta: đi tiếp hoặc Bỏ qua để xây',heroCorner:'Odysseus: đẩy quân khác hoặc Bỏ qua',dionysusChoice:'Chọn đội đối thủ để điều khiển',aresRemove:'Ares: phá khối hoặc Bỏ qua',poseidonBuild:'Poseidon: xây thêm hoặc Bỏ qua',morpheusBuild:'Morpheus: xây từ kho dự trữ hoặc Bỏ qua',build:'Chạm ô sáng để xây',extraBuild:'Có thể xây thêm hoặc bỏ qua',ended:'Trận đấu kết thúc'};
- $('phaseLabel').textContent=!v.ready?'Đợi đủ '+(v.capacity||2)+' người':g.phase==='ended'?'Đã kết thúc':turn?messages[g.phase]:(turnName+' đang thực hiện lượt');
+ $('phaseLabel').textContent=!v.ready?'Đợi đủ '+(v.capacity||2)+' người':g.phase==='ended'?'Đã kết thúc':
+   turn&&g.phase==='poseidonBuild'?'POSEIDON · XÂY THÊM '+Math.max(0,3-(g.ctx?.bonusRemaining??3))+'/3':
+   turn?messages[g.phase]:(turnName+' đang thực hiện lượt');
  $('hint').textContent=!v.ready?'Sao chép link mời bạn bè tham gia.':turn?(g.phase==='move'&&g.ctx?.prometheusUsed?'Prometheus đã xây trước: không được di chuyển lên tầng.':messages[g.phase]):g.lastAction;
  renderGodPick(g);
  if(['extraMove','heroSprint'].includes(g.phase))S.selected=g.selected;
@@ -382,14 +385,22 @@ function render(){
  $('powerBtn').classList.toggle('hidden',!showPower);
  $('powerBtn').classList.toggle('chosen',S.powerMode==='prebuild');
  $('powerBtn').textContent=S.powerMode==='prebuild'?'↩ Đi bình thường':'⚡ Xây trước';
- const dome=turn&&g.phase==='build'&&getActions('build').some(x=>x.dome);
+ const dome=turn&&['build','morpheusBuild'].includes(g.phase)&&getActions('build').some(x=>x.dome);
  $('domeBtn').classList.toggle('hidden',!dome);
  $('domeBtn').classList.toggle('chosen',S.powerMode==='dome');
  $('domeBtn').textContent=S.powerMode==='dome'?'↩ Xây tầng':'◆ Đặt mái vòm';
- $('skipBtn').classList.toggle('hidden',!(turn&&getActions('skip').length));
- $('advancedActions').innerHTML=turn?getActions('commandeer').map(a=>'<button type="button" class="mini" data-command="'+a.target+'">Điều khiển phe '+(a.target+1)+'</button>').join(''):'';
- const end=turn&&S.selected!==null&&getActions('endMove',S.selected).length>0;
+ const decision=turnDecision(g,turn?actions():[]);
+ $('skipBtn').classList.toggle('hidden',!decision.canSkip);
+ $('skipBtn').textContent=decision.skipLabel;
+ $('skipBtn').title=decision.skipTitle;
+ $('skipBtn').setAttribute('aria-label',decision.skipTitle);
+ $('advancedActions').innerHTML='';
+ const canCommand=turn&&getActions('commandeer').length>0;
+ $('specialBtn').classList.toggle('hidden',!canCommand);
+ const end=turn&&getActions('endMove').length>0;
  $('endMoveBtn').classList.toggle('hidden',!end);
+ $('endMoveBtn').textContent=end&&S.selected===null?'✓ Chọn quân xây':'✓ Xây ngay';
+ $('turnDecision').classList.toggle('hidden',!(decision.canSkip||end||canCommand));
  $('restartBtn').classList.toggle('hidden',g.phase!=='ended'||S.seat<0);
  $('fillBotsBtn').classList.toggle('hidden',!(S.seat===0&&!v.ready&&v.mode==='online'&&v.capacity>2&&g.revision===0));
  $('undoBtn').classList.toggle('hidden',!(S.seat===0&&v.canUndo));
@@ -440,11 +451,15 @@ $('demoBtn').onclick=()=>{
  const config=MODE_UI[chosenMode];
  enter(roomCode(),'bot',config.god?'god':'classic',config.n,false,chosenMode);
 };
-function openHeroChoices(){
- const options=actions().filter(a=>['heroMark','heroRemove','heroCorner'].includes(a.type));
+function openHeroChoices(kind='hero'){
+ const options=kind==='endMove'?getActions('endMove'):
+   kind==='commandeer'?getActions('commandeer'):
+   actions().filter(a=>['heroMark','heroRemove','heroCorner'].includes(a.type));
+ if(!options.length)return;
+ $('heroChoiceTitle').textContent=kind==='endMove'?'Chọn quân dùng để xây':kind==='commandeer'?'Chọn đối thủ để điều khiển':'Chọn mục tiêu Hero Power';
  S.heroChoices=options;
  $('heroChoices').innerHTML=options.map((a,i)=>{
-  const txt=a.type==='heroCorner'?'Quân địch '+(a.worker+1)+' → góc '+(a.row+1)+','+(a.col+1):
+  const txt=a.type==='endMove'?'Xây bằng quân '+(a.worker+1):a.type==='commandeer'?'Điều khiển phe '+(a.target+1):a.type==='heroCorner'?'Quân địch '+(a.worker+1)+' → góc '+(a.row+1)+','+(a.col+1):
    (a.type==='heroRemove'?'Loại quân địch ':'Đánh dấu quân địch ')+(a.worker+1);
   return '<button class="secondary" type="button" data-choice="'+i+'">'+txt+'</button>';
  }).join('');
@@ -488,8 +503,15 @@ $('qualityBtn').onclick=()=>{S.quality=S.quality==='auto'?'hd':S.quality==='hd'?
 $('powerBtn').onclick=()=>{S.powerMode=S.powerMode==='prebuild'?'move':'prebuild';render();};
 $('domeBtn').onclick=()=>{S.powerMode=S.powerMode==='dome'?'move':'dome';render();};
 $('advancedActions').onclick=e=>{const b=e.target.closest('[data-command]');if(b)send({type:'commandeer',target:Number(b.dataset.command)});};
+$('specialBtn').onclick=()=>openHeroChoices('commandeer');
 $('skipBtn').onclick=()=>send({type:'skip'});
-$('endMoveBtn').onclick=()=>{if(S.selected!==null)send({type:'endMove',worker:S.selected});};
+$('endMoveBtn').onclick=()=>{
+ const choices=getActions('endMove');if(!choices.length)return;
+ const selected=choices.find(a=>a.worker===S.selected);
+ if(selected)send(selected);
+ else if(choices.length===1)send(choices[0]);
+ else openHeroChoices('endMove');
+};
 $('restartBtn').onclick=()=>send({type:'restart'});
 $('rematchBtn').onclick=()=>send({type:'restart'});
 function renderHistory(){
