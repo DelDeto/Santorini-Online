@@ -383,7 +383,7 @@ function render(){
  $('powerBtn').classList.toggle('hidden',!showPower);
  $('powerBtn').classList.toggle('chosen',S.powerMode==='prebuild');
  $('powerBtn').textContent=S.powerMode==='prebuild'?'↩ Đi bình thường':'⚡ Xây trước';
- const dome=turn&&g.phase==='build'&&getActions('build').some(x=>x.dome);
+ const dome=turn&&['build','morpheusBuild'].includes(g.phase)&&getActions('build').some(x=>x.dome);
  $('domeBtn').classList.toggle('hidden',!dome);
  $('domeBtn').classList.toggle('chosen',S.powerMode==='dome');
  $('domeBtn').textContent=S.powerMode==='dome'?'↩ Xây tầng':'◆ Đặt mái vòm';
@@ -392,10 +392,13 @@ function render(){
  $('skipBtn').textContent=decision.skipLabel;
  $('skipBtn').title=decision.skipTitle;
  $('skipBtn').setAttribute('aria-label',decision.skipTitle);
- $('advancedActions').innerHTML=turn?getActions('commandeer').map(a=>'<button type="button" class="mini" data-command="'+a.target+'">Điều khiển phe '+(a.target+1)+'</button>').join(''):'';
- const end=turn&&S.selected!==null&&getActions('endMove',S.selected).length>0;
+ $('advancedActions').innerHTML='';
+ const canCommand=turn&&getActions('commandeer').length>0;
+ $('specialBtn').classList.toggle('hidden',!canCommand);
+ const end=turn&&getActions('endMove').length>0;
  $('endMoveBtn').classList.toggle('hidden',!end);
- $('turnDecision').classList.toggle('hidden',!(decision.canSkip||end));
+ $('endMoveBtn').textContent=end&&S.selected===null?'✓ Chọn quân xây':'✓ Xây ngay';
+ $('turnDecision').classList.toggle('hidden',!(decision.canSkip||end||canCommand));
  $('restartBtn').classList.toggle('hidden',g.phase!=='ended'||S.seat<0);
  $('fillBotsBtn').classList.toggle('hidden',!(S.seat===0&&!v.ready&&v.mode==='online'&&v.capacity>2&&g.revision===0));
  $('undoBtn').classList.toggle('hidden',!(S.seat===0&&v.canUndo));
@@ -446,11 +449,15 @@ $('demoBtn').onclick=()=>{
  const config=MODE_UI[chosenMode];
  enter(roomCode(),'bot',config.god?'god':'classic',config.n,false,chosenMode);
 };
-function openHeroChoices(){
- const options=actions().filter(a=>['heroMark','heroRemove','heroCorner'].includes(a.type));
+function openHeroChoices(kind='hero'){
+ const options=kind==='endMove'?getActions('endMove'):
+   kind==='commandeer'?getActions('commandeer'):
+   actions().filter(a=>['heroMark','heroRemove','heroCorner'].includes(a.type));
+ if(!options.length)return;
+ $('heroChoiceTitle').textContent=kind==='endMove'?'Chọn quân dùng để xây':kind==='commandeer'?'Chọn đối thủ để điều khiển':'Chọn mục tiêu Hero Power';
  S.heroChoices=options;
  $('heroChoices').innerHTML=options.map((a,i)=>{
-  const txt=a.type==='heroCorner'?'Quân địch '+(a.worker+1)+' → góc '+(a.row+1)+','+(a.col+1):
+  const txt=a.type==='endMove'?'Xây bằng quân '+(a.worker+1):a.type==='commandeer'?'Điều khiển phe '+(a.target+1):a.type==='heroCorner'?'Quân địch '+(a.worker+1)+' → góc '+(a.row+1)+','+(a.col+1):
    (a.type==='heroRemove'?'Loại quân địch ':'Đánh dấu quân địch ')+(a.worker+1);
   return '<button class="secondary" type="button" data-choice="'+i+'">'+txt+'</button>';
  }).join('');
@@ -494,8 +501,15 @@ $('qualityBtn').onclick=()=>{S.quality=S.quality==='auto'?'hd':S.quality==='hd'?
 $('powerBtn').onclick=()=>{S.powerMode=S.powerMode==='prebuild'?'move':'prebuild';render();};
 $('domeBtn').onclick=()=>{S.powerMode=S.powerMode==='dome'?'move':'dome';render();};
 $('advancedActions').onclick=e=>{const b=e.target.closest('[data-command]');if(b)send({type:'commandeer',target:Number(b.dataset.command)});};
+$('specialBtn').onclick=()=>openHeroChoices('commandeer');
 $('skipBtn').onclick=()=>send({type:'skip'});
-$('endMoveBtn').onclick=()=>{if(S.selected!==null)send({type:'endMove',worker:S.selected});};
+$('endMoveBtn').onclick=()=>{
+ const choices=getActions('endMove');if(!choices.length)return;
+ const selected=choices.find(a=>a.worker===S.selected);
+ if(selected)send(selected);
+ else if(choices.length===1)send(choices[0]);
+ else openHeroChoices('endMove');
+};
 $('restartBtn').onclick=()=>send({type:'restart'});
 $('rematchBtn').onclick=()=>send({type:'restart'});
 function renderHistory(){

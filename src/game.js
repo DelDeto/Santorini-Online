@@ -295,6 +295,8 @@ export function legalActions(g,p=g.turn){
   }
   if(g.phase==='morpheusBuild'&&(g.advanced?.morpheus?.[p]||0)<=0)positions=[];
   const out=positions.map(pos=>({type:'build',...pos}));
+   // Morpheus may exchange stored blocks for domes and may choose not to build.
+   if(g.phase==='morpheusBuild')out.push(...positions.map(pos=>({type:'build',...pos,dome:true})));
   if(g.phase==='build'&&god(g,p)==='selene'){
    const female=g.workers[p][1];
    if(female)out.push(...legalBuilds(g,female,p).map(pos=>({type:'build',...pos,dome:true})));
