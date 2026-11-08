@@ -158,6 +158,10 @@ export function createBoard3D(container,onCell){
 
  const glowMove=new THREE.MeshBasicMaterial({color:0x5cf0dc,transparent:true,opacity:.63,depthWrite:false,side:THREE.DoubleSide});
  const glowBuild=new THREE.MeshBasicMaterial({color:0xffc86b,transparent:true,opacity:.77,depthWrite:false,side:THREE.DoubleSide});
+ const glowWin=new THREE.MeshBasicMaterial({color:0xffd45d,transparent:true,opacity:.96,depthWrite:false,side:THREE.DoubleSide});
+ const glowSwap=new THREE.MeshBasicMaterial({color:0x62c7ff,transparent:true,opacity:.92,depthWrite:false,side:THREE.DoubleSide});
+ const glowForced=new THREE.MeshBasicMaterial({color:0xe4a0ff,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide});
+ const glowDome=new THREE.MeshBasicMaterial({color:0xffe7a4,transparent:true,opacity:.88,depthWrite:false,side:THREE.DoubleSide});
  const glowSelected=new THREE.MeshBasicMaterial({color:0xfdf29d,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide});
  const tweens=[];
  const MOTION={walk:850,build:740,gesture:810,exit:620,spawn:510};
@@ -389,7 +393,10 @@ export function createBoard3D(container,onCell){
    const ring=mesh(cached('legal-ring',()=>new THREE.RingGeometry(.32,.45,36)),material,x,y,z,highlights);
    ring.rotation.x=-Math.PI/2;ring.castShadow=false;ring.receiveShadow=false;ring.renderOrder=6;
   };
-  for(const t of targets)addRing(t.row,t.col,buildMode?glowBuild:glowMove);
+  for(const t of targets)addRing(t.row,t.col,
+    t.wins?glowWin:t.special==='swap'?glowSwap:
+    t.special==='push'||t.type==='ferry'?glowForced:
+    t.dome?glowDome:buildMode?glowBuild:glowMove);
   if(selected){const w=g.workers[selected.p]?.[selected.i];if(w)addRing(w.row,w.col,glowSelected);}
  }
  function clicked(event){
