@@ -351,12 +351,12 @@ function drawFallback(){
  for(let row=0;row<5;row++)for(let col=0;col<5;col++){
   const level=g.board[row][col],k=row+','+col,active=tiles.has(k),preview=tileStatus.get(k);
    const shownLevel=level===4?(g.advanced?.domeBase?.[k]??3):level;
-   const marked=g.heroMark?.target===owner&&g.heroMark?.worker===wi;
    const cue=preview?.wins?'WIN':preview?.special==='swap'?'SWAP':
     preview?.special==='push'?'PUSH':preview?.type==='ferry'?'FORCE':
     preview?.dome?'DOME':preview?.type==='build'?'BUILD':'';
   const owner=g.workers.findIndex(team=>team.some(w=>w.row===row&&w.col===col));
   const wi=owner<0?-1:g.workers[owner].findIndex(w=>w.row===row&&w.col===col);
+   const marked=g.heroMark?.target===owner&&g.heroMark?.worker===wi;
   const control=g.phase==='dionysusMove'?g.ctx?.dionysusTarget:own;
   const choose=owner===control&&['move','extraMove','hermesMove','tritonMove','dionysusMove','heroSprint'].includes(g.phase);
   html+='<button class="tile '+(active?'legal ':'')+(cue?'power-'+cue.toLowerCase()+' ':'')+(choose&&wi===S.selected?'selected ':'')+(marked?'adonis-marked ':'')+'" data-row="'+row+'" data-col="'+col+'" aria-label="Ô '+(row+1)+'-'+(col+1)+' tầng '+level+(cue?' · '+cue:'')+'">';
