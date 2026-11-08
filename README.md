@@ -1,3 +1,26 @@
+# Santorini Online — V2.7.0 · Rules Integrity & God-Power UX (2026-11-08)
+
+V2.7 repairs verified V2.6.1 audit findings without changing the 2D fallback, original God draft pools, room protocol or Solo/online save paths.
+
+**Gameplay rules and engine correctness**
+- Chronus now counts only **complete towers** (3 real levels plus dome), using persisted `advanced.domeBase`. Atlas/Selene early domes no longer trigger false wins. Legacy already-domed positions without provenance are conservatively not treated as complete; start a new match to get exact prehistory.
+- In 4-player teams, all four `seatGods` persist as passive powers (Hera, Aphrodite, Hypnus, Limus and Persephone) even when a different teammate is acting. A 4-player seat's active power remains separate.
+- Jason's legal third-Worker deployment and Odysseus's pre-move corner force now prevent false "no valid turn" losses.
+- Chaos reshuffles its used Simple God deck after cycling through all powers.
+- Dionysus controlled bonus turns may chain after a controlled Worker creates a Complete Tower; no one can win during the bonus build.
+- Bia knockout is preserved in the live action log instead of being overwritten by generic move narration.
+- Aphrodite tests end-of-move compliance for Hermes, Triton and Artemis intermediate moves. Persephone admits a legal Triton perimeter approach followed by a climb, without allowing a premature bonus-move skip.
+
+**Visuals & controls**
+- Always-visible compact status line for passive limits and the current Chaos/Circe power, Morpheus stock, Chronus 0–5, Poseidon 0–3, and Dionysus bonus turns.
+- Semantic legal-target cues in 2D/3D: WIN, SWAP, FORCE/PUSH, early DOME, BUILD; see legends on highlighted tiles.
+- Ground-level and lower-level domes now render on their actual floors in both 2D and 3D instead of always showing three complete levels.
+- Selene's second, female Worker is labeled in 2D; visible Skip/Finish controls get larger tap targets and keyboard focus indicators.
+- Added tests covering 4P passives, cross-God movement, the Chronus edge case, Jason/Odysseus legal-turn rescue, Dionysus chaining, Chaos shuffling, Bia feedback and HUD contracts.
+
+**Known limitations:** Source and WebSocket smoke testing is not a substitute for device-specific interactive browser testing. The Adonis/Atalanta end-of-turn interaction (previous Hero audit) still merits a complete tactical action-sequence search. Historical domes in persisted V2.6.1 rooms cannot be unambiguously reconstructed from only `board[r][c]===4`; existing rooms remain playable but restart/rematch for exact chronology.
+
+---
 ## V2.6.1 — Morpheus rules audit
 
 - Fixed Morpheus erroneously placing domes directly on levels 0–2. Build reserve acts as *currency*, not an Atlas-style early-dome ability.
