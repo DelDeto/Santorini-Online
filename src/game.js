@@ -39,7 +39,7 @@ export const ADVANCED_GODS={
  hypnus:{name:'Hypnus',players:[2,3,4],description:'Quân đối thủ cao hơn tất cả quân khác của họ không được di chuyển.'},
  limus:{name:'Limus',players:[2,3,4],description:'Đối thủ không thể xây sát quân của bạn, trừ khi xây mái vòm hoàn chỉnh.'},
  medusa:{name:'Medusa',players:[2,3,4],description:'Cuối lượt, quân đối thủ đứng cạnh quân bạn và ở tầng thấp hơn sẽ bị hóa đá thành công trình.'},
- morpheus:{name:'Morpheus',players:[2,3,4],description:'Đầu lượt nhận một khối xây dự trữ; sau khi đi có thể dùng dự trữ để xây nhiều lần hoặc không xây.'},
+ morpheus:{name:'Morpheus',players:[2,3,4],description:'Đầu lượt nhận 1 đơn vị dự trữ; có thể tiêu 0 hoặc nhiều đơn vị để xây, giữ số dư cho lượt sau. Mái vòm chỉ đặt lên tầng 3.'},
  persephone:{name:'Persephone',players:[2,3,4],description:'Nếu có nước leo tầng hợp lệ, đối thủ bắt buộc phải di chuyển ít nhất một quân lên tầng.'},
  poseidon:{name:'Poseidon',players:[2,3,4],description:'Cuối lượt, quân không di chuyển còn ở tầng 0 có thể xây thêm tối đa ba lần.'},
  selene:{name:'Selene',players:[2,3,4],description:'Quân nữ có thể xây mái vòm ở bất kỳ tầng nào, ngay cả khi quân nam vừa di chuyển.'},
@@ -81,6 +81,11 @@ const eq=(a,b)=>!!a&&!!b&&a.row===b.row&&a.col===b.col;
 const pawnAt=(g,r,c)=>{for(let p=0;p<g.workers.length;p++)for(let i=0;i<g.workers[p].length;i++)if(eq(g.workers[p][i],{row:r,col:c}))return {p,i};return null;};
 const free=(g,r,c)=>cell(r,c)&&g.board[r][c]!==4&&!pawnAt(g,r,c)&&!(g.ram&&g.ram.row===r&&g.ram.col===c);
 const god=(g,p)=>activePower(g,p);
+// Morpheus currency belongs to the card; when Circe steals that God Power,
+// Circe temporarily draws from the original card's reserve.
+const morpheusReserveOwner=(g,p)=>
+ g.gods[p]==='circe'&&g.advanced?.circe?.owner===p&&
+ g.advanced.circe.power==='morpheus'?g.advanced.circe.target:p;
 export function legalBuilds(g,from,p=null){if(!from)return [];const out=[];
  for(let row=0;row<5;row++)for(let col=0;col<5;col++)if(near(from,{row,col})&&free(g,row,col)){
   if(p!==null&&adjacentGodWorkers(g,p,'limus',{row,col})&&g.board[row][col]!==3)continue;
@@ -301,10 +306,11 @@ export function legalActions(g,p=g.turn){
    else if(god(g,p)==='hestia')positions=positions.filter(x=>!isEdge(x.row,x.col));
    else positions=[];
   }
-  if(g.phase==='morpheusBuild'&&(g.advanced?.morpheus?.[p]||0)<=0)positions=[];
+  if(g.phase==='morpheusBuild'&&(g.advanced?.morpheus?.[morpheusReserveOwner(g,p)]||0)<=0)positions=[];
   const out=positions.map(pos=>({type:'build',...pos}));
-   // Morpheus may exchange stored blocks for domes and may choose not to build.
-   if(g.phase==='morpheusBuild')out.push(...positions.map(pos=>({type:'build',...pos,dome:true})));
+   // Morpheus reserves are currency, not Atlas' early-dome power.
+   // Normal builds from level 3 create a dome, but levels 0-2 cannot
+   // receive an early dome unless another ability explicitly permits it.
   if(g.phase==='build'&&god(g,p)==='selene'){
    const female=g.workers[p][1];
    if(female)out.push(...legalBuilds(g,female,p).map(pos=>({type:'build',...pos,dome:true})));
@@ -364,8 +370,10 @@ export function beginAdvancedTurn(g,p){
   if(ws.length>=2&&!near(ws[0],ws[1])&&g.gods[target]!=='circe')
    g.advanced.circe={owner:p,target,power:g.gods[target]};
  }
- if(g.gods[p]==='morpheus')
-  g.advanced.morpheus[p]=(g.advanced.morpheus[p]||0)+1;
+ if(god(g,p)==='morpheus'){
+   const owner=morpheusReserveOwner(g,p);
+   g.advanced.morpheus[owner]=(g.advanced.morpheus[owner]||0)+1;
+  }
 }
 function advance(g,p){
  const count=g.workers.length;let next=(p+1)%count;
@@ -597,7 +605,8 @@ export function applyAction(g,p,a){
    if(g.ctx.bonusRemaining<=0||!legalActions(g,p).some(x=>x.type==='build')){g.ctx.postDone=true;endTurn(g,p,true);}
    else g.lastAction='Poseidon: có thể tiếp tục xây thêm hoặc Bỏ qua.';
   }else if(phase==='morpheusBuild'){
-   advanced.morpheus[p]=Math.max(0,(advanced.morpheus[p]||0)-1);
+   const owner=morpheusReserveOwner(g,p);
+    advanced.morpheus[owner]=Math.max(0,(advanced.morpheus[owner]||0)-1);
    if(!legalActions(g,p).some(x=>x.type==='build'))endTurn(g,p);
    else g.lastAction='Morpheus: xây thêm từ kho dự trữ hoặc Bỏ qua.';
   }else if(phase==='dionysusBuild'){
