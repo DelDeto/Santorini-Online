@@ -228,7 +228,7 @@ export function createBoard3D(container,onCell){
   }
   if(isDome){
    // Half-sphere with blue glazed terracotta ribs and a finial.
-   const y=.395+h*.53+.475;
+   const y=h===0?.415:.395+(h-1)*.53+.475; // dome base rests on its actual top level
    const dome=mesh(cached('dome',()=>new THREE.SphereGeometry(.405,28,14,0,Math.PI*2,0,Math.PI/2)),blue,0,y,0,g);
    dome.scale.y=.88;
    mesh(cached('dome-base',()=>new THREE.CylinderGeometry(.411,.422,.08,28)),darkBlue,0,y+.015,0,g);
