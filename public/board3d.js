@@ -228,7 +228,7 @@ export function createBoard3D(container,onCell){
   }
   if(isDome){
    // Half-sphere with blue glazed terracotta ribs and a finial.
-   const y=.395+3*.53+.475;
+   const y=.395+h*.53+.475;
    const dome=mesh(cached('dome',()=>new THREE.SphereGeometry(.405,28,14,0,Math.PI*2,0,Math.PI/2)),blue,0,y,0,g);
    dome.scale.y=.88;
    mesh(cached('dome-base',()=>new THREE.CylinderGeometry(.411,.422,.08,28)),darkBlue,0,y+.015,0,g);
@@ -343,7 +343,8 @@ export function createBoard3D(container,onCell){
     const previousTower=towers.get(key);
     if(previousTower){pieces.remove(previousTower);towers.delete(key);}
     if(height){
-     const group=tower(pieces,row,col,height,height===4);
+     const shown=height===4?(g.advanced?.domeBase?.[key]??3):height;
+      const group=tower(pieces,row,col,shown,height===4);
      towers.set(key,group);
      if(previous&&height>old){
       group.scale.y=.81;
