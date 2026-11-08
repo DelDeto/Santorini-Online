@@ -104,3 +104,47 @@ test('Bia removal stays visible in user action log',()=>{
  assert.equal(g.workers[1].length,1);
  assert.match(g.lastAction,/Bia/i);
 });
+
+test('Aphrodite constrains Hermes at the last move, allowing a reversible intermediate detour',()=>{
+ const g=setup('hermes','aphrodite');
+ g.workers=[[{row:2,col:2},{row:0,col:0}],[{row:3,col:2},{row:4,col:4}]];
+ const detour=legalActions(g).find(a=>a.type==='move'&&a.worker===0&&a.row===1&&a.col===2);
+ assert.ok(detour,'valid first same-level detour remains playable');
+ applyAction(g,0,detour);assert.equal(g.phase,'hermesMove');
+ assert.ok(!legalActions(g).some(a=>a.type==='endMove'),'cannot finish while last move is away from Aphrodite');
+ const returnNear=legalActions(g).find(a=>a.type==='move'&&a.worker===0&&a.row===2&&a.col===1);
+ assert.ok(returnNear,'can come back alongside Aphrodite');
+ applyAction(g,0,returnNear);
+ assert.ok(legalActions(g).some(a=>a.type==='endMove'),'finishing beside Aphrodite is legal');
+});
+test('Persephone allows a Triton perimeter detour that climbs later in the same turn',()=>{
+ const g=setup('triton','persephone');
+ g.workers=[[{row:1,col:2},{row:4,col:0}],[{row:4,col:4},{row:3,col:4}]];
+ g.board[1][3]=1;
+ const first=legalActions(g).find(a=>a.type==='move'&&a.worker===0&&a.row===0&&a.col===2);
+ assert.ok(first,'entering the perimeter is allowed if it makes a later ascent possible');
+ applyAction(g,0,first);
+ assert.equal(g.phase,'tritonMove');assert.equal(g.ctx.persephoneRequired,true);
+ assert.ok(!legalActions(g).some(a=>a.type==='skip'),'cannot skip without climbing');
+ const up=legalActions(g).find(a=>a.type==='move'&&a.row===1&&a.col===3&&a.worker===0);
+ assert.ok(up,'legal upward move preserved');
+ applyAction(g,0,up);
+ assert.equal(g.ctx.upThisTurn,true);
+ assert.equal(g.phase,'build');
+});
+test('V2.7 power HUD exposes state, danger, special 2D and 3D destinations',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const read=p=>readFileSync(new URL(p,import.meta.url),'utf8');
+ const ui=read('../public/app.js'),html=read('../public/index.html'),board=read('../public/board3d.js'),style=read('../public/style.css');
+ assert.match(ui,/function effectNotices\(g,v\)/);
+ for(const warning of ['Athena: không được leo','Persephone: phải leo','Morpheus: ','Chronus: ','Dionysus: lượt phụ']){
+  assert.ok(ui.includes(warning),warning);
+ }
+ assert.match(html,/id="effectStatus"/);
+ assert.match(ui,/power-win/);
+ assert.match(ui,/power-swap/);
+ assert.match(ui,/power-push/);
+ assert.match(board,/glowWin/);
+ assert.match(board,/glowForced/);
+ assert.match(style,/\.game \.effect-status/);
+});

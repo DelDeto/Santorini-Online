@@ -646,3 +646,9 @@ body:has(#game:not(.hidden)){height:100dvh;max-height:100dvh;overflow:hidden}
 .worker-female{position:absolute;right:1px;bottom:0;border-radius:100%;padding:0 3px;background:#ffe4f2;color:#9c286d;font-weight:900;font-size:10px;z-index:3}
 @media(max-width:650px){.game .effect-status{font-size:9px;padding:3px 6px;max-width:94%;top:3px}}
 @media(max-height:560px){.game .effect-status{font-size:9px;top:0;padding:2px 5px}}
+
+/* V2.7 action ergonomics: no clipped Skip/Finish or focus on narrow screens. */
+.game .turn-decision .mini{min-height:44px!important}
+.game .action-bar:has(.turn-decision:not(.hidden)){height:auto;min-height:48px;max-height:none;overflow:visible}
+.game .power-actions .mini:focus-visible,.game .turn-decision .mini:focus-visible{outline:3px solid #1964a5;outline-offset:2px}
+@media(max-height:560px){.game .turn-decision .mini{min-height:38px!important}.game .action-bar:has(.turn-decision:not(.hidden)){min-height:40px}}
