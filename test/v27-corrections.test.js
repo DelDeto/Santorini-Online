@@ -108,6 +108,7 @@ test('Bia removal stays visible in user action log',()=>{
 test('Aphrodite constrains Hermes at the last move, allowing a reversible intermediate detour',()=>{
  const g=setup('hermes','aphrodite');
  g.workers=[[{row:2,col:2},{row:0,col:0}],[{row:3,col:2},{row:4,col:4}]];
+ beginAdvancedTurn(g,0);
  const detour=legalActions(g).find(a=>a.type==='move'&&a.worker===0&&a.row===1&&a.col===2);
  assert.ok(detour,'valid first same-level detour remains playable');
  applyAction(g,0,detour);assert.equal(g.phase,'hermesMove');
@@ -141,9 +142,10 @@ test('V2.7 power HUD exposes state, danger, special 2D and 3D destinations',asyn
   assert.ok(ui.includes(warning),warning);
  }
  assert.match(html,/id="effectStatus"/);
- assert.match(ui,/power-win/);
- assert.match(ui,/power-swap/);
- assert.match(ui,/power-push/);
+ assert.match(ui,/cue\.toLowerCase\(\)/);
+ assert.match(style,/\.game \.tile\.power-win/);
+ assert.match(style,/\.game \.tile\.power-swap/);
+ assert.match(style,/\.game \.tile\.power-push/);
  assert.match(board,/glowWin/);
  assert.match(board,/glowForced/);
  assert.match(style,/\.game \.effect-status/);
