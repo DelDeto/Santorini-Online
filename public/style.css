@@ -652,3 +652,7 @@ body:has(#game:not(.hidden)){height:100dvh;max-height:100dvh;overflow:hidden}
 .game .action-bar:has(.turn-decision:not(.hidden)){height:auto;min-height:48px;max-height:none;overflow:visible}
 .game .power-actions .mini:focus-visible,.game .turn-decision .mini:focus-visible{outline:3px solid #1964a5;outline-offset:2px}
 @media(max-height:560px){.game .turn-decision .mini{min-height:38px!important}.game .action-bar:has(.turn-decision:not(.hidden)){min-height:40px}}
+
+/* Adonis mark is visible both to the target and to the opposing Hero owner. */
+.game .tile.adonis-marked{outline:3px solid #fd8db9;outline-offset:-3px}
+.game .tile .adonis-heart{position:absolute;top:1px;right:1px;background:#ffe0e9;color:#ad1b62;border-radius:100%;font-weight:900;padding:0 4px;z-index:5}

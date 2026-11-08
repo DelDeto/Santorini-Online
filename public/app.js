@@ -127,6 +127,8 @@ function effectNotices(g,v){
   g.gods.some((god,p)=>p!==team&&god===id);
  const messages=[];
  const id=seatGod(v,seat);
+ if(g.heroMark?.target===team)
+  messages.push('♥ Adonis: quân '+(g.heroMark.worker+1)+' phải ở cạnh quân Adonis khi kết thúc lượt, nếu có thể');
  if(g.athenaBlocked===team)messages.push('⛔ Athena: không được leo lên tầng lượt này');
  if(g.ctx?.persephoneRequired&&!g.ctx?.upThisTurn)messages.push('⬆ Persephone: phải leo ít nhất một lần');
  else if(enemyHas('persephone')&&g.phase==='move')messages.push('⬆ Persephone: phải leo nếu có thể');
@@ -165,13 +167,17 @@ function renderPowers(){
  currentGod==='circe'&&g.advanced?.circe?.owner===(v.capacity===4?seat%2:seat)?g.advanced.circe.power:null;
  $('powerActiveName').textContent=currentGod?
   (v.gods?.[currentGod]?.name||currentGod)+(effective?' → '+(v.gods?.[effective]?.name||effective):''):'Chưa chọn thần';
- $('powerUseHint').textContent=v.modeId==='heroes'&&g.heroUsed?.[seat]?'🛡 Hero Power đã sử dụng trong ván này.':v.modeId==='fleece'&&g.phase==='ramPlace'?'Chạm một ô trống để đặt tượng Cừu Vàng.':v.modeId==='fleece'&&g.ram&&g.ctx?.fleeceActive!==seat?'Đứng cạnh Cừu Vàng khi bắt đầu lượt mới để nhận năng lực.':currentGod?abilityHint(g,effective||currentGod,mine&&isTurn()):'Chọn God Power trước khi đặt quân.';
+ const heroResolving=v.modeId==='heroes'&&g.turn===seat&&['heroCorner','heroSprint','heroDomes','heroMedea'].includes(g.phase);
+ $('powerUseHint').textContent=heroResolving?'🛡 Hero Power đang kích hoạt — chọn ô sáng hoặc Bỏ qua để hoàn tất.':
+  v.modeId==='heroes'&&g.heroUsed?.[seat]?'🛡 Hero Power đã sử dụng trong ván này.':v.modeId==='fleece'&&g.phase==='ramPlace'?'Chạm một ô trống để đặt tượng Cừu Vàng.':v.modeId==='fleece'&&g.ram&&g.ctx?.fleeceActive!==seat?'Đứng cạnh Cừu Vàng khi bắt đầu lượt mới để nhận năng lực.':currentGod?abilityHint(g,effective||currentGod,mine&&isTurn()):'Chọn God Power trước khi đặt quân.';
  $('powerUseHint').title=$('powerUseHint').textContent;
  const roster=v.players.map((p,i)=>{
   const power=seatGod(v,i),info=v.gods?.[power],you=i===S.seat,active=i===seat;
-  const dead=!!g.eliminated?.[i],used=v.modeId==='heroes'&&!!g.heroUsed?.[i],title=power?info?.name||power:'Chưa chọn';
+  const dead=!!g.eliminated?.[i],heroActive=v.modeId==='heroes'&&g.turn===i&&
+   ['heroCorner','heroSprint','heroDomes','heroMedea'].includes(g.phase),
+   used=v.modeId==='heroes'&&!!g.heroUsed?.[i]&&!heroActive,title=power?info?.name||power:'Chưa chọn';
   const name=p.name;
-  return '<button type="button" class="power-god-chip'+(you?' yours':'')+(active?' on-turn':'')+(dead?' eliminated':'')+(used?' hero-used':'')+'" data-power-seat="'+i+'" title="'+escHtml(name+' · '+title+(power?' · '+(POWER_GUIDE[power]?.tip||''):''))+'" aria-label="Xem kỹ năng '+escHtml(title)+' của '+escHtml(name)+'"><strong>'+(you?'★ ':'')+escHtml(title)+'</strong><small>'+escHtml(name)+(used?' · ĐÃ DÙNG':'')+'</small></button>';
+  return '<button type="button" class="power-god-chip'+(you?' yours':'')+(active?' on-turn':'')+(dead?' eliminated':'')+(used?' hero-used':'')+'" data-power-seat="'+i+'" title="'+escHtml(name+' · '+title+(power?' · '+(POWER_GUIDE[power]?.tip||''):''))+'" aria-label="Xem kỹ năng '+escHtml(title)+' của '+escHtml(name)+'"><strong>'+(you?'★ ':'')+escHtml(title)+'</strong><small>'+escHtml(name)+(heroActive?' · ĐANG DÙNG':used?' · ĐÃ DÙNG':'')+'</small></button>';
  });
  $('godRoster').innerHTML=roster.join('');
  if(!$('powersOverlay').classList.contains('hidden'))renderPowerCards();
@@ -345,6 +351,7 @@ function drawFallback(){
  for(let row=0;row<5;row++)for(let col=0;col<5;col++){
   const level=g.board[row][col],k=row+','+col,active=tiles.has(k),preview=tileStatus.get(k);
    const shownLevel=level===4?(g.advanced?.domeBase?.[k]??3):level;
+   const marked=g.heroMark?.target===owner&&g.heroMark?.worker===wi;
    const cue=preview?.wins?'WIN':preview?.special==='swap'?'SWAP':
     preview?.special==='push'?'PUSH':preview?.type==='ferry'?'FORCE':
     preview?.dome?'DOME':preview?.type==='build'?'BUILD':'';
@@ -352,11 +359,12 @@ function drawFallback(){
   const wi=owner<0?-1:g.workers[owner].findIndex(w=>w.row===row&&w.col===col);
   const control=g.phase==='dionysusMove'?g.ctx?.dionysusTarget:own;
   const choose=owner===control&&['move','extraMove','hermesMove','tritonMove','dionysusMove','heroSprint'].includes(g.phase);
-  html+='<button class="tile '+(active?'legal ':'')+(cue?'power-'+cue.toLowerCase()+' ':'')+(choose&&wi===S.selected?'selected ':'')+'" data-row="'+row+'" data-col="'+col+'" aria-label="Ô '+(row+1)+'-'+(col+1)+' tầng '+level+(cue?' · '+cue:'')+'">';
+  html+='<button class="tile '+(active?'legal ':'')+(cue?'power-'+cue.toLowerCase()+' ':'')+(choose&&wi===S.selected?'selected ':'')+(marked?'adonis-marked ':'')+'" data-row="'+row+'" data-col="'+col+'" aria-label="Ô '+(row+1)+'-'+(col+1)+' tầng '+level+(cue?' · '+cue:'')+'">';
   if(level){html+='<span class="building">';for(let n=0;n<Math.min(3,shownLevel);n++)html+='<span class="block"></span>';if(level===4)html+='<span class="dome"></span>';html+='</span><span class="level-pill">'+(level===4?'◆'+shownLevel:level)+'</span>';}
   if(owner>=0)html+='<span class="worker p'+owner+'"><span class="worker-head"></span><span class="worker-body"></span><span class="worker-base"></span></span>'+
   (g.gods?.[owner]==='selene'&&wi===1?'<span class="worker-female" aria-label="Quân nữ Selene">♀</span>':'');
-  if(g.ram?.row===row&&g.ram?.col===col)html+='<span class="ram-token" title="Cừu Vàng">🐏</span>';
+  if(marked)html+='<span class="adonis-heart" title="Adonis đang đánh dấu quân này">♥</span>';
+   if(g.ram?.row===row&&g.ram?.col===col)html+='<span class="ram-token" title="Cừu Vàng">🐏</span>';
   html+='</button>';
  }
  $('board').innerHTML=html;

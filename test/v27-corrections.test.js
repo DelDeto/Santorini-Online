@@ -150,3 +150,15 @@ test('V2.7 power HUD exposes state, danger, special 2D and 3D destinations',asyn
  assert.match(board,/glowForced/);
  assert.match(style,/\.game \.effect-status/);
 });
+
+test('Adonis marking and multi-step Hero resolution status are visible in both boards',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const read=p=>readFileSync(new URL(p,import.meta.url),'utf8');
+ const ui=read('../public/app.js'),three=read('../public/board3d.js'),style=read('../public/style.css');
+ assert.match(ui,/g\.heroMark\?\.target===team/);
+ assert.match(ui,/heroResolving/);
+ assert.match(ui,/ĐANG DÙNG/);
+ assert.match(ui,/adonis-heart/);
+ assert.match(three,/glowAdonis/);
+ assert.match(style,/\.tile\.adonis-marked/);
+});
