@@ -116,8 +116,13 @@ function legalMoveDetails(g,p,i){
   if(((g.workers.length===2?g.athenaBlocked===p:(g.athenaBlocked!==null&&g.athenaBlocked!==p))||g.ctx?.prometheusUsed)&&h>before)continue;
   if(g.phase==='hermesMove'&&h!==before)continue;
   if(g.phase==='extraMove'&&eq(dest,g.ctx?.origin))continue;
-  if(restrictedByAphrodite(g,p)&&!nearAphrodite(g,p,dest)&&!['move','hermesMove','tritonMove','extraMove'].includes(g.phase))continue;
-  if(restrictedByAphrodite(g,p)&&!nearAphrodite(g,p,dest)&&g.phase==='move'&&!['artemis','triton','hermes'].includes(power))continue;
+  const outside=restrictedByAphrodite(g,p)&&!nearAphrodite(g,p,dest);
+  // Aphrodite controls the final position. Multi-step movement may
+  // temporarily leave her side if the player can still finish adjacent.
+  if(outside&&g.phase==='extraMove')continue;
+  if(outside&&g.phase==='move'&&!(power==='artemis'||power==='triton'&&isEdge(row,col)||power==='hermes'&&h===before))continue;
+  if(outside&&g.phase==='tritonMove'&&!isEdge(row,col))continue;
+  if(outside&&!['move','tritonMove','extraMove','hermesMove','heroSprint'].includes(g.phase))continue;
   const blocker=pawnAt(g,row,col);let special=null,forced=null;
   if(blocker){
    if(blocker.p===p)continue;
@@ -130,6 +135,10 @@ function legalMoveDetails(g,p,i){
   }
   if(heroLeap)special='heroLeap';
   const projected=movedCopy(g,p,i,dest,blocker?{...blocker,forced}:null);
+  if(outside&&g.phase==='move'&&power==='artemis'){
+   const next={...projected,phase:'extraMove',selected:i,ctx:{...g.ctx,origin:{...from}}};
+   if(!legalMoveDetails(next,p,i).some(a=>nearAphrodite(next,p,a)))continue;
+  }
   if(power==='bia'&&!blocker){
    const forward={row:row+(row-from.row),col:col+(col-from.col)};
    const victim=cell(forward.row,forward.col)?pawnAt(projected,forward.row,forward.col):null;
@@ -294,8 +303,11 @@ export function legalActions(g,p=g.turn){
     const ascents=out.filter(a=>a.type==='move'&&g.board[a.row][a.col]>g.board[g.workers[p][a.worker].row][g.workers[p][a.worker].col]);
     if(ascents.length)return ascents;
    }
-   if(god(g,p)==='hermes'&&(g.phase==='hermesMove'||g.phase==='move'))
-    g.workers[p].forEach((w,worker)=>{if(legalBuilds(g,w).length)out.push({type:'endMove',worker});});
+   if(god(g,p)==='hermes'&&(g.phase==='hermesMove'||g.phase==='move')){
+    const last=g.workers[p][g.ctx?.lastMoved];
+    if(!restrictedByAphrodite(g,p)||!g.ctx?.hermesSteps||nearAphrodite(g,p,last))
+     g.workers[p].forEach((w,worker)=>{if(legalBuilds(g,w).length)out.push({type:'endMove',worker});});
+   }
    if(g.phase==='move'&&g.heroMark?.target===p){
     const mark=g.heroMark,victim=g.workers[p][mark.worker],owner=g.workers[mark.owner]||[];
     const constrained=out.filter(a=>{
