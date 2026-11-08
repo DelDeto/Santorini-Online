@@ -62,7 +62,7 @@ test('Charon moves enemy to opposite side before walking',()=>{
 });
 test('Chronus wins at five domed towers even from opponent build',()=>{
  const g=game('apollo','chronus');g.turn=0;g.phase='build';g.selected=0;
- for(const [r,c] of [[0,0],[0,4],[4,0],[4,4]])g.board[r][c]=4;
+ for(const [r,c] of [[0,0],[0,4],[4,0],[4,4]]){g.board[r][c]=4;g.advanced.domeBase[r+','+c]=3;}
  g.board[2][3]=3;
  act(g,0,'build',{row:2,col:3});
  assert.equal(g.winner,1);assert.equal(g.phase,'ended');

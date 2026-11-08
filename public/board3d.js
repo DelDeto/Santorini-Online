@@ -158,6 +158,11 @@ export function createBoard3D(container,onCell){
 
  const glowMove=new THREE.MeshBasicMaterial({color:0x5cf0dc,transparent:true,opacity:.63,depthWrite:false,side:THREE.DoubleSide});
  const glowBuild=new THREE.MeshBasicMaterial({color:0xffc86b,transparent:true,opacity:.77,depthWrite:false,side:THREE.DoubleSide});
+ const glowAdonis=new THREE.MeshBasicMaterial({color:0xff85b5,transparent:true,opacity:.95,depthWrite:false,side:THREE.DoubleSide});
+ const glowWin=new THREE.MeshBasicMaterial({color:0xffd45d,transparent:true,opacity:.96,depthWrite:false,side:THREE.DoubleSide});
+ const glowSwap=new THREE.MeshBasicMaterial({color:0x62c7ff,transparent:true,opacity:.92,depthWrite:false,side:THREE.DoubleSide});
+ const glowForced=new THREE.MeshBasicMaterial({color:0xe4a0ff,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide});
+ const glowDome=new THREE.MeshBasicMaterial({color:0xffe7a4,transparent:true,opacity:.88,depthWrite:false,side:THREE.DoubleSide});
  const glowSelected=new THREE.MeshBasicMaterial({color:0xfdf29d,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide});
  const tweens=[];
  const MOTION={walk:850,build:740,gesture:810,exit:620,spawn:510};
@@ -224,7 +229,7 @@ export function createBoard3D(container,onCell){
   }
   if(isDome){
    // Half-sphere with blue glazed terracotta ribs and a finial.
-   const y=.395+3*.53+.475;
+   const y=h===0?.415:.395+(h-1)*.53+.475; // dome base rests on its actual top level
    const dome=mesh(cached('dome',()=>new THREE.SphereGeometry(.405,28,14,0,Math.PI*2,0,Math.PI/2)),blue,0,y,0,g);
    dome.scale.y=.88;
    mesh(cached('dome-base',()=>new THREE.CylinderGeometry(.411,.422,.08,28)),darkBlue,0,y+.015,0,g);
@@ -339,7 +344,8 @@ export function createBoard3D(container,onCell){
     const previousTower=towers.get(key);
     if(previousTower){pieces.remove(previousTower);towers.delete(key);}
     if(height){
-     const group=tower(pieces,row,col,height,height===4);
+     const shown=height===4?(g.advanced?.domeBase?.[key]??3):height;
+      const group=tower(pieces,row,col,shown,height===4);
      towers.set(key,group);
      if(previous&&height>old){
       group.scale.y=.81;
@@ -389,8 +395,15 @@ export function createBoard3D(container,onCell){
    const ring=mesh(cached('legal-ring',()=>new THREE.RingGeometry(.32,.45,36)),material,x,y,z,highlights);
    ring.rotation.x=-Math.PI/2;ring.castShadow=false;ring.receiveShadow=false;ring.renderOrder=6;
   };
-  for(const t of targets)addRing(t.row,t.col,buildMode?glowBuild:glowMove);
+  for(const t of targets)addRing(t.row,t.col,
+    t.wins?glowWin:t.special==='swap'?glowSwap:
+    t.special==='push'||t.type==='ferry'?glowForced:
+    t.dome?glowDome:buildMode?glowBuild:glowMove);
   if(selected){const w=g.workers[selected.p]?.[selected.i];if(w)addRing(w.row,w.col,glowSelected);}
+   if(g.heroMark){
+    const marked=g.workers[g.heroMark.target]?.[g.heroMark.worker];
+    if(marked)addRing(marked.row,marked.col,glowAdonis);
+   }
  }
  function clicked(event){
   if(!down||Math.hypot(event.clientX-down.x,event.clientY-down.y)>8)return;
