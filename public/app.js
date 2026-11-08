@@ -120,6 +120,40 @@ function abilityHint(g,id,ownTurn){
   default:return help.tip;
  }
 }
+function effectNotices(g,v){
+ const seat=v.activeSeat??g.turn,team=v.capacity===4?seat%2:seat;
+ const enemyHas=id=>v.capacity===4?
+  (v.seatGods||[]).some((god,s)=>s%2!==team&&god===id):
+  g.gods.some((god,p)=>p!==team&&god===id);
+ const messages=[];
+ const id=seatGod(v,seat);
+ if(g.athenaBlocked===team)messages.push('⛔ Athena: không được leo lên tầng lượt này');
+ if(g.ctx?.persephoneRequired&&!g.ctx?.upThisTurn)messages.push('⬆ Persephone: phải leo ít nhất một lần');
+ else if(enemyHas('persephone')&&g.phase==='move')messages.push('⬆ Persephone: phải leo nếu có thể');
+ if(enemyHas('aphrodite')&&g.phase==='move')messages.push('♥ Aphrodite: kết thúc di chuyển cạnh quân của thần');
+ if(enemyHas('hypnus'))messages.push('☾ Hypnus: quân đứng cao nhất riêng biệt không thể đi');
+ if(enemyHas('limus')&&g.phase==='build')messages.push('⚠ Limus: không được xây sát quân của thần, trừ mái vòm hoàn chỉnh');
+ if(enemyHas('hera'))messages.push('⚠ Hera: di chuyển lên tầng 3 ở ô viền không giúp thắng');
+ if(id==='chaos'){
+  const active=g.advanced?.chaos?.[team];
+  if(active)messages.push('🎲 Chaos: '+(v.gods?.[active.current]?.name||active.current)+' · lá '+(active.index+1)+'/'+active.deck.length);
+ }
+ if(id==='circe'&&g.advanced?.circe?.owner===team)
+  messages.push('✨ Circe mượn '+(v.gods?.[g.advanced.circe.power]?.name||g.advanced.circe.power));
+ if(id==='morpheus')messages.push('◈ Morpheus: '+(g.advanced?.morpheus?.[team]||0)+' khối dự trữ');
+ if(id==='chronus'){
+  const bases=g.advanced?.domeBase||{};
+  const complete=g.board.reduce((sum,row,r)=>sum+row.filter((height,c)=>
+   height===4&&bases[r+','+c]===3).length,0);
+  messages.push('🏛 Chronus: '+complete+'/5 tòa tháp hoàn chỉnh');
+ }
+ if(g.phase==='poseidonBuild')messages.push('🔱 Poseidon: '+(3-(g.ctx?.bonusRemaining??3))+'/3 lần xây thêm');
+ if(g.phase==='dionysusMove'||g.phase==='dionysusBuild'||g.phase==='dionysusChoice')
+  messages.push('🍷 Dionysus: lượt phụ #'+(g.ctx?.bonusChainCount||1)+' · không ai được thắng');
+ if(id==='selene'&&g.phase==='build')messages.push('♀ Selene: quân số 2 là quân nữ có thể đặt mái vòm');
+ if(id==='zeus'&&g.phase==='build')messages.push('⚡ Zeus: có thể xây dưới chân quân đang đứng');
+ return messages;
+}
 function renderPowers(){
  const v=S.view;if(!v||v.ruleset!=='god')return;
  const g=v.game,seat=v.activeSeat??g.turn;
@@ -127,8 +161,12 @@ function renderPowers(){
  const currentPlayer=v.players?.[seat];
  const mine=S.seat===seat,ready=!!v.ready;
  $('powerOwner').textContent=v.modeId==='fleece'?(g.ctx?.fleeceActive===seat?'🐏 ĐƯỢC CỪU BAN PHÉP':'🐏 NĂNG LỰC CHUNG'):ready?(mine?'⚡ LƯỢT CỦA BẠN':'⚡ '+(currentPlayer?.bot?'BOT ĐANG CHƠI':'ĐANG ĐẾN LƯỢT')):'⚡ CHỜ ĐỦ NGƯỜI';
- $('powerActiveName').textContent=currentGod?v.gods?.[currentGod]?.name||currentGod:'Chưa chọn thần';
- $('powerUseHint').textContent=v.modeId==='heroes'&&g.heroUsed?.[seat]?'🛡 Hero Power đã sử dụng trong ván này.':v.modeId==='fleece'&&g.phase==='ramPlace'?'Chạm một ô trống để đặt tượng Cừu Vàng.':v.modeId==='fleece'&&g.ram&&g.ctx?.fleeceActive!==seat?'Đứng cạnh Cừu Vàng khi bắt đầu lượt mới để nhận năng lực.':currentGod?abilityHint(g,currentGod,mine&&isTurn()):'Chọn God Power trước khi đặt quân.';
+ const effective= currentGod==='chaos'?g.advanced?.chaos?.[v.capacity===4?seat%2:seat]?.current:
+ currentGod==='circe'&&g.advanced?.circe?.owner===(v.capacity===4?seat%2:seat)?g.advanced.circe.power:null;
+ $('powerActiveName').textContent=currentGod?
+  (v.gods?.[currentGod]?.name||currentGod)+(effective?' → '+(v.gods?.[effective]?.name||effective):''):'Chưa chọn thần';
+ $('powerUseHint').textContent=v.modeId==='heroes'&&g.heroUsed?.[seat]?'🛡 Hero Power đã sử dụng trong ván này.':v.modeId==='fleece'&&g.phase==='ramPlace'?'Chạm một ô trống để đặt tượng Cừu Vàng.':v.modeId==='fleece'&&g.ram&&g.ctx?.fleeceActive!==seat?'Đứng cạnh Cừu Vàng khi bắt đầu lượt mới để nhận năng lực.':currentGod?abilityHint(g,effective||currentGod,mine&&isTurn()):'Chọn God Power trước khi đặt quân.';
+ $('powerUseHint').title=$('powerUseHint').textContent;
  const roster=v.players.map((p,i)=>{
   const power=seatGod(v,i),info=v.gods?.[power],you=i===S.seat,active=i===seat;
   const dead=!!g.eliminated?.[i],used=v.modeId==='heroes'&&!!g.heroUsed?.[i],title=power?info?.name||power:'Chưa chọn';
@@ -301,17 +339,22 @@ function tileClick(row,col){
 function drawFallback(){
  const g=S.view?.game;if(!g)return;
  const options=availableTiles(),tiles=new Set(options.map(a=>a.row+','+a.col));
+ const tileStatus=new Map(options.map(a=>[a.row+','+a.col,a]));
  const own=myTeam();
  let html='';
  for(let row=0;row<5;row++)for(let col=0;col<5;col++){
-  const level=g.board[row][col],k=row+','+col,active=tiles.has(k);
+  const level=g.board[row][col],k=row+','+col,active=tiles.has(k),preview=tileStatus.get(k);
+   const cue=preview?.wins?'WIN':preview?.special==='swap'?'SWAP':
+    preview?.special==='push'?'PUSH':preview?.type==='ferry'?'FORCE':
+    preview?.dome?'DOME':preview?.type==='build'?'BUILD':'';
   const owner=g.workers.findIndex(team=>team.some(w=>w.row===row&&w.col===col));
   const wi=owner<0?-1:g.workers[owner].findIndex(w=>w.row===row&&w.col===col);
   const control=g.phase==='dionysusMove'?g.ctx?.dionysusTarget:own;
   const choose=owner===control&&['move','extraMove','hermesMove','tritonMove','dionysusMove','heroSprint'].includes(g.phase);
-  html+='<button class="tile '+(active?'legal ':'')+(choose&&wi===S.selected?'selected ':'')+'" data-row="'+row+'" data-col="'+col+'" aria-label="Ô '+(row+1)+'-'+(col+1)+' tầng '+level+'">';
+  html+='<button class="tile '+(active?'legal ':'')+(cue?'power-'+cue.toLowerCase()+' ':'')+(choose&&wi===S.selected?'selected ':'')+'" data-row="'+row+'" data-col="'+col+'" aria-label="Ô '+(row+1)+'-'+(col+1)+' tầng '+level+(cue?' · '+cue:'')+'">';
   if(level){html+='<span class="building">';for(let n=0;n<Math.min(3,level);n++)html+='<span class="block"></span>';if(level===4)html+='<span class="dome"></span>';html+='</span><span class="level-pill">'+(level===4?'◆':level)+'</span>';}
-  if(owner>=0)html+='<span class="worker p'+owner+'"><span class="worker-head"></span><span class="worker-body"></span><span class="worker-base"></span></span>';
+  if(owner>=0)html+='<span class="worker p'+owner+'"><span class="worker-head"></span><span class="worker-body"></span><span class="worker-base"></span></span>'+
+  (g.gods?.[owner]==='selene'&&wi===1?'<span class="worker-female" aria-label="Quân nữ Selene">♀</span>':'');
   if(g.ram?.row===row&&g.ram?.col===col)html+='<span class="ram-token" title="Cừu Vàng">🐏</span>';
   html+='</button>';
  }
@@ -391,6 +434,11 @@ function render(){
  $('seatText').textContent=S.seat===-1?'Khán giả · Chỉ theo dõi':S.mode==='bot'?'Solo · Bạn ở ghế 1':'Bạn ở ghế '+(S.seat+1)+(S.capacity===4?' · Đội '+(myTeam()+1):'');
  if(!v){$('phaseLabel').textContent='Đang tải bàn chơi…';$('hint').textContent='Kết nối máy chủ';return;}
  const g=v.game,solo=v.mode==='bot',turn=isTurn();
+ const effects=v.ruleset==='god'?effectNotices(g,v):[];
+ $('effectStatus').classList.toggle('hidden',!effects.length);
+ $('effectStatus').textContent=effects.slice(0,2).join(' · ');
+ $('effectStatus').title=effects.join(' · ');
+ $('effectStatus').setAttribute('aria-label',effects.join('. '));
  $('gameMode').textContent=solo?(v.capacity===3?'SOLO · 2 BOT':v.capacity===4?'SOLO · 3 BOT':'SOLO DEMO'):v.capacity===4?'ĐẤU ĐỘI 2V2':v.capacity===3?'3 NGƯỜI · ĐỘC LẬP':v.ruleset==='god'?'GOD POWERS':'PHÒNG';
  $('modeLive').textContent=(MODE_UI[v.modeId]?.title||MODE_UI[S.variant]?.title||'♟ CLASSIC')+' ⓘ';
  $('roomCode').textContent=solo?'VS BOT':S.room;
