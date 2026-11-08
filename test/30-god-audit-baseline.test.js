@@ -89,3 +89,23 @@ test('AUDIT UI: passive effects, Chaos draw and Circe borrowed power not in live
  assert.match(css,/\.game \.action-bar\{min-height:37px;max-height:39px;height:39px/);
  for(const key of ['powerUseHint','godRoster','powersHelpBtn'])assert.ok(ui.includes(key));
 });
+
+test('AUDIT-006 Aphrodite + Hermes: a valid detour returning adjacent is blocked on first step',()=>{
+ const g=prepared('hermes','aphrodite');
+ g.workers=[[{row:2,col:2},{row:0,col:0}],[{row:3,col:2},{row:4,col:4}]];
+ const moves=legalActions(g).filter(a=>a.type==='move'&&a.worker===0);
+ assert.ok(moves.some(a=>a.row===2&&a.col===1),'another adjacent finish is legal');
+ assert.ok(!moves.some(a=>a.row===1&&a.col===2),'first horizontal detour is disallowed');
+ // A Hermes sequence 2,2 → 1,2 → 2,1 stays level 0 and ends beside Aphrodite at 3,2.
+ assert.match(src,/!\['artemis','triton'\]\.includes\(power\)/);
+});
+test('AUDIT-007 Persephone + Triton: first edge step before an available climb is not offered',()=>{
+ const g=prepared('triton','persephone');
+ g.workers=[[{row:1,col:2},{row:4,col:0}],[{row:4,col:4},{row:3,col:4}]];
+ g.board[1][3]=1;
+ const moves=legalActions(g).filter(a=>a.type==='move'&&a.worker===0);
+ assert.ok(moves.some(a=>a.row===1&&a.col===3),'direct legal ascent is offered');
+ assert.ok(!moves.some(a=>a.row===0&&a.col===2),'perimeter intermediate step missing');
+ // Triton may first enter perimeter 0,2, then climb to 1,3 in the same turn.
+ assert.match(src,/if\(ascents\.length\)return ascents/);
+});
