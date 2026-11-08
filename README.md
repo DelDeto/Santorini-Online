@@ -1,3 +1,11 @@
+## V2.6.1 — Morpheus rules audit
+
+- Fixed Morpheus erroneously placing domes directly on levels 0–2. Build reserve acts as *currency*, not an Atlas-style early-dome ability.
+- Morpheus gets 1 token at each turn's start; it may build zero or many times with its accumulated stock, including repeatedly on one square. A standard build on level 3 automatically completes the dome.
+- In a Circe-vs-Morpheus match, a borrowed Morpheus power now uses the original card's token stock, rather than a separate empty stock belonging to Circe.
+- Vietnamese description and in-game hints now clarify optional skip, remaining stock and dome restriction. Regression tests cover ordinary construction, multiple builds, reserved skips, early-domes and borrowing by Circe.
+
+---
 # V2.6 — Chọn thần đầy đủ / 10 cơ bản / 20 nâng cao
 
 - **Basic Gods** (2 người): chỉ lựa chọn được mười thần cơ bản. Server không cho phép chọn thẻ nâng cao, bao gồm cả khi gửi lệnh trực tiếp qua WebSocket.

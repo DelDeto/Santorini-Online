@@ -66,19 +66,19 @@ test('All optional-power phases expose a server Skip and a matching UI button',(
   assert.ok(decision.skipLabel.length>2);
  }
 });
-test('Morpheus can build a dome using stored blocks, or skip all bonus builds',()=>{
+test('Morpheus reserves can be spent on normal construction or saved',()=>{
  const g=prepared('morpheus');g.phase='morpheusBuild';g.selected=0;
  g.advanced.morpheus[0]=2;
  const actions=legalActions(g);
  assert.ok(actions.some(a=>a.type==='skip'));
- const dome=actions.find(a=>a.type==='build'&&a.dome&&a.row===2&&a.col===3);
- assert.ok(dome,'dome exchange must be offered to Morpheus');
- applyAction(g,0,dome);
- assert.equal(g.board[2][3],4);
+ assert.ok(!actions.some(a=>a.type==='build'&&a.dome),'no early dome power');
+ applyAction(g,0,{type:'build',row:2,col:3});
+ assert.equal(g.board[2][3],1);
  assert.equal(g.advanced.morpheus[0],1);
  assert.ok(legalActions(g).some(a=>a.type==='skip'));
  applyAction(g,0,{type:'skip'});
  assert.equal(g.turn,1);
+ assert.equal(g.advanced.morpheus[0],1,'unspent stock persists');
 });
 test('Hermes can end repeated movement to build with either Worker',()=>{
  const g=prepared('hermes');g.phase='hermesMove';

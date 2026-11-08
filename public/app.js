@@ -78,7 +78,7 @@ Object.assign(POWER_GUIDE,{
  hypnus:{icon:'☁',kind:'Tự động · khóa quân',how:'Quân đối thủ cao hơn tất cả quân khác của họ không thể di chuyển trong lượt ấy.',tip:'Quân cao nhất duy nhất của đối thủ bị khóa.'},
  limus:{icon:'⊘',kind:'Tự động · cấm xây gần',how:'Đối thủ không được xây sát quân Limus, trừ xây mái vòm hoàn chỉnh.',tip:'Cấm xây sát quân của bạn ngoại trừ mái vòm tầng 3.'},
  medusa:{icon:'☿',kind:'Tự động · hóa đá',how:'Cuối lượt, quân đối thủ đứng cạnh quân Medusa nhưng thấp hơn sẽ bị loại và thay bằng một khối công trình.',tip:'Đứng cao hơn sát đối thủ để hóa đá cuối lượt.'},
- morpheus:{icon:'◈',kind:'Dự trữ · xây nhiều lần',how:'Đầu lượt nhận một khối xây dự trữ. Sau khi đi, dùng số khối tích lũy để xây nhiều lần hoặc Bỏ qua.',tip:'Tích khối, di chuyển rồi xây liên tiếp từ kho dự trữ.'},
+ morpheus:{icon:'◈',kind:'Dự trữ · xây nhiều lần',how:'Đầu mỗi lượt nhận 1 đơn vị dự trữ. Sau khi di chuyển, có thể xây 0 hoặc nhiều lần, mỗi lần dùng 1 dự trữ. Được xây nhiều lần trên cùng ô. Chỉ đặt mái vòm trên tầng 3, không thể đặt mái vòm sớm như Atlas. Bấm Dừng xây để giữ số dư cho lượt sau.',tip:'Tích nhiều lượt rồi xây liên tiếp để tạo thế thắng kép. Không bắt buộc xây ngay.'},
  persephone:{icon:'🌱',kind:'Tự động · ép leo tầng',how:'Nếu đối thủ có nước đi hợp lệ lên tầng cao hơn, đối thủ bắt buộc phải leo tầng.',tip:'Ép đối thủ leo tầng nếu có thể.'},
  poseidon:{icon:'♆',kind:'Cuối lượt · xây tới 3 lần',how:'Nếu quân không di chuyển đứng ở tầng 0, sau lượt bình thường có thể xây thêm tối đa ba lần bằng quân đó hoặc Bỏ qua.',tip:'Giữ một quân ở tầng 0 để xây thêm ba lần.'},
  selene:{icon:'☾',kind:'Chủ động · mái vòm',how:'Sau khi đi, bấm Đặt mái vòm rồi chọn ô sáng bên cạnh quân nữ (quân thứ hai), dù quân nam vừa di chuyển.',tip:'Dùng mái vòm từ quân nữ (quân thứ hai).'},
@@ -103,7 +103,11 @@ function abilityHint(g,id,ownTurn){
   case 'hermesMove':return 'Chọn quân để đi ngang tiếp; muốn xây, chọn quân rồi bấm “Xây ngay →”.';
   case 'tritonMove':return 'Triton đang ở rìa: chạm ô để đi tiếp hoặc Bỏ qua để xây.';
   case 'aresRemove':return 'Ares: chạm khối được đánh dấu để phá hoặc Bỏ qua.';
-  case 'morpheusBuild':return 'Morpheus: còn '+(g.advanced?.morpheus?.[g.turn]||0)+' khối dự trữ. Xây hoặc Bỏ qua.';
+  case 'morpheusBuild':{
+    const tokenOwner=g.advanced?.circe?.owner===g.turn&&g.advanced.circe.power==='morpheus'
+     ?g.advanced.circe.target:g.turn;
+    return 'Morpheus: còn '+(g.advanced?.morpheus?.[tokenOwner]||0)+' lượt xây dự trữ. Xây hoặc Dừng xây để giữ lại; mái vòm chỉ ở tầng 3.';
+   }
   case 'poseidonBuild':return 'Poseidon: còn '+(g.ctx?.bonusRemaining||0)+' lần xây thêm. Xây hoặc Bỏ qua.';
   case 'dionysusChoice':return 'Dionysus: chọn đội đối thủ muốn điều khiển hoặc Bỏ qua.';
   case 'dionysusMove':return 'Dionysus: chọn quân đối thủ rồi di chuyển.';
@@ -170,7 +174,7 @@ function enter(room,mode='online',ruleset='classic',capacity=2,spectate=false,va
 function ensure3d(){
  if(S.three || $('scene3d').dataset.state==='loading')return;
  $('scene3d').dataset.state='loading';
- import('./board3d.js?v=2.6.0').then(({createBoard3D})=>{
+ import('./board3d.js?v=2.6.1').then(({createBoard3D})=>{
   if(!S.active)return;
   S.three=createBoard3D($('scene3d'),tileClick);
   S.three.setQuality(S.quality);S.three.setLighting(S.lighting);
@@ -253,6 +257,9 @@ function availableTiles(){
   return getActions(S.powerMode==='prebuild'?'prebuild':'move',S.selected).concat(S.powerMode==='move'?getActions('ferry',S.selected):[]);
  }
  if(['build','extraBuild','morpheusBuild','poseidonBuild','dionysusBuild'].includes(phase)){
+  // Morpheus has normal build shapes and a per-build cost.
+  // Do not hide legitimate builds behind a stale dome toggle.
+  if(phase==='morpheusBuild')return getActions('build');
   return getActions('build').filter(x=>!!x.dome===(S.powerMode==='dome'));
  }
  if(phase==='aresRemove')return getActions('removeBlock');
@@ -413,7 +420,7 @@ function render(){
  const phases={fleecePick:'CHỌN THẦN CHUNG',ramPlace:'ĐẶT CỪU VÀNG',godpick:'CHỌN THẦN',place:'ĐẶT QUÂN',move:'DI CHUYỂN',extraMove:'DI CHUYỂN 2',hermesMove:'HERMES',tritonMove:'TRITON',dionysusMove:'DIONYSUS',dionysusBuild:'XÂY QUÂN ĐỐI THỦ',heroPost:'HERO · CUỐI LƯỢT',heroDomes:'HERO · MÁI VÒM',heroMedea:'MEDEA',heroSprint:'ATALANTA',heroCorner:'ODYSSEUS',dionysusChoice:'CHỌN ĐỐI THỦ',aresRemove:'ARES',poseidonBuild:'POSEIDON',morpheusBuild:'MORPHEUS',build:'XÂY DỰNG',extraBuild:'XÂY THÊM',ended:'KẾT THÚC'};
  $('phaseChip').textContent=phases[g.phase]||'CHƠI';
  const turnName=solo&&g.turn===1?'BOT':v.players[v.activeSeat]?.name||'Đối thủ';
- const messages={fleecePick:'Chọn thần dùng chung cho Cừu Vàng',ramPlace:'Chạm ô trống để đặt Cừu Vàng',godpick:'Chọn vị thần cho trận đấu',place:'Đặt hai quân lên bàn cờ',move:'Chọn quân rồi chạm ô sáng để đi',extraMove:'Artemis: đi thêm hoặc bỏ qua',hermesMove:'Hermes: tiếp tục đi ngang hoặc chọn quân để xây',tritonMove:'Triton: đi tiếp hoặc Bỏ qua',dionysusMove:'Chọn quân đối thủ để di chuyển',dionysusBuild:'Xây bằng quân đối thủ',heroPost:'Có thể dùng Hero Power hoặc Bỏ qua',heroDomes:'Chạm ô sáng để dựng mái vòm hoặc Bỏ qua',heroMedea:'Chạm ô có quân để hạ tầng hoặc Bỏ qua',heroSprint:'Atalanta: đi tiếp hoặc Bỏ qua để xây',heroCorner:'Odysseus: đẩy quân khác hoặc Bỏ qua',dionysusChoice:'Chọn đội đối thủ để điều khiển',aresRemove:'Ares: phá khối hoặc Bỏ qua',poseidonBuild:'Poseidon: xây thêm hoặc Bỏ qua',morpheusBuild:'Morpheus: xây từ kho dự trữ hoặc Bỏ qua',build:'Chạm ô sáng để xây',extraBuild:'Có thể xây thêm hoặc bỏ qua',ended:'Trận đấu kết thúc'};
+ const messages={fleecePick:'Chọn thần dùng chung cho Cừu Vàng',ramPlace:'Chạm ô trống để đặt Cừu Vàng',godpick:'Chọn vị thần cho trận đấu',place:'Đặt hai quân lên bàn cờ',move:'Chọn quân rồi chạm ô sáng để đi',extraMove:'Artemis: đi thêm hoặc bỏ qua',hermesMove:'Hermes: tiếp tục đi ngang hoặc chọn quân để xây',tritonMove:'Triton: đi tiếp hoặc Bỏ qua',dionysusMove:'Chọn quân đối thủ để di chuyển',dionysusBuild:'Xây bằng quân đối thủ',heroPost:'Có thể dùng Hero Power hoặc Bỏ qua',heroDomes:'Chạm ô sáng để dựng mái vòm hoặc Bỏ qua',heroMedea:'Chạm ô có quân để hạ tầng hoặc Bỏ qua',heroSprint:'Atalanta: đi tiếp hoặc Bỏ qua để xây',heroCorner:'Odysseus: đẩy quân khác hoặc Bỏ qua',dionysusChoice:'Chọn đội đối thủ để điều khiển',aresRemove:'Ares: phá khối hoặc Bỏ qua',poseidonBuild:'Poseidon: xây thêm hoặc Bỏ qua',morpheusBuild:'Morpheus: dùng dự trữ để xây hoặc Dừng xây',build:'Chạm ô sáng để xây',extraBuild:'Có thể xây thêm hoặc bỏ qua',ended:'Trận đấu kết thúc'};
  $('phaseLabel').textContent=!v.ready?'Đợi đủ '+(v.capacity||2)+' người':g.phase==='ended'?'Đã kết thúc':
    turn&&g.phase==='poseidonBuild'?'POSEIDON · XÂY THÊM '+Math.max(0,3-(g.ctx?.bonusRemaining??3))+'/3':
    turn?messages[g.phase]:(turnName+' đang thực hiện lượt');
