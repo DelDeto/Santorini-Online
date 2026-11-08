@@ -51,8 +51,11 @@ const heroAvailable=(g,p,id)=>g.modeId==='heroes'&&g.gods[p]===id&&!g.heroUsed?.
 const isEdge=(r,c)=>r===0||r===4||c===0||c===4;
 const isOppositeEdge=(a,b)=>(a.row===0&&b.row===4)||(a.row===4&&b.row===0)||(a.col===0&&b.col===4)||(a.col===4&&b.col===0);
 const opponentsOf=(g,p)=>g.workers.map((_,i)=>i).filter(i=>i!==p&&!g.eliminated?.[i]);
-const hasEnemyGod=(g,p,id)=>opponentsOf(g,p).some(i=>g.gods[i]===id);
-const adjacentGodWorkers=(g,p,id,at)=>opponentsOf(g,p).some(i=>g.gods[i]===id&&g.workers[i].some(w=>near(w,at)));
+const teamHasGod=(g,p,id)=>g.capacity===4&&Array.isArray(g.advanced?.teamSeatGods)
+ ?g.advanced.teamSeatGods.some((power,seat)=>seat%2===p&&power===id)
+ :g.gods[p]===id;
+const hasEnemyGod=(g,p,id)=>opponentsOf(g,p).some(i=>teamHasGod(g,i,id));
+const adjacentGodWorkers=(g,p,id,at)=>opponentsOf(g,p).some(i=>teamHasGod(g,i,id)&&g.workers[i].some(w=>near(w,at)));
 function activePower(g,p){
  if(g.modeId==='fleece')return g.ctx?.fleeceActive===p?g.fleeceGod:null;
  if(g.advanced?.circe?.target===p)return null;
@@ -61,10 +64,10 @@ function activePower(g,p){
  return g.ruleset==='god'?g.gods[p]:null;
 }
 function restrictedByAphrodite(g,p){
- return opponentsOf(g,p).flatMap(i=>g.gods[i]==='aphrodite'?g.workers[i]:[]).some(w=>(g.ctx?.turnStart||g.workers[p]).some(x=>near(x,w)));
+ return opponentsOf(g,p).flatMap(i=>teamHasGod(g,i,'aphrodite')?g.workers[i]:[]).some(w=>(g.ctx?.turnStart||g.workers[p]).some(x=>near(x,w)));
 }
 function nearAphrodite(g,p,dest){
- return opponentsOf(g,p).some(i=>g.gods[i]==='aphrodite'&&g.workers[i].some(w=>near(w,dest)));
+ return opponentsOf(g,p).some(i=>teamHasGod(g,i,'aphrodite')&&g.workers[i].some(w=>near(w,dest)));
 }
 export const validGodFor=(id,players,selected=[])=>{
  const info=GODS[id];if(!info||info.players&&!info.players.includes(players))return false;
@@ -73,7 +76,7 @@ export const validGodFor=(id,players,selected=[])=>{
 };
 export function newGame(ruleset='classic',players=2,modeId=null){
  const count=players===3?3:2;
- return {modeId:modeId||(players===3?'trio':players===4?'teams':ruleset==='god'?'gods':'classic'),fleeceGod:null,ram:null,agoraTurns:0,heroUsed:Array(count).fill(false),heroMark:null,capacity:players,board:Array.from({length:5},()=>Array(5).fill(0)),workers:Array.from({length:count},()=>[]),phase:modeId==='fleece'?'fleecePick':ruleset==='god'?'godpick':'place',ruleset:ruleset==='god'?'god':'classic',gods:Array(count).fill(null),turn:0,selected:null,winner:null,eliminated:Array(count).fill(false),revision:0,lastAction:'Bắt đầu trận đấu.',ctx:{},athenaBlocked:null,advanced:{chaos:{},morpheus:{},circe:null,bonus:null,erasures:[]}};
+ return {modeId:modeId||(players===3?'trio':players===4?'teams':ruleset==='god'?'gods':'classic'),fleeceGod:null,ram:null,agoraTurns:0,heroUsed:Array(count).fill(false),heroMark:null,capacity:players,board:Array.from({length:5},()=>Array(5).fill(0)),workers:Array.from({length:count},()=>[]),phase:modeId==='fleece'?'fleecePick':ruleset==='god'?'godpick':'place',ruleset:ruleset==='god'?'god':'classic',gods:Array(count).fill(null),turn:0,selected:null,winner:null,eliminated:Array(count).fill(false),revision:0,lastAction:'Bắt đầu trận đấu.',ctx:{},athenaBlocked:null,advanced:{chaos:{},morpheus:{},circe:null,bonus:null,erasures:[],domeBase:{},teamSeatGods:null}};
 }
 const cell=(r,c)=>Number.isInteger(r)&&Number.isInteger(c)&&r>=0&&r<5&&c>=0&&c<5;
 const near=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col))===1;
@@ -101,7 +104,7 @@ function legalMoveDetails(g,p,i){
  const from=g.workers[p]?.[i];if(!from||!['move','extraMove','hermesMove','tritonMove','dionysusMove','heroSprint'].includes(g.phase))return [];
  if(g.ctx?.fixedWorker!==undefined&&g.ctx.fixedWorker!==i)return [];
  if(['extraMove','tritonMove','heroSprint'].includes(g.phase)&&g.selected!==i)return [];
- if(opponentsOf(g,p).some(other=>god(g,other)==='hypnus')&&g.workers[p].length>1&&g.workers[p].every((w,j)=>j===i||g.board[w.row][w.col]<g.board[from.row][from.col]))return [];
+ if(hasEnemyGod(g,p,'hypnus')&&g.workers[p].length>1&&g.workers[p].every((w,j)=>j===i||g.board[w.row][w.col]<g.board[from.row][from.col]))return [];
  const power=g.phase==='dionysusMove'?null:god(g,p),before=g.board[from.row][from.col],out=[];
  for(let row=Math.max(0,from.row-1);row<=Math.min(4,from.row+1);row++)
  for(let col=Math.max(0,from.col-1);col<=Math.min(4,from.col+1);col++){
@@ -113,8 +116,8 @@ function legalMoveDetails(g,p,i){
   if(((g.workers.length===2?g.athenaBlocked===p:(g.athenaBlocked!==null&&g.athenaBlocked!==p))||g.ctx?.prometheusUsed)&&h>before)continue;
   if(g.phase==='hermesMove'&&h!==before)continue;
   if(g.phase==='extraMove'&&eq(dest,g.ctx?.origin))continue;
-  if(restrictedByAphrodite(g,p)&&!nearAphrodite(g,p,dest)&&!['move'].includes(g.phase))continue;
-  if(restrictedByAphrodite(g,p)&&!nearAphrodite(g,p,dest)&&g.phase==='move'&&!['artemis','triton'].includes(power))continue;
+  if(restrictedByAphrodite(g,p)&&!nearAphrodite(g,p,dest)&&!['move','hermesMove','tritonMove','extraMove'].includes(g.phase))continue;
+  if(restrictedByAphrodite(g,p)&&!nearAphrodite(g,p,dest)&&g.phase==='move'&&!['artemis','triton','hermes'].includes(power))continue;
   const blocker=pawnAt(g,row,col);let special=null,forced=null;
   if(blocker){
    if(blocker.p===p)continue;
@@ -161,10 +164,33 @@ function rawFerryActions(g,p){
 }
 export function canTakeTurn(g,p){
  if(g.phase==='godpick'||g.phase==='place')return true;
- if(god(g,p)==='hermes'&&g.workers[p].some(w=>legalBuilds(g,w).length))return true;
- // Ignore temporary phase from the previous turn when evaluating the next player's mobility.
- const trial={...g,phase:'move',ctx:{}};
- return g.workers[p].some((_,i)=>legalMoves(trial,p,i).length>0);
+ const trial={...g,phase:'move',turn:p,selected:null,ctx:{}};
+ if(god(trial,p)==='hermes'&&g.workers[p].some(w=>legalBuilds(g,w).length))return true;
+ if(g.workers[p].some((_,i)=>legalMoveDetails(trial,p,i).length))return true;
+ if(heroAvailable(trial,p,'jason')&&g.workers[p].length===2){
+  for(let row=0;row<5;row++)for(let col=0;col<5;col++){
+   if(!isEdge(row,col)||g.board[row][col]!==0||!free(g,row,col))continue;
+   const probe={...g,workers:g.workers.map(a=>a.map(w=>({...w})))};
+   probe.workers[p].push({row,col});
+   if(legalBuilds(probe,{row,col},p).length)return true;
+  }
+ }
+ if(heroAvailable(trial,p,'odysseus')){
+  const queue=[structuredClone(trial)],visited=new Set();
+  while(queue.length&&visited.size<96){
+   const current=queue.shift(),key=JSON.stringify([current.workers,current.ctx?.heroCornerAffected]);
+   if(visited.has(key))continue;
+   visited.add(key);
+   if(current.workers[p].some((_,i)=>legalMoveDetails(current,p,i).length))return true;
+   for(const action of heroCornerActions(current,p)){
+    const next=structuredClone(current);
+    next.workers[1-p][action.worker]={row:action.row,col:action.col};
+    next.ctx={...next.ctx,heroCornerAffected:[...(next.ctx?.heroCornerAffected||[]),action.worker]};
+    queue.push(next);
+   }
+  }
+ }
+ return false;
 }
 function legalPrebuilds(g,p,i){
  if(god(g,p)!=='prometheus'||g.phase!=='move'||g.ctx?.prometheusUsed)return [];
