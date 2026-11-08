@@ -363,7 +363,14 @@ function matches(expected,a){
  (expected.under===undefined? a.under!==true:expected.under===a.under)&&
  (expected.target===undefined||expected.target===a.target);
 }
-function completedTowers(g){return g.board.flat().filter(h=>h===4).length;}
+// Dome at height 4 may sit on ground or low tower (Atlas/Selene), not only level 3.
+const domeKey=(r,c)=>r+','+c;
+const markDome=(g,r,c)=>{g.advanced??={};g.advanced.domeBase??={};g.advanced.domeBase[domeKey(r,c)]=g.board[r][c];};
+function completedTowers(g){
+ const bases=g.advanced?.domeBase||{};
+ return g.board.reduce((count,row,r)=>count+row.filter((height,c)=>
+  height===4&&bases[domeKey(r,c)]===3).length,0);
+}
 function winnerChronus(g){
  if(completedTowers(g)<5)return false;
  const p=g.gods.findIndex((id,i)=>id==='chronus'&&!g.eliminated?.[i]);
@@ -382,7 +389,13 @@ function refreshChaos(g){
  setupChaos(g);
  for(const entry of Object.values(g.advanced.chaos)){
   if(!entry.deck?.length)continue;
-  entry.index=(entry.index+1)%entry.deck.length;
+  entry.index++;
+  if(entry.index>=entry.deck.length){
+   for(let i=entry.deck.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));[entry.deck[i],entry.deck[j]]=[entry.deck[j],entry.deck[i]];
+   }
+   entry.index=0;
+  }
   entry.current=entry.deck[entry.index];
  }
 }
@@ -451,7 +464,7 @@ function endTurn(g,p,force=false){
   for(const key of petrified){
    const [row,col]=key.split(',').map(Number),target=pawnAt(g,row,col);
    if(!target||target.p===p)continue;
-   g.workers[target.p].splice(target.i,1);g.board[row][col]=Math.min(4,g.board[row][col]+1);
+   g.workers[target.p].splice(target.i,1);if(g.board[row][col]===3)markDome(g,row,col);g.board[row][col]=Math.min(4,g.board[row][col]+1);
   }
   if(petrified.size)g.lastAction='Medusa hóa đá '+petrified.size+' quân đối thủ!';
  }
@@ -519,7 +532,7 @@ export function applyAction(g,p,a){
   else if(id==='heracles'||id==='polyphemus'){g.phase='heroDomes';g.ctx={...g.ctx,postDone:true,heroDomeCount:0};}
   g.lastAction='Đã kích hoạt năng lực '+HEROES[id].name+'.';
  }else if(a.type==='heroDome'){
-  g.board[a.row][a.col]=4;g.ctx.heroDomeCount=(g.ctx.heroDomeCount||0)+1;
+  markDome(g,a.row,a.col);g.board[a.row][a.col]=4;g.ctx.heroDomeCount=(g.ctx.heroDomeCount||0)+1;
   g.lastAction='Hero xây một mái vòm đặc biệt.';
   if(!heroDomeActions(g,p).length)endTurn(g,p,true);
  }else if(a.type==='heroUnbuild'){
@@ -616,10 +629,11 @@ export function applyAction(g,p,a){
    g.board[a.row][a.col]++;
    g.lastAction='Zeus xây một khối ngay dưới chân quân đang đứng.';
   }else if(a.dome){
-   g.board[a.row][a.col]=4;
+   markDome(g,a.row,a.col);g.board[a.row][a.col]=4;
    g.ctx.domeBuilt=true;
    g.lastAction='Một mái vòm được hoàn thành.';
   }else{
+   if(g.board[a.row][a.col]===3)markDome(g,a.row,a.col);
    g.board[a.row][a.col]++;
    if(g.board[a.row][a.col]===4)g.ctx.domeBuilt=true;
    g.lastAction='Người chơi '+(p+1)+' xây tầng '+g.board[a.row][a.col]+'.';
