@@ -280,7 +280,9 @@ export function legalActions(g,p=g.turn){
     if(g.phase==='move')out.push(...legalPrebuilds(g,p,i));
    }
    if(g.phase==='extraMove'||g.phase==='tritonMove'||g.phase==='heroSprint'){
-    if(!restrictedByAphrodite(g,p)||nearAphrodite(g,p,g.workers[p][g.selected]))out.push({type:'skip'});
+    const nextToAphrodite=!restrictedByAphrodite(g,p)||nearAphrodite(g,p,g.workers[p][g.selected]);
+    const climbed=!g.ctx?.persephoneRequired||g.ctx?.upThisTurn;
+    if(nextToAphrodite&&climbed)out.push({type:'skip'});
    }
    if(g.phase==='move')out.push(...rawFerryActions(g,p));
    if(g.phase==='move'&&heroAvailable(g,p,'achilles')){
@@ -301,7 +303,28 @@ export function legalActions(g,p=g.turn){
    if(g.phase==='move'&&heroAvailable(g,p,'odysseus'))out.push(...heroCornerActions(g,p));
    if(g.phase==='move'&&hasEnemyGod(g,p,'persephone')&&!g.ctx?.upThisTurn){
     const ascents=out.filter(a=>a.type==='move'&&g.board[a.row][a.col]>g.board[g.workers[p][a.worker].row][g.workers[p][a.worker].col]);
-    if(ascents.length)return ascents;
+    if(ascents.length){
+     const multi=god(g,p);
+     const detours=out.filter(a=>{
+      if(a.type!=='move'||!['triton','artemis'].includes(multi))return false;
+      if(multi==='triton'&&!isEdge(a.row,a.col))return false;
+      const from=g.workers[p][a.worker],probe=structuredClone(g);
+      probe.workers[p][a.worker]={row:a.row,col:a.col};
+      probe.phase=multi==='triton'?'tritonMove':'extraMove';
+      probe.selected=a.worker;
+      probe.ctx={...g.ctx,origin:{...from}};
+      return legalMoveDetails(probe,p,a.worker).some(next=>
+       g.board[next.row][next.col]>g.board[a.row][a.col]);
+     });
+     return [...ascents,...detours.filter(a=>!ascents.includes(a))];
+    }
+   }
+   if(['extraMove','tritonMove'].includes(g.phase)&&g.ctx?.persephoneRequired&&!g.ctx?.upThisTurn){
+    const ups=out.filter(a=>a.type==='move'&&
+     g.board[a.row][a.col]>g.board[g.workers[p][a.worker].row][g.workers[p][a.worker].col]);
+    if(ups.length)return ups;
+    if(g.phase==='extraMove')return [];
+    return out.filter(a=>a.type==='move'&&isEdge(a.row,a.col));
    }
    if(god(g,p)==='hermes'&&(g.phase==='hermesMove'||g.phase==='move')){
     const last=g.workers[p][g.ctx?.lastMoved];
@@ -586,6 +609,12 @@ export function applyAction(g,p,a){
   g.selected=a.worker;g.phase='build';
   g.lastAction='Hermes kết thúc di chuyển và chọn quân để xây.';
  }else if(a.type==='move'){
+  // The requirement spans the entire turn, even when Triton first enters
+  // the perimeter or Artemis makes an intermediate move.
+  if(g.phase==='move'&&hasEnemyGod(g,p,'persephone')&&!g.ctx?.upThisTurn){
+   g.ctx.persephoneRequired=g.workers[p].some((_,i)=>legalMoveDetails(g,p,i).some(x=>
+    g.board[x.row][x.col]>g.board[g.workers[p][i].row][g.workers[p][i].col]));
+  }
   const controlled=g.phase==='dionysusMove',sprinting=g.phase==='heroSprint',actor=controlled?g.ctx.dionysusTarget:p;
   const from={...g.workers[actor][a.worker]},before=g.board[from.row][from.col],after=g.board[a.row][a.col];
   const actorPower=controlled?null:power,blocker=pawnAt(g,a.row,a.col);let biaEliminated=false;
