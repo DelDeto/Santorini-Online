@@ -83,6 +83,8 @@ export class SantoriniRoom extends DurableObject{
    this.room.game.advanced.chaos??={};
    this.room.game.advanced.morpheus??={};
    this.room.game.advanced.erasures??=[];
+    this.room.game.advanced.domeBase??={};
+    this.room.game.advanced.teamSeatGods??=this.room.seatGods?.slice()||null;
 
   });
  }
@@ -104,7 +106,7 @@ export class SantoriniRoom extends DurableObject{
  resolveBlockedTeam(){
   const r=this.room;
   if(capacity(r)!==4||r.game.phase!=='move'||r.game.winner!==null||!ready(r))return;
-  if(availableActions(r).some(a=>a.type==='move'||a.type==='endMove'))return;
+  if(availableActions(r).some(a=>['move','endMove','heroDeploy','heroCorner','ferry'].includes(a.type)))return;
   const winner=1-r.game.turn;
   r.game.winner=winner;r.game.phase='ended';
   r.game.lastAction='Ghế '+(seatForTurn(r)+1)+' không thể di chuyển. Đội '+(winner+1)+' chiến thắng!';
@@ -114,12 +116,13 @@ export class SantoriniRoom extends DurableObject{
  const r=this.room;
  if(capacity(r)!==4||r.game.phase==='ended')return;
  if(previousPhase==='place'&&r.game.phase==='move'){
-  r.activeSeat=r.game.turn===1?3:2;r.game.gods[0]=r.seatGods[2];r.game.gods[1]=r.seatGods[3];beginAdvancedTurn(r.game,r.game.turn);return;
+  r.activeSeat=r.game.turn===1?3:2;r.game.gods[0]=r.seatGods[2];r.game.gods[1]=r.seatGods[3];r.game.advanced.teamSeatGods=r.seatGods.slice();beginAdvancedTurn(r.game,r.game.turn);return;
  }
  if(r.game.phase==='place'||r.game.phase==='godpick')return;
  if(r.game.turn!==previousTurn){
   r.activeSeat=({2:3,3:0,0:1,1:2})[actionSeat];
   r.game.gods[team(r.activeSeat)]=r.seatGods[r.activeSeat];
+   r.game.advanced.teamSeatGods=r.seatGods.slice();
   beginAdvancedTurn(r.game,r.game.turn);
   // Athena restricts opponents until the SAME god holder's next turn, not their teammate's.
   if(r.athenaAura!==null){
@@ -267,7 +270,7 @@ record(action,seat,oldWinner,oldRevision){
      r.game.ctx={startSeat:r.game.turn};
      r.game.advanced.setupEros=[0,1].filter(teamId=>r.seatGods.some((id,seat)=>team(seat)===teamId&&id==='eros'));
      r.game.advanced.allSelected=r.seatGods.slice();
-     r.game.gods=[r.seatGods[0],r.seatGods[1]];
+     r.game.gods=[r.seatGods[0],r.seatGods[1]];r.game.advanced.teamSeatGods=r.seatGods.slice();
     }
    }else{
     const from=capacity(r)===4&&action.type==='move'?r.game.workers[team(seat)]?.[action.worker]:null;
@@ -312,7 +315,7 @@ record(action,seat,oldWinner,oldRevision){
     r.game.ctx={startSeat:r.game.turn};
     r.game.advanced.setupEros=[0,1].filter(teamId=>r.seatGods.some((id,seat)=>team(seat)===teamId&&id==='eros'));
      r.game.advanced.allSelected=r.seatGods.slice();
-    r.game.gods=[r.seatGods[0],r.seatGods[1]];
+    r.game.gods=[r.seatGods[0],r.seatGods[1]];r.game.advanced.teamSeatGods=r.seatGods.slice();
    }
   }else{
    const from=capacity(r)===4&&action.type==='move'?r.game.workers[logical]?.[action.worker]:null;
