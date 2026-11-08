@@ -344,6 +344,7 @@ function drawFallback(){
  let html='';
  for(let row=0;row<5;row++)for(let col=0;col<5;col++){
   const level=g.board[row][col],k=row+','+col,active=tiles.has(k),preview=tileStatus.get(k);
+   const shownLevel=level===4?(g.advanced?.domeBase?.[k]??3):level;
    const cue=preview?.wins?'WIN':preview?.special==='swap'?'SWAP':
     preview?.special==='push'?'PUSH':preview?.type==='ferry'?'FORCE':
     preview?.dome?'DOME':preview?.type==='build'?'BUILD':'';
@@ -352,7 +353,7 @@ function drawFallback(){
   const control=g.phase==='dionysusMove'?g.ctx?.dionysusTarget:own;
   const choose=owner===control&&['move','extraMove','hermesMove','tritonMove','dionysusMove','heroSprint'].includes(g.phase);
   html+='<button class="tile '+(active?'legal ':'')+(cue?'power-'+cue.toLowerCase()+' ':'')+(choose&&wi===S.selected?'selected ':'')+'" data-row="'+row+'" data-col="'+col+'" aria-label="Ô '+(row+1)+'-'+(col+1)+' tầng '+level+(cue?' · '+cue:'')+'">';
-  if(level){html+='<span class="building">';for(let n=0;n<Math.min(3,level);n++)html+='<span class="block"></span>';if(level===4)html+='<span class="dome"></span>';html+='</span><span class="level-pill">'+(level===4?'◆':level)+'</span>';}
+  if(level){html+='<span class="building">';for(let n=0;n<Math.min(3,shownLevel);n++)html+='<span class="block"></span>';if(level===4)html+='<span class="dome"></span>';html+='</span><span class="level-pill">'+(level===4?'◆'+shownLevel:level)+'</span>';}
   if(owner>=0)html+='<span class="worker p'+owner+'"><span class="worker-head"></span><span class="worker-body"></span><span class="worker-base"></span></span>'+
   (g.gods?.[owner]==='selene'&&wi===1?'<span class="worker-female" aria-label="Quân nữ Selene">♀</span>':'');
   if(g.ram?.row===row&&g.ram?.col===col)html+='<span class="ram-token" title="Cừu Vàng">🐏</span>';
