@@ -564,7 +564,7 @@ export function applyAction(g,p,a){
   g.ctx={prometheusUsed:true,fixedWorker:a.worker};
   g.lastAction='Prometheus đã xây trước khi di chuyển, không được đi lên tầng.';
  }else if(a.type==='commandeer'){
-  g.phase='dionysusMove';g.ctx={...g.ctx,dionysusTarget:a.target,dionysusUsed:true};
+  g.phase='dionysusMove';g.ctx={...g.ctx,dionysusTarget:a.target,dionysusUsed:true,domeBuilt:false,bonusChainCount:(g.ctx?.bonusChainCount||0)+1};
   g.lastAction='Dionysus điều khiển một quân của đối thủ để di chuyển và xây.';
  }else if(a.type==='removeBlock'){
   g.board[a.row][a.col]--;
@@ -576,7 +576,7 @@ export function applyAction(g,p,a){
  }else if(a.type==='move'){
   const controlled=g.phase==='dionysusMove',sprinting=g.phase==='heroSprint',actor=controlled?g.ctx.dionysusTarget:p;
   const from={...g.workers[actor][a.worker]},before=g.board[from.row][from.col],after=g.board[a.row][a.col];
-  const actorPower=controlled?null:power,blocker=pawnAt(g,a.row,a.col);
+  const actorPower=controlled?null:power,blocker=pawnAt(g,a.row,a.col);let biaEliminated=false;
   if(blocker){
    if(actorPower==='apollo')g.workers[blocker.p][blocker.i]={...from};
    else if(actorPower==='minotaur')g.workers[blocker.p][blocker.i]={row:a.row+(a.row-from.row),col:a.col+(a.col-from.col)};
@@ -588,7 +588,7 @@ export function applyAction(g,p,a){
    const target=cell(back.row,back.col)?pawnAt(g,back.row,back.col):null;
    if(target&&target.p!==actor){
     g.workers[target.p].splice(target.i,1);
-    g.lastAction='Bia hạ gục quân đối thủ đứng phía sau!';
+    biaEliminated=true;
    }
   }
   g.ctx={...g.ctx,lastMoved:a.worker,
@@ -623,6 +623,7 @@ export function applyAction(g,p,a){
    g.phase=actorPower==='morpheus'?'morpheusBuild':'build';g.selected=a.worker;
    g.lastAction='Người chơi '+(p+1)+' di chuyển và chuẩn bị xây.';
   }
+  if(biaEliminated&&g.phase!=='ended')g.lastAction='Bia loại quân đối thủ đứng sau ô vừa đến. Tiếp tục xây.';
  }else if(a.type==='build'){
   const phase=g.phase,advanced=g.advanced;
   if(a.under){
@@ -638,8 +639,8 @@ export function applyAction(g,p,a){
    if(g.board[a.row][a.col]===4)g.ctx.domeBuilt=true;
    g.lastAction='Người chơi '+(p+1)+' xây tầng '+g.board[a.row][a.col]+'.';
   }
-  if(winnerChronus(g)){
-   // Chronus may win even on another player's turn.
+  if(phase!=='dionysusBuild'&&winnerChronus(g)){
+   // Chronus may win during normal builds, never a Dionysus bonus turn.
   }else if(phase==='poseidonBuild'){
    g.ctx.bonusRemaining--;
    if(g.ctx.bonusRemaining<=0||!legalActions(g,p).some(x=>x.type==='build')){g.ctx.postDone=true;endTurn(g,p,true);}
@@ -650,7 +651,10 @@ export function applyAction(g,p,a){
    if(!legalActions(g,p).some(x=>x.type==='build'))endTurn(g,p);
    else g.lastAction='Morpheus: xây thêm từ kho dự trữ hoặc Bỏ qua.';
   }else if(phase==='dionysusBuild'){
-   g.ctx.postDone=true;endTurn(g,p,true);
+   if(g.ctx.domeBuilt&&(g.ctx.bonusChainCount||0)<26){
+    g.phase='dionysusChoice';
+    g.lastAction='Dionysus hoàn thành tháp: có thể điều khiển quân đối thủ tiếp hoặc Bỏ qua.';
+   }else{g.ctx.postDone=true;endTurn(g,p,true);}
   }else if(phase==='build'&&['demeter','hephaestus','hestia'].includes(power)){
    g.phase='extraBuild';g.ctx={...g.ctx,firstBuild:{row:a.row,col:a.col}};
    if(!legalActions(g,p).some(x=>x.type==='build'))endTurn(g,p);
